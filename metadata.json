@@ -1,0 +1,5 @@
+{
+  "name": "AI Personal Finance Dashboard",
+  "description": "An intelligent personal finance dashboard that provides insights and analysis of your spending habits using AI. Connect your accounts and receive personalized financial advice powered by Gemini.",
+  "requestFramePermissions": []
+}

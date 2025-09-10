@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Financly - Your Financial Future</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+      /* Added to prevent body scrolling and ensure root fills viewport */
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+      :root {
+        --color-background: #F8F9FA;
+        --color-sidebar-bg: #FFFFFF;
+        --color-content-bg: #FFFFFF;
+        --color-text-primary: #1A202C;
+        --color-text-secondary: #4A5568;
+        --color-text-tertiary: #A0AEC0;
+        --color-border-color: #E2E8F0;
+        --color-primary-light: rgba(79, 70, 229, 0.1);
+        --color-secondary-light: rgba(16, 185, 129, 0.1);
+        --color-primary-text: #FFFFFF;
+      }
+      html.dark {
+        --color-background: #111827;
+        --color-sidebar-bg: #1F2937;
+        --color-content-bg: #1F2937;
+        --color-text-primary: #F9FAFB;
+        --color-text-secondary: #9CA3AF;
+        --color-text-tertiary: #6B7281;
+        --color-border-color: #374151;
+        --color-primary-light: rgba(99, 90, 255, 0.15);
+        --color-secondary-light: rgba(22, 228, 156, 0.15);
+        --color-primary-text: #FFFFFF;
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Be Vietnam Pro', 'sans-serif'],
+            },
+            colors: {
+              background: 'var(--color-background)',
+              'sidebar-bg': 'var(--color-sidebar-bg)',
+              'content-bg': 'var(--color-content-bg)',
+              'text-primary': 'var(--color-text-primary)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'text-tertiary': 'var(--color-text-tertiary)',
+              'border-color': 'var(--color-border-color)',
+              'primary-light': 'var(--color-primary-light)',
+              'secondary-light': 'var(--color-secondary-light)',
+              'primary-text': 'var(--color-primary-text)',
+              'primary': '#4F46E5', 
+              'primary-hover': '#4338CA',
+              'secondary': '#10B981',
+              'warning': '#F59E0B',
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "recharts": "https://aistudiocdn.com/recharts@^3.1.2",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1"
+  }
+}
+</script>
+</head>
+  <body class="bg-background text-text-primary transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
