@@ -5,7 +5,6 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Financly - Your Financial Future</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -42,48 +41,22 @@
         --color-primary-text: #FFFFFF;
       }
     </style>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Be Vietnam Pro', 'sans-serif'],
-            },
-            colors: {
-              background: 'var(--color-background)',
-              'sidebar-bg': 'var(--color-sidebar-bg)',
-              'content-bg': 'var(--color-content-bg)',
-              'text-primary': 'var(--color-text-primary)',
-              'text-secondary': 'var(--color-text-secondary)',
-              'text-tertiary': 'var(--color-text-tertiary)',
-              'border-color': 'var(--color-border-color)',
-              'primary-light': 'var(--color-primary-light)',
-              'secondary-light': 'var(--color-secondary-light)',
-              'primary-text': 'var(--color-primary-text)',
-              'primary': '#4F46E5', 
-              'primary-hover': '#4338CA',
-              'secondary': '#10B981',
-              'warning': '#F59E0B',
-            }
-          }
-        }
-      }
-    </script>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
+    "react": "https://aistudiocdn.com/react@^19.1.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "recharts": "https://aistudiocdn.com/recharts@^3.1.2",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.0",
+    "vite": "https://aistudiocdn.com/vite@^7.1.5",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.2"
   }
 }
 </script>
 </head>
   <body class="bg-background text-text-primary transition-colors duration-300">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
