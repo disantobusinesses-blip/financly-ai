@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, Goal, SavingsPlan } from '@/types';
-import { getAccounts, getTransactions, getCreditScore } from '@/services/bankingService';
-import { getSavingsPlan } from '@/services/geminiService';
+import { getAccounts, getTransactions, getCreditScore } from '@/services/BankingService';
+import { getSavingsPlan } from '@/services/GeminiService';
 import AccountCard from '@/components/AccountCard';
 import TransactionAnalysis from '@/components/TransactionAnalysis';
 import CreditScore from '@/components/CreditScore';
