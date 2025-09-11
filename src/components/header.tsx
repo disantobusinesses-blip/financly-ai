@@ -1,40 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icons/Icons';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { initiateBankConnection } from '../services/bankingService';
+import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from '@/components/icons/Icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { initiateBankConnection } from '@/services/bankingService';
 
 interface HeaderProps {
   setShowSyncing: (show: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ setShowSyncing }) => {
+const Header = ({ setShowSyncing }: HeaderProps) => {
   const { user, upgradeUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
-    // Polling is more reliable than the 'storage' event in some sandboxed/iframe environments.
     const intervalId = setInterval(() => {
         const status = localStorage.getItem('basiqConnectionStatus');
         
         if (status) {
-            // We've received a signal, so stop polling.
             clearInterval(intervalId);
             localStorage.removeItem('basiqConnectionStatus');
             
             if (status === 'success') {
                 setShowSyncing(true);
-                // Reload the page to fetch new data after a short delay for the overlay
                 setTimeout(() => window.location.reload(), 2500);
             } else {
                 setConnectionError("The bank connection process was not completed. Please try again.");
             }
         }
-    }, 500); // Check every half a second
+    }, 500);
 
-    // Cleanup on component unmount
     return () => clearInterval(intervalId);
 }, [setShowSyncing]);
 
@@ -47,17 +43,8 @@ const Header: React.FC<HeaderProps> = ({ setShowSyncing }) => {
     setConnectionError(null);
     setIsConnecting(true);
     try {
-      // 1. Fetch the secure consent URL and the Basiq User ID from the backend.
       const { consentUrl, userId } = await initiateBankConnection(user.email);
-      
-      // 2. CRITICAL: Save the Basiq User ID before redirecting.
-      // The callback page will need this ID to finalize the connection.
       localStorage.setItem('basiqPendingUserId', userId);
-      
-      // 3. Once we have the URL, open it directly in a new tab.
-      // --- DIAGNOSTIC LOG ---
-      console.log(`[DIAGNOSTIC] Frontend received consentUrl: ${consentUrl}`);
-      // FIX: Removed 'noreferrer' as it may be causing validation issues on Basiq's end.
       window.open(consentUrl, '_blank', 'noopener');
 
     } catch (err: any) {

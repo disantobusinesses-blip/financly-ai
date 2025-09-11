@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Account, Transaction, Goal, SavingsPlan } from '../types';
-import { getAccounts, getTransactions, getCreditScore } from '../services/bankingService';
-import { getSavingsPlan } from '../services/geminiService';
-import AccountCard from './AccountCard';
-import TransactionAnalysis from './TransactionAnalysis';
-import CreditScore from './CreditScore';
-import BorrowingPower from './BorrowingPower';
-import FinancialAlerts from './FinancialAlerts';
-import GoalSetting from './GoalSetting';
-import AISavingsPlan from './AISavingsPlan';
-import SpendingForecast from './SpendingForecast';
-import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/currency';
+import { Account, Transaction, Goal, SavingsPlan } from '@/types';
+import { getAccounts, getTransactions, getCreditScore } from '@/services/bankingService';
+import { getSavingsPlan } from '@/services/geminiService';
+import AccountCard from '@/components/AccountCard';
+import TransactionAnalysis from '@/components/TransactionAnalysis';
+import CreditScore from '@/components/CreditScore';
+import BorrowingPower from '@/components/BorrowingPower';
+import FinancialAlerts from '@/components/FinancialAlerts';
+import GoalSetting from '@/components/GoalSetting';
+import AISavingsPlan from '@/components/AISavingsPlan';
+import SpendingForecast from '@/components/SpendingForecast';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
+import AIInvestmentAdvisor from '@/components/AIInvestmentAdvisor';
 
 const demoGoals: Goal[] = [
     { id: 'goal1', name: 'European Holiday', emoji: '✈️', targetAmount: 8000, currentAmount: 4500, targetDate: '2025-06-30' },
@@ -169,7 +170,12 @@ const Dashboard: React.FC = () => {
           </div>
       </section>
       
-      {/* --- Section 4: Borrowing Power --- */}
+      {/* --- Section 4: Investments --- */}
+      <section id="investment-advisor">
+          <AIInvestmentAdvisor accounts={accounts} />
+      </section>
+
+      {/* --- Section 5: Borrowing Power --- */}
       <section id="borrowing-power">
         <BorrowingPower 
           creditScore={creditScore} 
@@ -178,7 +184,7 @@ const Dashboard: React.FC = () => {
         />
       </section>
 
-      {/* --- Section 5: Accounts Overview --- */}
+      {/* --- Section 6: Accounts Overview --- */}
       <section id="accounts-overview" className="bg-content-bg p-6 rounded-xl border border-border-color">
           <h2 className="text-2xl font-bold text-text-primary mb-6">Accounts Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -188,12 +194,10 @@ const Dashboard: React.FC = () => {
           </div>
       </section>
       
-      {/* --- Section 6: Transactions --- */}
+      {/* --- Section 7: Transactions --- */}
       <section id="transactions">
         <TransactionAnalysis transactions={transactions} />
       </section>
     </div>
   );
 };
-
-export default Dashboard;

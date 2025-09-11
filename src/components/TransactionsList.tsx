@@ -1,8 +1,8 @@
 import React from 'react';
-import { Transaction } from '../types';
-import { ArrowDownIcon, ArrowUpIcon } from './icons/Icons';
-import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/currency';
+import { Transaction } from '@/types';
+import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons/Icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 
 interface TransactionsListProps {
   transactions: Transaction[];

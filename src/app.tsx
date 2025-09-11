@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import WelcomeScreen from './components/WelcomeScreen';
-import UpgradeModal from './components/UpgradeModal';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoginModal from './components/LoginModal';
-import SignupModal from './components/SignupModal';
-import { ThemeProvider } from './contexts/ThemeContext';
-import SyncingOverlay from './components/SyncingOverlay';
-import BasiqCallbackHandler from './components/BasiqCallbackHandler';
+import Sidebar from '@/components/Sidebar';
+import Header from '@/components/Header';
+import Dashboard from '@/components/Dashboard';
+import WelcomeScreen from '@/components/WelcomeScreen';
+import UpgradeModal from '@/components/UpgradeModal';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import LoginModal from '@/components/LoginModal';
+import SignupModal from '@/components/SignupModal';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import SyncingOverlay from '@/components/SyncingOverlay';
+import BasiqCallbackHandler from '@/components/BasiqCallbackHandler';
 
 const AppContent: React.FC = () => {
   const { user, isLoginModalOpen, isSignupModalOpen } = useAuth();

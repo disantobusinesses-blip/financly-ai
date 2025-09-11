@@ -1,8 +1,8 @@
 import React from 'react';
-import { Account, AccountType } from '../types';
-import { BankIcon, CardIcon } from './icons/Icons';
-import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/currency';
+import { Account, AccountType } from '@/types';
+import { BankIcon, CardIcon } from '@/components/icons/Icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 
 interface AccountCardProps {
   account: Account;

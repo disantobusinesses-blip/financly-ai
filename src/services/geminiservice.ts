@@ -1,17 +1,14 @@
 // FIX: Using new GoogleGenAI SDK and correct model
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import new types for Investment Advisor
-import { Transaction, FinancialAlert, SavingsPlan, SpendingForecastResult, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from '../types';
-import { getCurrencyInfo } from '../utils/currency';
+import { Transaction, FinancialAlert, SavingsPlan, SpendingForecastResult, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "@/types";
+import { getCurrencyInfo } from "@/utils/currency";
 
-// This is the definitive fix for the blank page on Vercel.
-// 'process.env' is a Node.js variable and does not exist in the browser.
-// Vite exposes environment variables prefixed with 'VITE_' through the 'import.meta.env' object.
-const API_KEY = import.meta.env.VITE_API_KEY;
+// Ensure API_KEY is available in the environment variables
+const API_KEY = process.env.API_KEY;
 
 if (!API_KEY) {
-  // This error will now be more informative if the variable is missing in Vercel.
-  throw new Error("VITE_API_KEY for Gemini is not set in the Vercel environment variables.");
+  throw new Error("API_KEY for Gemini is not set in environment variables.");
 }
 
 // FIX: Initialize with named parameter and use new GoogleGenAI
@@ -407,7 +404,6 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
     }
 };
 
-// FIX: Add missing function for AI Investment Advisor
 /**
  * Generates personalized investment advice based on user's accounts and risk tolerance.
  * @param accounts A list of user's bank accounts.
