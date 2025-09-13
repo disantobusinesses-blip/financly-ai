@@ -1,6 +1,6 @@
 import React from 'react';
 import { Transaction } from '@/types';
-import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons/Icons';
+import { ArrowDownIcon, ArrowUpIcon } from '@/components/Icons/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/currency';
 
