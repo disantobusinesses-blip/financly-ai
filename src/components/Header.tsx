@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
+// FIX: Corrected icon import path.
 import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icons/Icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-// FIX: Standardized service import to camelCase
+// FIX: Corrected service import casing.
 import { initiateBankConnection } from '../services/bankingService';
 
 interface HeaderProps {
   setShowSyncing: (show: boolean) => void;
 }
 
-// FIX: Removed React.FC type annotation to fix type assignment error.
 const Header = ({ setShowSyncing }: HeaderProps) => {
   const { user, upgradeUser } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -57,9 +57,6 @@ const Header = ({ setShowSyncing }: HeaderProps) => {
       localStorage.setItem('basiqPendingUserId', userId);
       
       // 3. Once we have the URL, open it directly in a new tab.
-      // --- DIAGNOSTIC LOG ---
-      console.log(`[DIAGNOSTIC] Frontend received consentUrl: ${consentUrl}`);
-      // FIX: Removed 'noreferrer' as it may be causing validation issues on Basiq's end.
       window.open(consentUrl, '_blank', 'noopener');
 
     } catch (err: any) {

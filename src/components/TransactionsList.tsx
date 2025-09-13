@@ -1,9 +1,8 @@
 import React from 'react';
-import { Transaction } from '@/types';
-// FIX: Corrected the import path for icons.
-import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons/Icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency } from '@/utils/currency';
+import { Transaction } from '../types';
+import { ArrowDownIcon, ArrowUpIcon } from './Icon/Icon';
+import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency } from '../utils/currency';
 
 interface TransactionsListProps {
   transactions: Transaction[];

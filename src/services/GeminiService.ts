@@ -1,6 +1,4 @@
-// FIX: Using new GoogleGenAI SDK and correct model
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Import new types for Investment Advisor
 import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "../types";
 import { getCurrencyInfo } from "../utils/currency";
 
@@ -11,12 +9,9 @@ if (!API_KEY) {
   throw new Error("API_KEY for Gemini is not set in environment variables.");
 }
 
-// FIX: Initialize with named parameter and use new GoogleGenAI
 const ai = new GoogleGenAI({ apiKey: API_KEY });
-// FIX: Use allowed model 'gemini-2.5-flash'
 const model = 'gemini-2.5-flash';
 
-// Define the expected JSON structure for our new features
 export interface TransactionAnalysisResult {
     insights: { emoji: string; text: string }[];
     subscriptions: { name: string; amount: number }[];
@@ -28,13 +23,6 @@ export interface BorrowingPowerResult {
     advice: string;
 }
 
-
-/**
- * Analyzes transactions to find spending insights and recurring subscriptions.
- * @param transactions A list of user transactions.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured object with insights and subscriptions.
- */
 export const getTransactionInsights = async (transactions: Transaction[], region: User['region']): Promise<TransactionAnalysisResult> => {
     const { symbol } = getCurrencyInfo(region);
     const transactionSummary = transactions.map(t => `${t.description}: ${symbol}${t.amount.toFixed(2)}`).join('\n');
@@ -84,7 +72,6 @@ export const getTransactionInsights = async (transactions: Transaction[], region
             },
         });
         
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) return { insights: [], subscriptions: [] };
         return JSON.parse(jsonText) as TransactionAnalysisResult;
@@ -95,15 +82,6 @@ export const getTransactionInsights = async (transactions: Transaction[], region
     }
 };
 
-
-/**
- * Calculates borrowing power based on user's financial data.
- * @param creditScore The user's credit score.
- * @param totalIncome The user's total monthly income.
- * @param totalBalance The user's total net worth.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured object with borrowing power analysis.
- */
 export const getBorrowingPower = async (creditScore: number, totalIncome: number, totalBalance: number, region: User['region']): Promise<BorrowingPowerResult> => {
     const { symbol, code } = getCurrencyInfo(region);
     const creditScoreContext = region === 'US'
@@ -141,7 +119,6 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
                             type: Type.NUMBER,
                             description: "The estimated annual interest rate as a percentage."
                         },
-
                         advice: {
                             type: Type.STRING,
                             description: "A single sentence of personalized advice."
@@ -152,7 +129,6 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for borrowing power.");
         return JSON.parse(jsonText) as BorrowingPowerResult;
@@ -163,12 +139,6 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
     }
 }
 
-/**
- * Acts as a "Financial Watchdog" to find anomalies, opportunities, and milestones.
- * @param transactions A list of user transactions.
- * @param region The user's region ('AU' or 'US').
- * @returns A list of structured FinancialAlert objects.
- */
 export const getFinancialAlerts = async (transactions: Transaction[], region: User['region']): Promise<FinancialAlert[]> => {
     const { symbol } = getCurrencyInfo(region);
     const transactionSummary = transactions.map(t => `${t.description}: ${symbol}${t.amount.toFixed(2)} on ${t.date}`).join('\n');
@@ -220,7 +190,6 @@ export const getFinancialAlerts = async (transactions: Transaction[], region: Us
             }
         });
         
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) return [];
         return JSON.parse(jsonText) as FinancialAlert[];
@@ -231,14 +200,6 @@ export const getFinancialAlerts = async (transactions: Transaction[], region: Us
     }
 };
 
-/**
- * Generates a savings plan by analyzing expenses against a goal.
- * @param transactions A list of user transactions.
- * @param goal The user's primary savings goal.
- * @param accounts A list of user's bank accounts.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured SavingsPlan object.
- */
 export const getSavingsPlan = async (transactions: Transaction[], goal: Goal, accounts: Account[], region: User['region']): Promise<SavingsPlan> => {
     const { symbol } = getCurrencyInfo(region);
     const expenseSummary = transactions
@@ -313,7 +274,6 @@ export const getSavingsPlan = async (transactions: Transaction[], goal: Goal, ac
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for savings plan.");
         return JSON.parse(jsonText) as SavingsPlan;
@@ -324,15 +284,6 @@ export const getSavingsPlan = async (transactions: Transaction[], goal: Goal, ac
     }
 };
 
-
-/**
- * Generates a 6-month balance forecast.
- * @param transactions A list of user transactions.
- * @param currentBalance The user's current total balance.
- * @param potentialMonthlySavings The potential extra savings from the AI plan.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured BalanceForecastResult object.
- */
 export const getBalanceForecast = async (transactions: Transaction[], currentBalance: number, potentialMonthlySavings: number, region: User['region']): Promise<BalanceForecastResult> => {
     const { symbol } = getCurrencyInfo(region);
     const transactionSummary = transactions
@@ -403,7 +354,6 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
                 }
             }
         });
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for balance forecast.");
         return JSON.parse(jsonText) as BalanceForecastResult;
@@ -414,18 +364,9 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
     }
 };
 
-// FIX: Add missing function for AI Investment Advisor
-/**
- * Generates personalized investment advice based on user's accounts and risk tolerance.
- * @param accounts A list of user's bank accounts.
- * @param riskTolerance The user's chosen risk tolerance.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured InvestmentAdvice object.
- */
 export const getInvestmentAdvice = async (accounts: Account[], riskTolerance: RiskTolerance, region: User['region']): Promise<InvestmentAdvice> => {
     const { symbol } = getCurrencyInfo(region);
 
-    // Calculate the total amount available for investment from savings accounts.
     const investableAssets = accounts
         .filter(a => a.type === AccountType.SAVINGS)
         .reduce((sum, acc) => sum + acc.balance, 0);
@@ -476,12 +417,10 @@ export const getInvestmentAdvice = async (accounts: Account[], riskTolerance: Ri
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for investment advice.");
         const result = JSON.parse(jsonText) as InvestmentAdvice;
 
-        // Basic validation
         const totalPercentage = result.allocation.reduce((sum, item) => sum + item.percentage, 0);
         if (Math.round(totalPercentage) !== 100) {
             console.warn(`Gemini API returned an allocation that does not sum to 100%. Total: ${totalPercentage}%`);

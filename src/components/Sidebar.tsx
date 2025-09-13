@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Added BriefcaseIcon for the new Investments link.
+// FIX: Corrected icon import path to use the 'icons' directory and 'Icons' file.
 import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icons/Icons';
+// FIX: Corrected casing for context import
 import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
@@ -8,7 +9,6 @@ const navItems = [
   { icon: <TrendingUpIcon />, name: 'Forecast', href: '#spending-forecast' },
   { icon: <WarningIcon />, name: 'Alerts', href: '#alerts' },
   { icon: <TargetIcon />, name: 'Financial Plan', href: '#financial-plan' },
-  // FIX: Added 'Investments' link to match new dashboard section.
   { icon: <BriefcaseIcon />, name: 'Investments', href: '#investment-advisor' },
   { icon: <LoanIcon />, name: 'Borrowing Power', href: '#borrowing-power' },
   { icon: <CardIcon />, name: 'Accounts', href: '#accounts-overview' },
