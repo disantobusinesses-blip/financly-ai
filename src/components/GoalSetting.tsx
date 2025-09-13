@@ -40,7 +40,7 @@ const GoalCard: React.FC<{ goal: Goal }> = ({ goal }) => {
     )
 }
 
-const GoalSetting: React.FC<GoalSettingProps> = ({ goals, totalSavings, onAddGoal }) => {
+const GoalSetting: React.FC<GoalSettingProps> = ({ goals, onAddGoal }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     
     return (
