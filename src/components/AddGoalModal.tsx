@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Goal } from '../types';
-import { TargetIcon, CalendarIcon } from './Icon/Icon';
+import { TargetIcon, CalendarIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrencyInfo } from '../utils/currency';
 

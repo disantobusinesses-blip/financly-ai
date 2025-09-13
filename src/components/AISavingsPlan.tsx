@@ -1,6 +1,6 @@
 import React from 'react';
 import { Goal, SavingsPlan } from '../types';
-import { SparklesIcon, ScissorsIcon, CalendarIcon, TrendingUpIcon } from './Icon/Icon';
+import { SparklesIcon, ScissorsIcon, CalendarIcon, TrendingUpIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { formatCurrency } from '../utils/currency';

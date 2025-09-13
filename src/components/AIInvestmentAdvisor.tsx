@@ -5,9 +5,9 @@ import { Account, InvestmentAdvice, RiskTolerance } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnScreen } from '../hooks/useOnScreen';
 // FIX: Standardized service import to camelCase
-import { getInvestmentAdvice } from '../services/geminiService';
+import { getInvestmentAdvice } from '../services/GeminiService';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { BriefcaseIcon, SparklesIcon } from './icons/Icons';
+import { BriefcaseIcon, SparklesIcon } from './icon/Icon';
 
 interface AIInvestmentAdvisorProps {
     accounts: Account[];
