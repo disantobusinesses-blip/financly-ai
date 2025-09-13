@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Standardized service import to camelCase
-import { getBorrowingPower, BorrowingPowerResult } from '../services/geminiService';
+import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiService';
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icons/Icons';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { useAuth } from '../contexts/AuthContext';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Goal } from '../types';
-import { TargetIcon, PlusIcon } from './Icon/Icon';
+import { TargetIcon, PlusIcon } from './icon/Icon';
 import AddGoalModal from './AddGoalModal';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency } from '../utils/currency';

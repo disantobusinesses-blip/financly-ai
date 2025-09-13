@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GaugeIcon, LoanIcon, ChartIcon, SparklesIcon } from './Icon/Icon';
+import { GaugeIcon, LoanIcon, ChartIcon, SparklesIcon } from './icon/Icon';
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
     <div className="bg-white/5 p-6 rounded-lg backdrop-blur-sm text-left">
