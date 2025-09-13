@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { SparklesIcon, LockIcon } from './Icon/Icon';
+import { SparklesIcon, LockIcon } from './icon/Icon';
 
 interface ProFeatureBlockerProps {
     featureTitle: string;

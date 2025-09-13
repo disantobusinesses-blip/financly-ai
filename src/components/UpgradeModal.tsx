@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { SparklesIcon } from './Icon/Icon';
-import { createCheckoutSession } from '../services/stripeService';
+import { SparklesIcon } from './icon/Icon';
+import { createCheckoutSession } from '../services/StripeService';
 
 const Checkmark: React.FC = () => (
     <svg className="h-5 w-5 text-secondary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

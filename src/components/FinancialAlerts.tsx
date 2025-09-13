@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
 // FIX: Standardized service import to camelCase
-import { getFinancialAlerts } from '../services/geminiService';
-import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icons/Icons';
+import { getFinancialAlerts } from '../services/GeminiService';
+import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';

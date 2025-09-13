@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected icon import path.
-import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icons/Icons';
+import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 // FIX: Corrected service import casing.
-import { initiateBankConnection } from '../services/bankingService';
+import { initiateBankConnection } from '../services/BankingService';
 
 interface HeaderProps {
   setShowSyncing: (show: boolean) => void;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Corrected icon import path to use the 'icons' directory and 'Icons' file.
-import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icons/Icons';
+// FIX: Corrected icon import path to use the 'icon' directory and 'Icon' file.
+import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icon/Icon';
 // FIX: Corrected casing for context import
 import { useAuth } from '../contexts/AuthContext';
 

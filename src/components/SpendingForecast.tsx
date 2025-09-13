@@ -3,10 +3,10 @@ import { Transaction, BalanceForecastResult, SavingsPlan, User } from '../types'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line, LineChart } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { SparklesIcon, TrendingUpIcon, ArrowRightIcon } from './icons/Icons';
+import { SparklesIcon, TrendingUpIcon, ArrowRightIcon } from './icon/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 // FIX: Standardized service import to camelCase
-import { getBalanceForecast } from '../services/geminiService';
+import { getBalanceForecast } from '../services/GeminiService';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency, getCurrencyInfo } from '../utils/currency';
 
