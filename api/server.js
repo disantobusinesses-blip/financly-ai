@@ -1,15 +1,17 @@
-// A simple backend server to securely handle Basiq, Plaid, and Stripe API calls.
-require('dotenv').config(); // This line loads variables from your .env file
 
-const express = require('express');
-const fetch = require('node-fetch');
-const cors = require('cors');
-const { Buffer } = require('buffer'); // Import Buffer for Base64 encoding
+// A simple backend server to securely handle Basiq, Plaid, and Stripe API calls.
+// This file is converted to use ES Module syntax (import/export) for Vercel compatibility.
+import 'dotenv/config';
+import express from 'express';
+import fetch from 'node-fetch';
+import cors from 'cors';
+import { Buffer } from 'buffer';
+import Stripe from 'stripe';
 
 const app = express();
 
 // --- Load and Sanitize Environment Variables ---
-const BASIQ_API_KEY = process.env.BASIQ_API_KEY ? process.env.BASIQ_API_KEY.trim() : null; 
+const BASIQ_API_KEY = process.env.BASIQ_API_KEY ? process.env.BASIQ_API_KEY.trim() : null;
 const BASIQ_API_URL = 'https://au-api.basiq.io';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.trim() : null;
 const STRIPE_PRICE_ID_AUD = process.env.STRIPE_PRICE_ID_AUD ? process.env.STRIPE_PRICE_ID_AUD.trim() : null;
@@ -24,20 +26,13 @@ const PLAID_ENV = process.env.PLAID_ENV ? process.env.PLAID_ENV.trim() : 'sandbo
 // ---------------------------------
 
 // Initialize Stripe
-const stripe = require('stripe')(STRIPE_SECRET_KEY);
-
+const stripe = new Stripe(STRIPE_SECRET_KEY);
 
 // --- Middleware Setup ---
-app.use(cors({ origin: '*' })); 
-
-app.use((req, res, next) => {
-  // Vercel's serverless functions don't run on a persistent server, so logging req/res is less useful here
-  // unless you are using Vercel's logging integrations.
-  next();
-});
+app.use(cors({ origin: '*' }));
 
 // Stripe webhook needs raw body, so we define it before express.json() for that specific route
-app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
 
@@ -58,15 +53,12 @@ app.post('/stripe-webhook', express.raw({type: 'application/json'}), async (req,
     res.json({received: true});
 });
 
-
 app.use(express.json());
 // ------------------------
 
 // --- API Routes ---
-// Vercel maps /api/server.js to /api/* routes automatically.
-// We just need to define the endpoints.
 
-app.post('/create-checkout-session', async (req, res) => {
+app.post('/api/create-checkout-session', async (req, res) => {
     try {
         const { userId, userEmail, region } = req.body;
         
@@ -97,7 +89,7 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
-app.post('/create-consent-session', async (req, res) => {
+app.post('/api/create-consent-session', async (req, res) => {
   try {
     const email = (req.body && req.body.email) ? req.body.email.toLowerCase() : `user-${Date.now()}@example.com`;
     const authorizationHeader = `Basic ${BASIQ_API_KEY}`;
@@ -144,7 +136,7 @@ app.post('/create-consent-session', async (req, res) => {
   }
 });
 
-app.get('/basiq-data/:userId', async (req, res) => {
+app.get('/api/basiq-data/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         if (!userId) {
@@ -201,7 +193,7 @@ app.get('/basiq-data/:userId', async (req, res) => {
     }
 });
 
-app.post('/plaid-create-link-token', async (req, res) => {
+app.post('/api/plaid-create-link-token', async (req, res) => {
     try {
         const { userId } = req.body;
         if (!userId) {
@@ -219,4 +211,4 @@ app.post('/plaid-create-link-token', async (req, res) => {
 });
 
 // This is the Vercel export. It allows Vercel to handle the Express app as a serverless function.
-module.exports = app;
+export default app;
