@@ -1,6 +1,6 @@
 import React from 'react';
 import { Account, AccountType } from '@/types';
-import { BankIcon, CardIcon } from '@/components/icons/Icons';
+import { BankIcon, CardIcon } from '@/components/Icons/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/currency';
 

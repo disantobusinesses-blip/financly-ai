@@ -1,8 +1,8 @@
 // FIX: Using new GoogleGenAI SDK and correct model
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import new types for Investment Advisor
-import { Transaction, FinancialAlert, SavingsPlan, SpendingForecastResult, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "@/types";
-import { getCurrencyInfo } from "@/utils/currency";
+import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "../types";
+import { getCurrencyInfo } from "../utils/currency";
 
 // Ensure API_KEY is available in the environment variables
 const API_KEY = process.env.API_KEY;
@@ -84,7 +84,9 @@ export const getTransactionInsights = async (transactions: Transaction[], region
             },
         });
         
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) return { insights: [], subscriptions: [] };
         return JSON.parse(jsonText) as TransactionAnalysisResult;
         
     } catch (error) {
@@ -150,7 +152,9 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
             }
         });
 
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) throw new Error("Received empty response from AI for borrowing power.");
         return JSON.parse(jsonText) as BorrowingPowerResult;
 
     } catch (error) {
@@ -216,7 +220,9 @@ export const getFinancialAlerts = async (transactions: Transaction[], region: Us
             }
         });
         
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) return [];
         return JSON.parse(jsonText) as FinancialAlert[];
 
     } catch (error) {
@@ -307,7 +313,9 @@ export const getSavingsPlan = async (transactions: Transaction[], goal: Goal, ac
             }
         });
 
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) throw new Error("Received empty response from AI for savings plan.");
         return JSON.parse(jsonText) as SavingsPlan;
         
     } catch(error) {
@@ -395,7 +403,9 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
                 }
             }
         });
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) throw new Error("Received empty response from AI for balance forecast.");
         return JSON.parse(jsonText) as BalanceForecastResult;
 
     } catch (error) {
@@ -404,6 +414,7 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
     }
 };
 
+// FIX: Add missing function for AI Investment Advisor
 /**
  * Generates personalized investment advice based on user's accounts and risk tolerance.
  * @param accounts A list of user's bank accounts.
@@ -465,7 +476,9 @@ export const getInvestmentAdvice = async (accounts: Account[], riskTolerance: Ri
             }
         });
 
-        const jsonText = response.text.trim();
+        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
+        const jsonText = (response.text ?? '').trim();
+        if (!jsonText) throw new Error("Received empty response from AI for investment advice.");
         const result = JSON.parse(jsonText) as InvestmentAdvice;
 
         // Basic validation

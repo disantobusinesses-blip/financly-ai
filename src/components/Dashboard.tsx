@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Account, Transaction, Goal, SavingsPlan } from '@/types';
-import { getAccounts, getTransactions, getCreditScore } from '@/services/BankingService';
-import { getSavingsPlan } from '@/services/GeminiService';
-import AccountCard from '@/components/AccountCard';
-import TransactionAnalysis from '@/components/TransactionAnalysis';
-import CreditScore from '@/components/CreditScore';
-import BorrowingPower from '@/components/BorrowingPower';
-import FinancialAlerts from '@/components/FinancialAlerts';
-import GoalSetting from '@/components/GoalSetting';
-import AISavingsPlan from '@/components/AISavingsPlan';
-import SpendingForecast from '@/components/SpendingForecast';
-import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency } from '@/utils/currency';
-import AIInvestmentAdvisor from '@/components/AIInvestmentAdvisor';
+import { Account, Transaction, Goal, SavingsPlan } from '../types';
+// FIX: Standardized service imports to camelCase
+import { getAccounts, getTransactions, getCreditScore } from '../services/bankingService';
+import { getSavingsPlan } from '../services/geminiService';
+import AccountCard from './AccountCard';
+import TransactionAnalysis from './TransactionAnalysis';
+import CreditScore from './CreditScore';
+import BorrowingPower from './BorrowingPower';
+import FinancialAlerts from './FinancialAlerts';
+import GoalSetting from './GoalSetting';
+import AISavingsPlan from './AISavingsPlan';
+import SpendingForecast from './SpendingForecast';
+import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency } from '../utils/currency';
+import AIInvestmentAdvisor from './AIInvestmentAdvisor';
 
 const demoGoals: Goal[] = [
     { id: 'goal1', name: 'European Holiday', emoji: '✈️', targetAmount: 8000, currentAmount: 4500, targetDate: '2025-06-30' },

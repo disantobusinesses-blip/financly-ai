@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from '@/components/icons/Icons';
-import { useAuth } from '@/contexts/AuthContext';
+// FIX: Added BriefcaseIcon for the new Investments link.
+import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icons/Icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { icon: <HomeIcon />, name: 'Overview', href: '#overview' },
   { icon: <TrendingUpIcon />, name: 'Forecast', href: '#spending-forecast' },
   { icon: <WarningIcon />, name: 'Alerts', href: '#alerts' },
   { icon: <TargetIcon />, name: 'Financial Plan', href: '#financial-plan' },
+  // FIX: Added 'Investments' link to match new dashboard section.
   { icon: <BriefcaseIcon />, name: 'Investments', href: '#investment-advisor' },
   { icon: <LoanIcon />, name: 'Borrowing Power', href: '#borrowing-power' },
   { icon: <CardIcon />, name: 'Accounts', href: '#accounts-overview' },
