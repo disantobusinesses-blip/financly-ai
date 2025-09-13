@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 // FIX: Corrected icon import path.
 import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
