@@ -56,7 +56,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-sidebar-bg border-r border-border-color flex flex-col">
+    <aside className="hideen md: flex-shrink-0 bg-sidebar-bg border-r border-border-color flex flex-col">
       <div className="h-20 flex items-center px-6">
         <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
