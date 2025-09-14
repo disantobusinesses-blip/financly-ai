@@ -1,3 +1,5 @@
+
+
 // FIX: Using new GoogleGenAI SDK and correct model
 import { GoogleGenAI, Type } from "@google/genai";
 // FIX: Import new types for Investment Advisor
@@ -6,6 +8,7 @@ import { getCurrencyInfo } from "../utils/currency";
 
 // In a Vite project, environment variables exposed to the client must be prefixed with VITE_
 // and are accessed via `import.meta.env`.
+// FIX: Updated to use Vite's environment variable syntax.
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_KEY) {
@@ -42,10 +45,17 @@ export const getTransactionInsights = async (transactions: Transaction[], region
     const transactionSummary = transactions.map(t => `${t.description}: ${symbol}${t.amount.toFixed(2)}`).join('\n');
 
     const prompt = `
-        You are a financial analyst for a ${region === 'US' ? 'US-based' : 'Australian'} user. Analyze the following transactions and provide insights.
-        Your Task:
-        1.  **Spending Insights:** Identify 3 interesting patterns or potential savings opportunities.
-        2.  **Subscription Hunter:** Identify all clear recurring payments.
+        You are a meticulous financial analyst for a ${region === 'US' ? 'US-based' : 'Australian'} user. Analyze the following transactions and provide insights.
+        
+        Your Task has two parts:
+        1.  **Spending Insights:** Identify 3 interesting patterns or potential savings opportunities from the full transaction list.
+        2.  **Subscription Hunter:** Identify all valid, recurring subscriptions based on the following strict rules:
+            *   A subscription is a fixed or near-fixed amount paid on a regular schedule (e.g., monthly) to a specific service provider.
+            *   **ONLY include recognizable consumer subscription services.** Examples of VALID subscriptions: Netflix, Stan, Spotify, Disney Plus, gym memberships, cloud storage (like Google Drive or Dropbox).
+            *   **DO NOT include financial transactions as subscriptions.** Examples of INVALID items to IGNORE AT ALL COSTS: "Interest Charged", "Loan Repayment", any bank fees, credit card payments.
+            *   **DO NOT include utility bills or government payments.** Examples of INVALID items to IGNORE: "Internet Bill", "Phone Bill", "Northern Beaches Council", any electricity, water, or council rate bills.
+            *   **DO NOT include generic store names or personal names.** Examples to IGNORE: "Jared 3800", "Woolworths", "Coles".
+        
         Return your response as a valid JSON object. Do not include any text outside of the JSON object.
     `;
 
@@ -118,10 +128,12 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
         **User Data:**
         - ${creditScoreContext}
         - Total Monthly Income: ${symbol}${totalIncome.toFixed(2)}
-        - Total Net Worth (Savings/Assets): ${symbol}${totalBalance.toFixed(2)}
+        - Total Net Worth (Assets minus Liabilities): ${symbol}${totalBalance.toFixed(2)}
 
         **Your Task:**
-        Based on this data, provide an estimated maximum personal loan amount and a typical interest rate. Also, provide one sentence of concise advice. A higher credit score and income should result in a higher loan amount and a lower interest rate. 
+        Based on this data, provide an estimated maximum personal loan amount and a typical interest rate. Also, provide one sentence of concise advice.
+        - The user's Net Worth is their total assets (like savings) minus their total liabilities (like loans or credit card debt). A higher net worth is a strong positive indicator. A large negative net worth (e.g., from a mortgage) should significantly impact the result.
+        - A higher credit score and income should result in a higher loan amount and a lower interest rate.
 
         Return your response as a valid JSON object. Do not include any text outside of the JSON object.
     `;

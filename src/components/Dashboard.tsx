@@ -1,5 +1,8 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, Goal, SavingsPlan } from '../types';
+// FIX: Standardized service imports to camelCase
 import { getAccounts, getTransactions, getCreditScore } from '../services/BankingService';
 import { getSavingsPlan } from '../services/GeminiService';
 import AccountCard from './AccountCard';

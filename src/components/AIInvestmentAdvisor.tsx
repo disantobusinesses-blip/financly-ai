@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-// FIX: Import RiskTolerance and InvestmentAdvice from shared types to fix dependency issue.
 import { Account, InvestmentAdvice, RiskTolerance } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnScreen } from '../hooks/useOnScreen';
-// FIX: Standardized service import to camelCase
 import { getInvestmentAdvice } from '../services/GeminiService';
 import ProFeatureBlocker from './ProFeatureBlocker';
+// FIX: Corrected icon import path from './Icon/Icon' to './icon/Icon'
 import { BriefcaseIcon, SparklesIcon } from './icon/Icon';
 
 interface AIInvestmentAdvisorProps {
@@ -60,6 +59,7 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
             setIsLoading(true);
             setError(null);
             try {
+                if (!user) return;
                 const result = await getInvestmentAdvice(accounts, riskTolerance, user.region);
                 setAdvice(result);
             } catch (err) {
@@ -98,7 +98,7 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
                                 stroke="var(--color-content-bg)"
                                 strokeWidth={4}
                             >
-                                {advice.allocation.map((_, index) => (
+                                {advice.allocation.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
