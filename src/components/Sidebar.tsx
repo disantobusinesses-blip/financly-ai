@@ -1,7 +1,4 @@
-
-
 import React, { useState, useEffect } from 'react';
-// FIX: Added BriefcaseIcon for the new Investments link.
 import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,7 +7,6 @@ const navItems = [
   { icon: <TrendingUpIcon />, name: 'Forecast', href: '#spending-forecast' },
   { icon: <WarningIcon />, name: 'Alerts', href: '#alerts' },
   { icon: <TargetIcon />, name: 'Financial Plan', href: '#financial-plan' },
-  // FIX: Added 'Investments' link to match new dashboard section.
   { icon: <BriefcaseIcon />, name: 'Investments', href: '#investment-advisor' },
   { icon: <LoanIcon />, name: 'Borrowing Power', href: '#borrowing-power' },
   { icon: <CardIcon />, name: 'Accounts', href: '#accounts-overview' },
@@ -58,7 +54,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-sidebar-bg border-r border-border-color flex flex-col">
+    <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar-bg border-r border-border-color flex-col">
       <div className="h-20 flex items-center px-6">
         <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">

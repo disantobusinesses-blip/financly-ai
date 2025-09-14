@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -23,7 +22,7 @@ const AppContent: React.FC = () => {
       ) : (
         <div className="flex h-full bg-background font-sans">
           <Sidebar />
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col">
             <Header setShowSyncing={setShowSyncing} />
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
               <Dashboard />
@@ -39,6 +38,7 @@ const AppContent: React.FC = () => {
   );
 };
 
+// This is the new, more robust router for the strict SPA environment.
 const AppRouter: React.FC = () => {
   const isCallbackRoute = new URLSearchParams(window.location.search).has('basiq_callback');
 
