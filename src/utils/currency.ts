@@ -1,4 +1,4 @@
-import { User } from '../Types';
+import { User } from '../types';
 
 export const getCurrencyInfo = (region: User['region'] = 'AU') => {
     return region === 'US' 

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User } from "../Types";
+import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User } from "../types";
 import { getCurrencyInfo } from "../utils/currency";
 
 // In a Vite project, environment variables exposed to the client must be prefixed with VITE_

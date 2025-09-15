@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiService';
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
-import { useOnScreen } from '../hooks/UseOnScreen';
+import { useOnScreen } from '../hooks/useOnScreen';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { formatCurrency } from '../utils/currency';

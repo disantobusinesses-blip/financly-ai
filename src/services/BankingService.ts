@@ -1,6 +1,6 @@
 
-import { Account, Transaction, AccountType } from '../Types';
-import { API_BASE_URL } from '../utils/ApiConfig';
+import { Account, Transaction, AccountType } from '../types';
+import { API_BASE_URL } from '../utils/apiConfig';
 
 // Mock data representing what an open banking API might return
 const mockAccounts: Account[] = [

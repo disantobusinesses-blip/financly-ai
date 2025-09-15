@@ -1,13 +1,13 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Transaction, BalanceForecastResult, SavingsPlan } from '../Types';
+import { Transaction, BalanceForecastResult, SavingsPlan } from '../types';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line, LineChart } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { SparklesIcon, TrendingUpIcon, ArrowRightIcon } from './icon/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBalanceForecast } from '../services/GeminiService';
-import { useOnScreen } from '../hooks/UseOnScreen';
+import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency, getCurrencyInfo } from '../utils/currency';
 
 interface SpendingForecastProps {

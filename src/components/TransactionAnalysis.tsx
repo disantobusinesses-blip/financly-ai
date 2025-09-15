@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Transaction } from '../Types';
+import { Transaction } from '../types';
 import { getTransactionInsights, TransactionAnalysisResult } from '../services/GeminiService';
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { useOnScreen } from '../hooks/UseOnScreen';
+import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency } from '../utils/currency';
 
 interface TransactionAnalysisProps {
