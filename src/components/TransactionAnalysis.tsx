@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Transaction } from '../types';
-// FIX: Standardized service import to camelCase
 import { getTransactionInsights, TransactionAnalysisResult } from '../services/GeminiService';
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
@@ -226,7 +225,7 @@ const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions 
                                                     <span className="text-text-primary font-bold ml-4">{formatCurrency(Math.abs(sub.amount), user?.region)}</span>
                                                 </div>
                                                 <a
-                                                    href={`https://www.google.com/search?q=how+to+cancel+${encodeURIComponent(sub.name)}`}
+                                                    href={sub.cancellationUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700 transition-colors"

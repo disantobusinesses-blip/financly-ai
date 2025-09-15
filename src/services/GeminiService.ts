@@ -1,30 +1,23 @@
-
-
-// FIX: Using new GoogleGenAI SDK and correct model
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Import new types for Investment Advisor
 import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "../types";
 import { getCurrencyInfo } from "../utils/currency";
 
 // In a Vite project, environment variables exposed to the client must be prefixed with VITE_
 // and are accessed via `import.meta.env`.
-// FIX: Updated to use Vite's environment variable syntax.
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_KEY) {
   // Updated error message to be more specific for future debugging.
-  throw new Error("VITE_API_KEY for Gemini is not set in environment variables. Please check your Vercel project settings.");
+  throw new Error("VITE_API_KEY for Gemini is not set in environment variables. Please check your .env file or Vercel project settings.");
 }
 
-// FIX: Initialize with named parameter and use new GoogleGenAI
 const ai = new GoogleGenAI({ apiKey: API_KEY });
-// FIX: Use allowed model 'gemini-2.5-flash'
 const model = 'gemini-2.5-flash';
 
 // Define the expected JSON structure for our new features
 export interface TransactionAnalysisResult {
     insights: { emoji: string; text: string }[];
-    subscriptions: { name: string; amount: number }[];
+    subscriptions: { name: string; amount: number; cancellationUrl: string; }[];
 }
 
 export interface BorrowingPowerResult {
@@ -55,6 +48,7 @@ export const getTransactionInsights = async (transactions: Transaction[], region
             *   **DO NOT include financial transactions as subscriptions.** Examples of INVALID items to IGNORE AT ALL COSTS: "Interest Charged", "Loan Repayment", any bank fees, credit card payments.
             *   **DO NOT include utility bills or government payments.** Examples of INVALID items to IGNORE: "Internet Bill", "Phone Bill", "Northern Beaches Council", any electricity, water, or council rate bills.
             *   **DO NOT include generic store names or personal names.** Examples to IGNORE: "Jared 3800", "Woolworths", "Coles".
+            *   For each subscription identified, provide its name, monthly amount, and a direct URL to its cancellation/manage subscription page. If a direct link isn't available, provide a link to their main help page regarding cancellation. For example, for Netflix, the URL must be 'https://help.netflix.com/en/node/407'.
         
         Return your response as a valid JSON object. Do not include any text outside of the JSON object.
     `;
@@ -86,8 +80,9 @@ export const getTransactionInsights = async (transactions: Transaction[], region
                                 properties: {
                                     name: { type: Type.STRING, description: "The name of the subscription." },
                                     amount: { type: Type.NUMBER, description: "The monthly cost of the subscription." },
+                                    cancellationUrl: { type: Type.STRING, description: "The direct URL to cancel or manage the subscription." }
                                 },
-                                required: ["name", "amount"],
+                                required: ["name", "amount", "cancellationUrl"],
                             },
                         },
                     },
@@ -96,7 +91,6 @@ export const getTransactionInsights = async (transactions: Transaction[], region
             },
         });
         
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) return { insights: [], subscriptions: [] };
         return JSON.parse(jsonText) as TransactionAnalysisResult;
@@ -166,7 +160,6 @@ export const getBorrowingPower = async (creditScore: number, totalIncome: number
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for borrowing power.");
         return JSON.parse(jsonText) as BorrowingPowerResult;
@@ -234,7 +227,6 @@ export const getFinancialAlerts = async (transactions: Transaction[], region: Us
             }
         });
         
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) return [];
         return JSON.parse(jsonText) as FinancialAlert[];
@@ -327,7 +319,6 @@ export const getSavingsPlan = async (transactions: Transaction[], goal: Goal, ac
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for savings plan.");
         return JSON.parse(jsonText) as SavingsPlan;
@@ -417,7 +408,6 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
                 }
             }
         });
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for balance forecast.");
         return JSON.parse(jsonText) as BalanceForecastResult;
@@ -428,7 +418,6 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
     }
 };
 
-// FIX: Add missing function for AI Investment Advisor
 /**
  * Generates personalized investment advice based on user's accounts and risk tolerance.
  * @param accounts A list of user's bank accounts.
@@ -490,7 +479,6 @@ export const getInvestmentAdvice = async (accounts: Account[], riskTolerance: Ri
             }
         });
 
-        // FIX: Added nullish coalescing operator to handle potentially undefined text response from the API.
         const jsonText = (response.text ?? '').trim();
         if (!jsonText) throw new Error("Received empty response from AI for investment advice.");
         const result = JSON.parse(jsonText) as InvestmentAdvice;

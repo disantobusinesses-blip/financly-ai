@@ -1,4 +1,3 @@
-
 // A simple backend server to securely handle Basiq, Plaid, and Stripe API calls.
 // This file is converted to use ES Module syntax (import/export) for Vercel compatibility.
 import 'dotenv/config';
@@ -136,6 +135,16 @@ app.post('/api/create-consent-session', async (req, res) => {
   }
 });
 
+// Helper to map Basiq account types to our app's types
+const getAccountType = (acc) => {
+    if (acc.accountType === 'savings') return 'Savings';
+    if (acc.accountType === 'transaction') return 'Checking';
+    if (acc.accountType === 'creditCard') return 'Credit Card';
+    if (acc.accountType === 'loan' || acc.accountType === 'mortgage' || acc.class === 'loan') return 'Loan';
+    if (acc.class === 'credit-card') return 'Credit Card';
+    return 'Checking'; // A safe default
+};
+
 app.get('/api/basiq-data/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
@@ -171,7 +180,7 @@ app.get('/api/basiq-data/:userId', async (req, res) => {
         const formattedAccounts = basiqAccounts.map(acc => ({
             id: acc.id,
             name: acc.name,
-            type: acc.accountType === 'transaction' ? 'Checking' : acc.accountType === 'savings' ? 'Savings' : 'Credit Card',
+            type: getAccountType(acc),
             balance: parseFloat(acc.balance),
             currency: acc.currency,
         }));

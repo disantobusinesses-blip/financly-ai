@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// FIX: Add BriefcaseIcon for the new Investments link.
 import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,6 +8,7 @@ const navItems = [
   { icon: <TrendingUpIcon />, name: 'Forecast', href: '#spending-forecast' },
   { icon: <WarningIcon />, name: 'Alerts', href: '#alerts' },
   { icon: <TargetIcon />, name: 'Financial Plan', href: '#financial-plan' },
+  // FIX: Added 'Investments' link to match new dashboard section.
   { icon: <BriefcaseIcon />, name: 'Investments', href: '#investment-advisor' },
   { icon: <LoanIcon />, name: 'Borrowing Power', href: '#borrowing-power' },
   { icon: <CardIcon />, name: 'Accounts', href: '#accounts-overview' },
@@ -54,7 +56,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="hidden md:flex w-64 flex-shrink-0 bg-sidebar-bg border-r border-border-color flex-col">
+    <aside className="w-64 flex-shrink-0 bg-sidebar-bg border-r border-border-color flex flex-col">
       <div className="h-20 flex items-center px-6">
         <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
@@ -66,31 +68,3 @@ const Sidebar: React.FC = () => {
       <nav className="flex-1 px-4 py-4 space-y-2">
         {navItems.map((item) => (
           <a
-            key={item.name}
-            href={item.href}
-            onClick={(e) => handleNavClick(e, item.href)}
-            className={`flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors duration-200 ${
-              activeTab === item.href
-                ? 'bg-primary text-white'
-                : 'text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <div className="w-6 h-6 mr-3">{item.icon}</div>
-            {item.name}
-          </a>
-        ))}
-      </nav>
-      <div className="px-4 py-4">
-        <button
-          onClick={logout}
-          className="flex items-center w-full px-4 py-2.5 text-sm font-semibold text-text-secondary rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        >
-          <LogoutIcon className="w-6 h-6 mr-3" />
-          Logout
-        </button>
-      </div>
-    </aside>
-  );
-};
-
-export default Sidebar;

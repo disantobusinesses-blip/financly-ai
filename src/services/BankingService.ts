@@ -6,6 +6,7 @@ const mockAccounts: Account[] = [
   { id: 'acc_1', name: 'Main Chequing', type: AccountType.CHECKING, balance: 17000.00, currency: 'AUD' },
   { id: 'acc_2', name: 'High-Yield Savings', type: AccountType.SAVINGS, balance: 1361.25, currency: 'AUD' },
   { id: 'acc_3', name: 'Travel Rewards Card', type: AccountType.CREDIT_CARD, balance: 855.90, currency: 'AUD' },
+  { id: 'acc_4', name: 'Home Loan', type: AccountType.LOAN, balance: 700000.00, currency: 'AUD' },
 ];
 
 const mockTransactions: Transaction[] = [

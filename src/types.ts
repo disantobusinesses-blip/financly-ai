@@ -1,9 +1,8 @@
-
-
 export enum AccountType {
   CHECKING = 'Checking',
   SAVINGS = 'Savings',
   CREDIT_CARD = 'Credit Card',
+  LOAN = 'Loan',
 }
 
 export interface Account {
@@ -49,7 +48,7 @@ export interface SavingsPlan {
     suggestions: {
         category: string;
         monthlyCut: number;
-        description: string;
+        description:string;
     }[];
     totalMonthlySavings: number;
     newGoalDate: string;
