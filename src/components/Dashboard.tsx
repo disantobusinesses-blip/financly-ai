@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Account, Transaction, Goal, SavingsPlan, AccountType } from '../types';
+import { Account, Transaction, Goal, SavingsPlan } from '../types';
 // FIX: Corrected import casing to match file system.
 import { getAccounts, getTransactions, getCreditScore } from '../services/BankingService';
 // FIX: Corrected import casing to match file system.

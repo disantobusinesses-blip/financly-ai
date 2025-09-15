@@ -98,7 +98,7 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
                                 stroke="var(--color-content-bg)"
                                 strokeWidth={4}
                             >
-                                {advice.allocation.map((entry, index) => (
+                                {advice.allocation.map(( index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
