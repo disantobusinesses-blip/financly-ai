@@ -3,7 +3,7 @@ import React from 'react';
 import { Transaction } from '../Types';
 import { ArrowDownIcon, ArrowUpIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../
+import { formatCurrency } from '../utils/currency';
 
 interface TransactionsListProps {
   transactions: Transaction[];
