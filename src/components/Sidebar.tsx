@@ -1,7 +1,5 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon, BriefcaseIcon } from './icon/Icon';
+import { HomeIcon, ChartIcon, CardIcon, LogoutIcon, LoanIcon, TargetIcon, WarningIcon, TrendingUpIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
@@ -9,7 +7,6 @@ const navItems = [
   { icon: <TrendingUpIcon />, name: 'Forecast', href: '#spending-forecast' },
   { icon: <WarningIcon />, name: 'Alerts', href: '#alerts' },
   { icon: <TargetIcon />, name: 'Financial Plan', href: '#financial-plan' },
-  { icon: <BriefcaseIcon />, name: 'Investments', href: '#investment-advisor' },
   { icon: <LoanIcon />, name: 'Borrowing Power', href: '#borrowing-power' },
   { icon: <CardIcon />, name: 'Accounts', href: '#accounts-overview' },
   { icon: <ChartIcon />, name: 'Transactions', href: '#transactions' },

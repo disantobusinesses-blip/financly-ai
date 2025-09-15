@@ -3,7 +3,7 @@ import React from 'react';
 import { Account, AccountType } from '../Types';
 import { BankIcon, CardIcon, LoanIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/Currency';
+import { formatCurrency } from '../utils/currency';
 
 interface AccountCardProps {
   account: Account;

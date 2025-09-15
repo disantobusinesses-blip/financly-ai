@@ -8,7 +8,7 @@ import { SparklesIcon, TrendingUpIcon, ArrowRightIcon } from './icon/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { getBalanceForecast } from '../services/GeminiService';
 import { useOnScreen } from '../hooks/UseOnScreen';
-import { formatCurrency, getCurrencyInfo } from '../utils/Currency';
+import { formatCurrency, getCurrencyInfo } from '../utils/currency';
 
 interface SpendingForecastProps {
   transactions: Transaction[];

@@ -5,7 +5,7 @@ import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
 import { useOnScreen } from '../hooks/UseOnScreen';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { formatCurrency } from '../utils/Currency';
+import { formatCurrency } from '../utils/currency';
 
 interface BorrowingPowerProps {
   creditScore: number;

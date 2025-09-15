@@ -7,7 +7,7 @@ import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/UseOnScreen';
-import { formatCurrency } from '../utils/Currency';
+import { formatCurrency } from '../utils/currency';
 
 interface TransactionAnalysisProps {
   transactions: Transaction[];
