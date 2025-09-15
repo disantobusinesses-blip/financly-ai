@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 // FIX: Corrected import casing to match file system.
 import { Account, Transaction, Goal, SavingsPlan, AccountType } from '../types';
@@ -119,11 +117,10 @@ const Dashboard: React.FC = () => {
   
   return (
     <div className="space-y-6">
-      {/* --- Section 1: Overview --- */}
+      {/* --- Section: Overview --- */}
       <section id="overview" className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary">Overview</h1>
-          <p className="text-text-secondary mt-1">Here's your financial snapshot.</p>
+          <h1 className="text-2xl font-bold text-text-primary">Overview</h1>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -131,30 +128,18 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="space-y-6">
                <div className="bg-content-bg p-6 rounded-xl border border-border-color">
-                  <h2 className="text-lg font-semibold text-text-secondary mb-1">Total Net Worth</h2>
-                  <p className="text-3xl font-bold text-text-primary">{formatCurrency(totalBalance, user?.region)}</p>
+                  <h2 className="text-sm font-semibold text-text-secondary mb-1">Total Net Worth</h2>
+                  <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalBalance, user?.region)}</p>
               </div>
               <div className="bg-content-bg p-6 rounded-xl border border-border-color">
-                  <h2 className="text-lg font-semibold text-text-secondary mb-1">Total Savings</h2>
-                  <p className="text-3xl font-bold text-secondary">{formatCurrency(totalSavings, user?.region)}</p>
+                  <h2 className="text-sm font-semibold text-text-secondary mb-1">Total Savings</h2>
+                  <p className="text-2xl font-bold text-secondary">{formatCurrency(totalSavings, user?.region)}</p>
               </div>
           </div>
         </div>
       </section>
 
-      {/* Section 2: AI Tools */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div id="alerts"><FinancialAlerts transactions={transactions} /></div>
-          <div id="borrowing-power">
-              <BorrowingPower 
-                creditScore={creditScore} 
-                totalIncome={totalIncome} 
-                totalBalance={totalBalance}
-              />
-          </div>
-      </section>
-
-      {/* --- Section: Balance Forecast --- */}
+      {/* --- Section: Forecast --- */}
       <section id="spending-forecast">
         <SpendingForecast 
           transactions={transactions} 
@@ -163,9 +148,22 @@ const Dashboard: React.FC = () => {
         />
       </section>
 
-      {/* --- Section 3: Financial Plan --- */}
+      {/* --- Section: AI Tools Grid (Alerts & Borrowing Power) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section id="alerts" className="h-full">
+            <FinancialAlerts transactions={transactions} />
+          </section>
+          <section id="borrowing-power" className="h-full">
+              <BorrowingPower 
+                creditScore={creditScore} 
+                totalIncome={totalIncome} 
+                totalBalance={totalBalance}
+              />
+          </section>
+      </div>
+
+      {/* --- Section: Financial Plan --- */}
       <section id="financial-plan" className="space-y-6">
-          <h2 className="text-2xl font-bold text-text-primary border-b border-border-color pb-3">Your Financial Plan</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <GoalSetting goals={goals} totalSavings={totalSavings} onAddGoal={handleAddGoal} />
               {primaryGoal ? (
@@ -183,7 +181,7 @@ const Dashboard: React.FC = () => {
           </div>
       </section>
 
-      {/* --- Section 6: Accounts Overview --- */}
+      {/* --- Section: Accounts Overview --- */}
       <section id="accounts-overview" className="bg-content-bg p-6 rounded-xl border border-border-color">
           <h2 className="text-2xl font-bold text-text-primary mb-6">Accounts Overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -193,7 +191,7 @@ const Dashboard: React.FC = () => {
           </div>
       </section>
       
-      {/* --- Section 7: Transactions --- */}
+      {/* --- Section: Transactions --- */}
       <section id="transactions">
         <TransactionAnalysis transactions={transactions} />
       </section>
