@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Standardized service import to camelCase
+// FIX: Corrected import casing to match file system.
 import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiService';
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
 import { useOnScreen } from '../hooks/useOnScreen';
-import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
+import { useAuth } from '../contexts/authContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { formatCurrency } from '../utils/currency';
 

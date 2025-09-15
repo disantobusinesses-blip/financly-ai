@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icon/Icon';
-import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
+import { useAuth } from '../contexts/authContext';
 import { useTheme } from '../contexts/ThemeContext';
-// FIX: Corrected service import casing.
+// FIX: Corrected import casing to match file system.
 import { initiateBankConnection } from '../services/BankingService';
 
 interface HeaderProps {

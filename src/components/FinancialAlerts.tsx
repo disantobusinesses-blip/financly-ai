@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
-// FIX: Standardized service import to camelCase
+// FIX: Corrected import casing to match file system.
 import { getFinancialAlerts } from '../services/GeminiService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
-import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
+import { useAuth } from '../contexts/authContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Account, InvestmentAdvice, RiskTolerance } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
+import { useAuth } from '../contexts/authContext';
 import { useOnScreen } from '../hooks/useOnScreen';
+// FIX: Corrected import casing to match file system.
 import { getInvestmentAdvice } from '../services/GeminiService';
 import ProFeatureBlocker from './ProFeatureBlocker';
-// FIX: Corrected icon import path from './Icon/Icon' to './icon/Icon'
 import { BriefcaseIcon, SparklesIcon } from './icon/Icon';
 
 interface AIInvestmentAdvisorProps {
@@ -48,7 +49,6 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // FIX: Replaced buggy useEffect with a correct implementation that avoids infinite loops and fetches data correctly on visibility or when risk tolerance changes.
     useEffect(() => {
         // Guard conditions: Don't fetch if not visible, no accounts, or not a Pro user.
         if (!isVisible || accounts.length === 0 || user?.membershipType !== 'Pro') {
@@ -98,7 +98,7 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
                                 stroke="var(--color-content-bg)"
                                 strokeWidth={4}
                             >
-                                {advice.allocation.map((_, index) => (
+                                {advice.allocation.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>

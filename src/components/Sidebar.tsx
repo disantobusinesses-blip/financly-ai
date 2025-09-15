@@ -68,3 +68,31 @@ const Sidebar: React.FC = () => {
       <nav className="flex-1 px-4 py-4 space-y-2">
         {navItems.map((item) => (
           <a
+            key={item.name}
+            href={item.href}
+            onClick={(e) => handleNavClick(e, item.href)}
+            className={`flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors duration-200 ${
+              activeTab === item.href
+                ? 'bg-primary text-white'
+                : 'text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            <div className="w-6 h-6 mr-3">{item.icon}</div>
+            {item.name}
+          </a>
+        ))}
+      </nav>
+      <div className="px-4 py-4">
+        <button
+          onClick={logout}
+          className="flex items-center w-full px-4 py-2.5 text-sm font-semibold text-text-secondary rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <LogoutIcon className="w-6 h-6 mr-3" />
+          Logout
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

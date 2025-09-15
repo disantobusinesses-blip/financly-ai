@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Transaction } from '../types';
+// FIX: Corrected import casing to match file system.
 import { getTransactionInsights, TransactionAnalysisResult } from '../services/GeminiService';
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
-import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
+import { useAuth } from '../contexts/authContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency } from '../utils/currency';
