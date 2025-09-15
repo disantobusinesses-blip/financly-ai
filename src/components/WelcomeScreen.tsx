@@ -19,7 +19,7 @@ const WelcomeScreen: React.FC = () => {
 
     const handleDemoLogin = () => {
         // Use the login function with demo credentials
-        login('demo@financly.com', 'DemoAccount');
+        login('demo@financly.com', 'demo123');
     };
 
     return (
