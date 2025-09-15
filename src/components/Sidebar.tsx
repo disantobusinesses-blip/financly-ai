@@ -60,4 +60,39 @@ const Sidebar: React.FC = () => {
       <div className="h-20 flex items-center px-6">
         <div className="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                <path
+                <path fillRule="evenodd" d="M10 2a8 8 0 00-8 8c0 4.418 3.582 8 8 8s8-3.582 8-8-3.582-8-8-8zm-1.5 6a1.5 1.5 0 00-3 0v2a1.5 1.5 0 003 0v-2zm3-1.5a1.5 1.5 0 011.5 1.5v4.5a1.5 1.5 0 01-3 0V9a1.5 1.5 0 011.5-1.5z" clipRule="evenodd" />
+            </svg>
+            <span className="font-extrabold text-2xl text-text-primary">Financly</span>
+        </div>
+      </div>
+      <nav className="flex-1 px-4 py-4 space-y-2">
+        {navItems.map((item) => (
+          <a
+            key={item.name}
+            href={item.href}
+            onClick={(e) => handleNavClick(e, item.href)}
+            className={`flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors duration-200 ${
+              activeTab === item.href
+                ? 'bg-primary text-white'
+                : 'text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            <div className="w-6 h-6 mr-3">{item.icon}</div>
+            {item.name}
+          </a>
+        ))}
+      </nav>
+      <div className="px-4 py-4">
+        <button
+          onClick={logout}
+          className="flex items-center w-full px-4 py-2.5 text-sm font-semibold text-text-secondary rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <LogoutIcon className="w-6 h-6 mr-3" />
+          Logout
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;
