@@ -98,9 +98,10 @@ const AIInvestmentAdvisor: React.FC<AIInvestmentAdvisorProps> = ({ accounts }) =
                                 stroke="var(--color-content-bg)"
                                 strokeWidth={4}
                             >
-                                {advice.allocation.map((allocation, index) => (
+                                {advice.allocation.map((entry, index) => (
     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-    ))}
+))}
+
                             </Pie>
                             <Tooltip content={<CustomTooltipContent />} />
                             <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ fontSize: '14px' }}/>
