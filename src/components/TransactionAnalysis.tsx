@@ -5,7 +5,7 @@ import { getTransactionInsights, TransactionAnalysisResult } from '../services/G
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency } from '../utils/currency';

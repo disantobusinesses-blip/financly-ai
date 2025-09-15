@@ -10,7 +10,7 @@ import Dashboard from './components/Dashboard';
 import WelcomeScreen from './components/WelcomeScreen';
 import UpgradeModal from './components/UpgradeModal';
 // FIX: Corrected import casing to match file system.
-import { AuthProvider, useAuth } from './contexts/authContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
 import { ThemeProvider } from './contexts/ThemeContext';

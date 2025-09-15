@@ -4,7 +4,7 @@ import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
 import { getFinancialAlerts } from '../services/GeminiService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 

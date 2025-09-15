@@ -6,7 +6,7 @@ import { getAccounts, getTransactions, getCreditScore } from '../services/Bankin
 // FIX: Corrected import casing to match file system.
 import { getSavingsPlan } from '../services/GeminiService';
 // FIX: Corrected import casing to match file system.
-import AccountCard from './accountcard';
+import AccountCard from './AccountCard';
 import TransactionAnalysis from './TransactionAnalysis';
 import CreditScore from './CreditScore';
 import BorrowingPower from './BorrowingPower';
@@ -15,7 +15,7 @@ import GoalSetting from './GoalSetting';
 import AISavingsPlan from './AISavingsPlan';
 import SpendingForecast from './SpendingForecast';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency } from '../utils/currency';
 import AIInvestmentAdvisor from './AIInvestmentAdvisor';
 

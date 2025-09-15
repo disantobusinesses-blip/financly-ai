@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icon/Icon';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 // FIX: Corrected import casing to match file system.
 import { initiateBankConnection } from '../services/BankingService';

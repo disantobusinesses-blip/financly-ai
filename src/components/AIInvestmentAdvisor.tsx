@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Account, InvestmentAdvice, RiskTolerance } from '../types';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useOnScreen } from '../hooks/useOnScreen';
 // FIX: Corrected import casing to match file system.
 import { getInvestmentAdvice } from '../services/GeminiService';

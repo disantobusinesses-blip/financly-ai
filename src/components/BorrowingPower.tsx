@@ -4,7 +4,7 @@ import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiServi
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
 import { useOnScreen } from '../hooks/useOnScreen';
 // FIX: Corrected import casing to match file system.
-import { useAuth } from '../contexts/authContext';
+import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
 import { formatCurrency } from '../utils/currency';
 
