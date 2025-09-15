@@ -20,7 +20,7 @@ const WelcomeScreen: React.FC = () => {
     };
 
     return (
-        <div className="flex items-center justify-center h-full bg-gray-900 text-white font-sans overflow-hidden">
+        <div className="flex items-center justify-center h-full bg-gray-900 text-white font-sans">
             <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-primary/30 z-0"></div>
             <div className="absolute top-0 left-0 w-96 h-96 bg-primary/20 rounded-full filter blur-3xl opacity-50 animate-pulse"></div>
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/20 rounded-full filter blur-3xl opacity-50 animate-pulse animation-delay-4000"></div>
