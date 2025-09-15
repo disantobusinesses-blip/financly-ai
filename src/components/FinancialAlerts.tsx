@@ -1,12 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
-// FIX: Corrected import casing to match file system.
+import { Transaction, FinancialAlert, FinancialAlertType } from '../Types';
 import { getFinancialAlerts } from '../services/GeminiService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
-// FIX: Corrected import casing to match file system.
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { useOnScreen } from '../hooks/useOnScreen';
+import { useOnScreen } from '../hooks/UseOnScreen';
 
 interface FinancialAlertsProps {
   transactions: Transaction[];

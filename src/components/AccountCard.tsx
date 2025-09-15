@@ -1,11 +1,9 @@
 
-
 import React from 'react';
-import { Account, AccountType } from '../types';
-import { BankIcon, CardIcon } from './icon/Icon';
-// FIX: Corrected import casing to match file system.
+import { Account, AccountType } from '../Types';
+import { BankIcon, CardIcon, LoanIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency } from '../utils/currency';
+import { formatCurrency } from '../utils/Currency';
 
 interface AccountCardProps {
   account: Account;
@@ -15,6 +13,8 @@ const getIconForAccountType = (type: AccountType) => {
     switch (type) {
         case AccountType.CREDIT_CARD:
             return <CardIcon className="h-6 w-6 text-text-tertiary" />;
+        case AccountType.LOAN:
+            return <LoanIcon className="h-6 w-6 text-text-tertiary" />;
         case AccountType.CHECKING:
         case AccountType.SAVINGS:
         default:

@@ -1,11 +1,12 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Account, Transaction, Goal, SavingsPlan } from '../types';
+// FIX: Corrected import casing to match file system.
+import { Account, Transaction, Goal, SavingsPlan, AccountType } from '../types';
 // FIX: Corrected import casing to match file system.
 import { getAccounts, getTransactions, getCreditScore } from '../services/BankingService';
 // FIX: Corrected import casing to match file system.
 import { getSavingsPlan } from '../services/GeminiService';
-// FIX: Corrected import casing to match file system.
 import AccountCard from './AccountCard';
 import TransactionAnalysis from './TransactionAnalysis';
 import CreditScore from './CreditScore';
@@ -14,15 +15,11 @@ import FinancialAlerts from './FinancialAlerts';
 import GoalSetting from './GoalSetting';
 import AISavingsPlan from './AISavingsPlan';
 import SpendingForecast from './SpendingForecast';
-// FIX: Corrected import casing to match file system.
 import { useAuth } from '../contexts/AuthContext';
+// FIX: Corrected import casing to match file system.
 import { formatCurrency } from '../utils/currency';
-import AIInvestmentAdvisor from './AIInvestmentAdvisor';
 
-const demoGoals: Goal[] = [
-    { id: 'goal1', name: 'European Holiday', emoji: '✈️', targetAmount: 8000, currentAmount: 4500, targetDate: '2025-06-30' },
-    { id: 'goal3', name: 'Emergency Fund', emoji: '🛡️', targetAmount: 5000, currentAmount: 5000, targetDate: '2024-10-31' },
-]
+const demoGoals: Goal[] = [];
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -86,15 +83,15 @@ const Dashboard: React.FC = () => {
 
   const totalBalance = useMemo(() => 
     accounts.reduce((total, acc) => {
-        if (acc.type !== 'Credit Card') {
-            return total + acc.balance;
+        if (acc.type === AccountType.CREDIT_CARD || acc.type === AccountType.LOAN) {
+            return total - acc.balance;
         }
-        return total - acc.balance;
+        return total + acc.balance;
     }, 0),
   [accounts]);
 
   const totalSavings = useMemo(() =>
-    accounts.filter(acc => acc.type === 'Savings').reduce((sum, acc) => sum + acc.balance, 0),
+    accounts.filter(acc => acc.type === AccountType.SAVINGS).reduce((sum, acc) => sum + acc.balance, 0),
   [accounts]);
   
   const totalIncome = useMemo(() => 
@@ -121,28 +118,40 @@ const Dashboard: React.FC = () => {
   }
   
   return (
-    <div className="space-y-12">
+    <div className="space-y-6">
       {/* --- Section 1: Overview --- */}
-      <section id="overview" className="space-y-8">
+      <section id="overview" className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-text-primary">Overview</h1>
-          <p className="text-text-secondary mt-1">Here's your financial snapshot for this month.</p>
+          <p className="text-text-secondary mt-1">Here's your financial snapshot.</p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
               <CreditScore score={creditScore} />
           </div>
-          <div className="lg:col-span-2 flex flex-col space-y-8">
+          <div className="space-y-6">
                <div className="bg-content-bg p-6 rounded-xl border border-border-color">
                   <h2 className="text-lg font-semibold text-text-secondary mb-1">Total Net Worth</h2>
-                  <p className="text-4xl font-bold text-text-primary">{formatCurrency(totalBalance, user?.region)}</p>
+                  <p className="text-3xl font-bold text-text-primary">{formatCurrency(totalBalance, user?.region)}</p>
               </div>
               <div className="bg-content-bg p-6 rounded-xl border border-border-color">
                   <h2 className="text-lg font-semibold text-text-secondary mb-1">Total Savings</h2>
-                  <p className="text-4xl font-bold text-secondary">{formatCurrency(totalSavings, user?.region)}</p>
+                  <p className="text-3xl font-bold text-secondary">{formatCurrency(totalSavings, user?.region)}</p>
               </div>
           </div>
         </div>
+      </section>
+
+      {/* Section 2: AI Tools */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="alerts"><FinancialAlerts transactions={transactions} /></div>
+          <div id="borrowing-power">
+              <BorrowingPower 
+                creditScore={creditScore} 
+                totalIncome={totalIncome} 
+                totalBalance={totalBalance}
+              />
+          </div>
       </section>
 
       {/* --- Section: Balance Forecast --- */}
@@ -154,39 +163,24 @@ const Dashboard: React.FC = () => {
         />
       </section>
 
-      {/* --- Section 2: AI Alerts --- */}
-      <section id="alerts">
-        <FinancialAlerts transactions={transactions} />
-      </section>
-
       {/* --- Section 3: Financial Plan --- */}
-      <section id="financial-plan" className="space-y-8">
+      <section id="financial-plan" className="space-y-6">
           <h2 className="text-2xl font-bold text-text-primary border-b border-border-color pb-3">Your Financial Plan</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <GoalSetting goals={goals} totalSavings={totalSavings} onAddGoal={handleAddGoal} />
-              {primaryGoal && (
+              {primaryGoal ? (
                 <AISavingsPlan 
                   goal={primaryGoal} 
                   plan={savingsPlan}
                   isLoading={isSavingsPlanLoading}
                   error={savingsPlanError}
                 />
+              ) : (
+                <div className="bg-content-bg p-6 rounded-xl border border-border-color flex items-center justify-center h-full">
+                    <p className="text-text-secondary text-center">Set a new goal to generate an AI savings plan!</p>
+                </div>
               )}
           </div>
-      </section>
-      
-      {/* --- Section 4: Investments --- */}
-      <section id="investment-advisor">
-          <AIInvestmentAdvisor accounts={accounts} />
-      </section>
-
-      {/* --- Section 5: Borrowing Power --- */}
-      <section id="borrowing-power">
-        <BorrowingPower 
-          creditScore={creditScore} 
-          totalIncome={totalIncome} 
-          totalBalance={totalBalance}
-        />
       </section>
 
       {/* --- Section 6: Accounts Overview --- */}

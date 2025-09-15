@@ -1,6 +1,5 @@
 
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BankIcon, MoonIcon, SunIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,7 +9,7 @@ interface HeaderProps {
   setShowSyncing: (show: boolean) => void;
 }
 
-const Header = ({ setShowSyncing }: HeaderProps) => {
+const Header: React.FC<HeaderProps> = ({ setShowSyncing }) => {
   const { user, upgradeUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const [connectionError, setConnectionError] = useState<string | null>(null);

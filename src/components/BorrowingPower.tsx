@@ -1,12 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Corrected import casing to match file system.
 import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiService';
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
-import { useOnScreen } from '../hooks/useOnScreen';
-// FIX: Corrected import casing to match file system.
+import { useOnScreen } from '../hooks/UseOnScreen';
 import { useAuth } from '../contexts/AuthContext';
 import ProFeatureBlocker from './ProFeatureBlocker';
-import { formatCurrency } from '../utils/currency';
+import { formatCurrency } from '../utils/Currency';
 
 interface BorrowingPowerProps {
   creditScore: number;
@@ -57,7 +56,7 @@ const BorrowingPower: React.FC<BorrowingPowerProps> = ({ creditScore, totalIncom
   }, [isVisible, hasFetched, creditScore, totalIncome, totalBalance, user]);
 
   return (
-    <div className="bg-content-bg p-6 rounded-xl border border-border-color" ref={ref}>
+    <div className="bg-content-bg p-6 rounded-xl border border-border-color h-full" ref={ref}>
       <div className="flex items-center mb-6">
         <LoanIcon className="h-7 w-7 text-primary" />
         <h2 className="text-2xl font-bold text-text-primary ml-3">AI Borrowing Power</h2>
@@ -73,7 +72,7 @@ const BorrowingPower: React.FC<BorrowingPowerProps> = ({ creditScore, totalIncom
                     <div className="space-y-4">
                         <div>
                             <p className="text-sm text-text-secondary">Estimated Loan Amount</p>
-                            <p className="text-4xl font-extrabold text-primary">{formatCurrency(analysis.estimatedLoanAmount, user?.region)}</p>
+                            <p className="text-3xl font-extrabold text-primary">{formatCurrency(analysis.estimatedLoanAmount, user?.region)}</p>
                         </div>
                         <div>
                             <p className="text-sm text-text-secondary">Estimated Interest Rate</p>

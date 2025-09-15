@@ -1,6 +1,7 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User, RiskTolerance, InvestmentAdvice } from "../types";
-import { getCurrencyInfo } from "../utils/currency";
+import { Transaction, FinancialAlert, SavingsPlan, Goal, BalanceForecastResult, Account, AccountType, User } from "../Types";
+import { getCurrencyInfo } from "../utils/Currency";
 
 // In a Vite project, environment variables exposed to the client must be prefixed with VITE_
 // and are accessed via `import.meta.env`.
@@ -415,84 +416,5 @@ export const getBalanceForecast = async (transactions: Transaction[], currentBal
     } catch (error) {
         console.error("Error calling Gemini API for balance forecast:", error);
         throw new Error("Failed to get balance forecast from the AI assistant.");
-    }
-};
-
-/**
- * Generates personalized investment advice based on user's accounts and risk tolerance.
- * @param accounts A list of user's bank accounts.
- * @param riskTolerance The user's chosen risk tolerance.
- * @param region The user's region ('AU' or 'US').
- * @returns A structured InvestmentAdvice object.
- */
-export const getInvestmentAdvice = async (accounts: Account[], riskTolerance: RiskTolerance, region: User['region']): Promise<InvestmentAdvice> => {
-    const { symbol } = getCurrencyInfo(region);
-
-    // Calculate the total amount available for investment from savings accounts.
-    const investableAssets = accounts
-        .filter(a => a.type === AccountType.SAVINGS)
-        .reduce((sum, acc) => sum + acc.balance, 0);
-
-    const prompt = `
-        You are an AI Investment Advisor for a ${region === 'US' ? 'US-based' : 'Australian'} user.
-        Their financial situation:
-        - Total investable assets (from savings accounts): ${symbol}${investableAssets.toFixed(2)}
-        - Chosen risk tolerance: ${riskTolerance}
-
-        Your Task:
-        1.  Based on the user's risk tolerance and region, suggest a diversified investment portfolio.
-        2.  The portfolio should be returned as an array of allocation objects, each with a 'name' (e.g., '${region === 'US' ? 'US Equities' : 'Australian Shares (ASX 200)'}', 'International Equities', 'Bonds', 'Cash/High-Interest Savings') and a 'percentage'.
-        3.  The percentages for all allocations MUST sum to 100.
-        4.  Provide a concise, one or two-sentence 'rationale' explaining why this portfolio is suitable for a '${riskTolerance}' investor in ${region}. For example, a conservative portfolio should have more bonds and cash, while an aggressive one should have more equities.
-
-        Return a valid JSON object. Do not include any text outside the JSON object.
-    `;
-    
-    try {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        allocation: {
-                            type: Type.ARRAY,
-                            description: "An array of investment allocations. The percentages must sum to 100.",
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    name: { type: Type.STRING, description: "The name of the asset class." },
-                                    percentage: { type: Type.NUMBER, description: "The percentage allocated to this asset class." }
-                                },
-                                required: ["name", "percentage"]
-                            }
-                        },
-                        rationale: {
-                            type: Type.STRING,
-                            description: "A short rationale explaining the portfolio strategy."
-                        }
-                    },
-                    required: ["allocation", "rationale"]
-                }
-            }
-        });
-
-        const jsonText = (response.text ?? '').trim();
-        if (!jsonText) throw new Error("Received empty response from AI for investment advice.");
-        const result = JSON.parse(jsonText) as InvestmentAdvice;
-
-        // Basic validation
-        const totalPercentage = result.allocation.reduce((sum, item) => sum + item.percentage, 0);
-        if (Math.round(totalPercentage) !== 100) {
-            console.warn(`Gemini API returned an allocation that does not sum to 100%. Total: ${totalPercentage}%`);
-        }
-        
-        return result;
-        
-    } catch (error) {
-        console.error("Error calling Gemini API for investment advice:", error);
-        throw new Error("Failed to get investment advice from the AI assistant.");
     }
 };

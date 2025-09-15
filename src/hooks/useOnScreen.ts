@@ -1,3 +1,4 @@
+
 import { useState, useEffect, RefObject } from 'react';
 
 export const useOnScreen = (ref: RefObject<HTMLElement>): boolean => {

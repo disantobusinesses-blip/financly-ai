@@ -1,3 +1,4 @@
+
 export enum AccountType {
   CHECKING = 'Checking',
   SAVINGS = 'Savings',
@@ -73,15 +74,4 @@ export interface User {
   email: string;
   membershipType: UserMembershipType;
   region: 'AU' | 'US';
-}
-
-// FIX: Add missing types for AI Investment Advisor
-export type RiskTolerance = 'Conservative' | 'Moderate' | 'Aggressive';
-
-export interface InvestmentAdvice {
-    allocation: {
-        name: string;
-        percentage: number;
-    }[];
-    rationale: string;
 }

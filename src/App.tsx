@@ -1,15 +1,11 @@
 
 
 import React, { useState } from 'react';
-// FIX: Corrected import casing to match file system.
 import Sidebar from './components/Sidebar';
-// FIX: Corrected import casing to match file system.
 import Header from './components/Header';
-// FIX: Corrected import casing to match file system.
 import Dashboard from './components/Dashboard';
 import WelcomeScreen from './components/WelcomeScreen';
 import UpgradeModal from './components/UpgradeModal';
-// FIX: Corrected import casing to match file system.
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import SignupModal from './components/SignupModal';
@@ -28,7 +24,7 @@ const AppContent: React.FC = () => {
       ) : (
         <div className="flex h-full bg-background font-sans">
           <Sidebar />
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <Header setShowSyncing={setShowSyncing} />
             <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-6">
               <Dashboard />
