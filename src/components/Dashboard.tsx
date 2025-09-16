@@ -1,4 +1,3 @@
-import React from "react";
 import BalanceSummary from "./widgets/BalanceSummary";
 import CashflowMini from "./widgets/CashflowMini";
 import SpendingByCategory from "./widgets/SpendingByCategory";
