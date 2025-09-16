@@ -31,7 +31,7 @@ const WelcomeScreen: React.FC = () => {
             <div className="relative z-10 text-center p-8 max-w-4xl mx-auto">
                 <div className="flex items-center justify-center gap-2 mb-4">
                     <SparklesIcon className="h-6 w-6 text-primary" />
-                    <span className="text-gray-300 font-medium">Powered by Gemini AI</span>
+                    <span className="text-gray-300 font-medium">Powered By Financly Ai</span>
                 </div>
                 <h1 className="text-5xl md:text-6xl font-extrabold mb-4 leading-tight">
                     Unlock Your Financial <span className="text-primary">Potential</span>.
