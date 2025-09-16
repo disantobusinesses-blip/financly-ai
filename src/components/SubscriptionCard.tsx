@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createCheckoutSession } from "../services/stripeService"; // adjust the path if needed
+import { createCheckoutSession } from "../services/StripeService"; // adjust the path if needed
 import { useAuth } from "../contexts/AuthContext"; // assuming you store user here
 
 const SubscriptionCard: React.FC = () => {
