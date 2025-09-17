@@ -1,13 +1,8 @@
-
-
-
-
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
 import UpcomingBills from "./UpcomingBills";
 import SubscriptionCard from "./SubscriptionCard";
-
 
 function BottomBar() {
   return (
@@ -23,6 +18,10 @@ function BottomBar() {
     </nav>
   );
 }
+
+export default function Dashboard() {
+  return (
+    <main>
       <section
         className="mx-auto max-w-screen-xl px-3 py-3"
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
