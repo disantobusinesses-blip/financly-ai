@@ -7,7 +7,7 @@ import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
 import UpcomingBills from "./UpcomingBills";
 import SubscriptionCard from "./SubscriptionCard";
-import QuickActions from "./QuickActions";
+
 
 function BottomBar() {
   return (
@@ -23,20 +23,6 @@ function BottomBar() {
     </nav>
   );
 }
-
-export default function Dashboard() {
-  return (
-    <main className="min-h-screen bg-gray-50">
-      <header
-        className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 0px)" }}
-      >
-        <div className="mx-auto max-w-screen-xl px-3 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Financly</h1>
-          <QuickActions />
-        </div>
-      </header>
-
       <section
         className="mx-auto max-w-screen-xl px-3 py-3"
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
