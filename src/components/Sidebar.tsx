@@ -1,36 +1,43 @@
-import Link from "next/link";
-import { useRouter } from "next/router";
+import { useState } from "react";
 
 export default function Sidebar() {
-  const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
-    // TODO: wire this up to your auth context / API logout
     console.log("Logging out...");
-    router.push("/login");
+    // TODO: wire to your auth logic
+    window.location.href = "/login";
   };
 
   const handleCreateUser = () => {
-    // TODO: replace with real user creation logic
     console.log("Create user clicked");
-    router.push("/signup");
+    window.location.href = "/signup";
   };
 
   const handleViewSubscriptions = () => {
-    // Scroll to subscriptions section on the dashboard
     const el = document.getElementById("subscriptions-section");
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
-    } else {
-      router.push("/#subscriptions-section");
+      setOpen(false); // close menu after clicking
     }
   };
 
   return (
-    <aside className="w-64 h-screen bg-white border-r p-6 flex flex-col justify-between">
-      <div>
-        <h2 className="text-lg font-bold mb-6">Menu</h2>
-        <nav className="space-y-4">
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden flex items-center justify-between bg-white border-b p-4">
+        <h2 className="text-lg font-bold">Menu</h2>
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-2 border rounded-md"
+        >
+          {open ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {open && (
+        <div className="md:hidden bg-white border-b p-4 space-y-3">
           <button
             onClick={handleCreateUser}
             className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
@@ -43,17 +50,44 @@ export default function Sidebar() {
           >
             View Subscriptions
           </button>
-        </nav>
-      </div>
+          <button
+            onClick={handleLogout}
+            className="block w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
+      )}
 
-      <div>
-        <button
-          onClick={handleLogout}
-          className="w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
-        >
-          Logout
-        </button>
-      </div>
-    </aside>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:flex-col md:w-64 h-screen bg-white border-r p-6 justify-between">
+        <div>
+          <h2 className="text-lg font-bold mb-6">Menu</h2>
+          <nav className="space-y-4">
+            <button
+              onClick={handleCreateUser}
+              className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
+            >
+              Create User
+            </button>
+            <button
+              onClick={handleViewSubscriptions}
+              className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
+            >
+              View Subscriptions
+            </button>
+          </nav>
+        </div>
+
+        <div>
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
