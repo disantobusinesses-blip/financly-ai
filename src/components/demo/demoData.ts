@@ -1,5 +1,5 @@
-// src/demoData.ts
-import { Transaction, SavingsPlan } from "./types";
+// src/demo/demoData.ts
+import { Transaction, SavingsPlan } from "../types";
 
 export const demoTransactions: Transaction[] = [
   {

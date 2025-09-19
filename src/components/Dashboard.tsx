@@ -13,7 +13,7 @@ import {
   demoTransactions,
   demoBalance,
   demoSavingsPlan,
-} from "../demoData";
+} from "../demo/demoData";
 
 function BottomBar() {
   return (
@@ -37,8 +37,8 @@ function BottomBar() {
 }
 
 export default function Dashboard() {
-  // Demo mode flag
-  const isDemo = true; // flip false when wiring real users
+  // Demo mode always ON for now
+  const isDemo = true;
   const userId = isDemo ? null : "real-user-id";
 
   const { accounts, transactions, loading } = useBasiqData(userId || "");
@@ -69,11 +69,8 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Transaction Analysis (Subscription Hunter lives inside) */}
-          <div
-            id="subscriptions-section"
-            className="col-span-2 lg:col-span-3"
-          >
+          {/* Transaction Analysis */}
+          <div id="subscriptions-section" className="col-span-2 lg:col-span-3">
             <TransactionAnalysis transactions={txns} />
           </div>
 
@@ -82,22 +79,22 @@ export default function Dashboard() {
             <BalanceSummary accounts={accounts} />
           </div>
 
-          {/* Cashflow mini */}
+          {/* Cashflow Mini */}
           <div className="col-span-1 lg:col-span-2">
             <CashflowMini transactions={txns} />
           </div>
 
-          {/* Spending breakdown */}
+          {/* Spending Breakdown */}
           <div className="col-span-1 lg:col-span-2">
             <SpendingByCategory transactions={txns} />
           </div>
 
-          {/* Spending chart */}
+          {/* Spending Chart */}
           <div className="col-span-1 lg:col-span-2">
             <SpendingChart transactions={txns} />
           </div>
 
-          {/* Bills */}
+          {/* Upcoming Bills */}
           <div className="col-span-1 lg:col-span-2">
             <UpcomingBills accounts={accounts} />
           </div>
@@ -107,16 +104,13 @@ export default function Dashboard() {
             <FinancialAlerts transactions={txns} />
           </div>
 
-          {/* Transactions list */}
+          {/* Transactions List */}
           <div className="col-span-1 lg:col-span-2">
             <TransactionsList transactions={txns} />
           </div>
 
-          {/* Subscription card (also scroll target) */}
-          <div
-            id="subscriptions-section"
-            className="col-span-1 lg:col-span-2"
-          >
+          {/* Subscription Card */}
+          <div id="subscriptions-section" className="col-span-1 lg:col-span-2">
             <SubscriptionCard />
           </div>
         </div>
