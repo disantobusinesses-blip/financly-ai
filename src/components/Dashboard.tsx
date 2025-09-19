@@ -33,11 +33,10 @@ function BottomBar() {
 }
 
 export default function Dashboard() {
-  // Demo mode always on for now
   const isDemo = true;
   const userId = isDemo ? null : "real-user-id";
 
-  const { accounts, transactions, loading } = useBasiqData(userId || "");
+  const { accounts, transactions } = useBasiqData(userId || "");
 
   const txns = isDemo ? demoTransactions : transactions;
   const totalBalance = isDemo
@@ -51,28 +50,27 @@ export default function Dashboard() {
         className="mx-auto max-w-screen-xl px-3 py-3"
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
-        {/* Responsive 12-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* Left side: Forecast & supporting charts */}
+          {/* Left side */}
           <div className="lg:col-span-7 space-y-6">
             <SpendingForecast
               transactions={txns}
               totalBalance={totalBalance}
               savingsPlan={savingsPlan}
             />
-            <BalanceSummary />
-            <CashflowMini />
-            <SpendingByCategory />
-            <SpendingChart />
-            <UpcomingBills />
+            <BalanceSummary accounts={accounts} />
+            <CashflowMini transactions={txns} />
+            <SpendingByCategory transactions={txns} />
+            <SpendingChart transactions={txns} />
+            <UpcomingBills accounts={accounts} />
           </div>
 
-          {/* Right side: Transaction data & insights */}
+          {/* Right side */}
           <div className="lg:col-span-5 space-y-6">
             <TransactionsList transactions={txns} />
             <FinancialAlerts transactions={txns} />
-            <TransactionAnalysis transactions={txns} accounts={accounts} />
+            <TransactionAnalysis transactions={txns} />
             <SubscriptionCard />
           </div>
         </div>
