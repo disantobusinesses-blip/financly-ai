@@ -1,17 +1,40 @@
+import React, { useMemo } from "react";
 import Card from "./Card";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
+import { Transaction } from "../types";
+import { format } from "date-fns";
 
-const data = [
-  { m: "Jan", in: 4200, out: 3600 },
-  { m: "Feb", in: 3800, out: 3100 },
-  { m: "Mar", in: 4500, out: 4300 },
-  { m: "Apr", in: 4700, out: 3900 },
-  { m: "May", in: 5200, out: 4600 },
-];
+interface CashflowMiniProps {
+  transactions: Transaction[];
+}
 
-export default function CashflowMini() {
+export default function CashflowMini({ transactions }: CashflowMiniProps) {
+  // Group transactions by month, sum income vs expenses
+  const data = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+
+    const monthlyTotals: Record<string, { in: number; out: number }> = {};
+
+    transactions.forEach((txn) => {
+      const month = format(new Date(txn.date), "MMM"); // e.g. "Jan"
+      if (!monthlyTotals[month]) monthlyTotals[month] = { in: 0, out: 0 };
+
+      if (txn.amount > 0) {
+        monthlyTotals[month].in += txn.amount;
+      } else {
+        monthlyTotals[month].out += Math.abs(txn.amount);
+      }
+    });
+
+    return Object.entries(monthlyTotals).map(([m, { in: incoming, out }]) => ({
+      m,
+      in: incoming,
+      out,
+    }));
+  }, [transactions]);
+
   return (
-    <Card title="Cashflow (5 mo)">
+    <Card title="Cashflow (Monthly)">
       <div className="h-36">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
@@ -28,8 +51,8 @@ export default function CashflowMini() {
             <XAxis dataKey="m" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis hide />
             <Tooltip />
-            <Area type="monotone" dataKey="in" strokeWidth={2} fillOpacity={1} fill="url(#inG)" />
-            <Area type="monotone" dataKey="out" strokeWidth={2} fillOpacity={1} fill="url(#outG)" />
+            <Area type="monotone" dataKey="in" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#inG)" />
+            <Area type="monotone" dataKey="out" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#outG)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
