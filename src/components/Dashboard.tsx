@@ -1,14 +1,14 @@
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
-import { SpendingChart } from "./SpendingChart";
+import SpendingChart from "./SpendingChart"; // fixed import
 import UpcomingBills from "./UpcomingBills";
 import SubscriptionCard from "./SubscriptionCard";
 import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
-import { useBasiqData } from "../hooks/useBasiqData";
+import { useBasiqData } from "../hooks/useBasiqData"; // make sure this exists
 
 function BottomBar() {
   return (
@@ -26,11 +26,12 @@ function BottomBar() {
 }
 
 export default function Dashboard() {
-  const userId = "demo-user"; // TODO: replace with logged-in user’s ID
+  // Replace with real userId (from auth/session)
+  const userId = "demo-user";
   const { accounts, transactions, loading } = useBasiqData(userId);
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const savingsPlan = { target: 1000, progress: 200 }; // TODO: replace with real plan data
+  const savingsPlan = null; // fixes SavingsPlan type mismatch
 
   if (loading) {
     return <p className="p-6 text-center">Loading your financial data…</p>;
@@ -53,18 +54,24 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Transaction Analysis (Subscription Hunter lives inside) */}
+          {/* Transaction Analysis (includes Subscription Hunter) */}
           <div className="col-span-2 lg:col-span-3">
             <TransactionAnalysis transactions={transactions} />
           </div>
 
-          <div className="col-span-2 lg:col-span-2"><BalanceSummary /></div>
+          <div className="col-span-2 lg:col-span-2"><BalanceSummary accounts={accounts} /></div>
+
           <div className="col-span-1 lg:col-span-2">
             <CashflowMini transactions={transactions} />
           </div>
-          <div className="col-span-1 lg:col-span-2"><SpendingByCategory /></div>
-          <div className="col-span-1 lg:col-span-2"><SpendingChart /></div>
-          <div className="col-span-1 lg:col-span-2"><UpcomingBills /></div>
+
+          <div className="col-span-1 lg:col-span-2"><SpendingByCategory transactions={transactions} /></div>
+
+          <div className="col-span-1 lg:col-span-2">
+            <SpendingChart transactions={transactions} />
+          </div>
+
+          <div className="col-span-1 lg:col-span-2"><UpcomingBills accounts={accounts} /></div>
 
           <div className="col-span-1 lg:col-span-2">
             <FinancialAlerts transactions={transactions} />

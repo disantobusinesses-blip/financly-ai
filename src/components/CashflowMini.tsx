@@ -1,29 +1,24 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import Card from "./Card";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { Transaction } from "../types";
-import { format } from "date-fns";
 
 interface CashflowMiniProps {
   transactions: Transaction[];
 }
 
 export default function CashflowMini({ transactions }: CashflowMiniProps) {
-  // Group transactions by month, sum income vs expenses
   const data = useMemo(() => {
     if (!transactions || transactions.length === 0) return [];
 
     const monthlyTotals: Record<string, { in: number; out: number }> = {};
 
     transactions.forEach((txn) => {
-      const month = format(new Date(txn.date), "MMM"); // e.g. "Jan"
+      const month = new Date(txn.date).toLocaleString("default", { month: "short" });
       if (!monthlyTotals[month]) monthlyTotals[month] = { in: 0, out: 0 };
 
-      if (txn.amount > 0) {
-        monthlyTotals[month].in += txn.amount;
-      } else {
-        monthlyTotals[month].out += Math.abs(txn.amount);
-      }
+      if (txn.amount > 0) monthlyTotals[month].in += txn.amount;
+      else monthlyTotals[month].out += Math.abs(txn.amount);
     });
 
     return Object.entries(monthlyTotals).map(([m, { in: incoming, out }]) => ({
