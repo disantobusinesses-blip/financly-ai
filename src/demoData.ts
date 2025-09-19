@@ -1,4 +1,4 @@
-// src/demo/demoData.ts
+// src/demoData.ts
 import { Transaction, SavingsPlan } from "./types";
 
 export const demoTransactions: Transaction[] = [
@@ -76,5 +76,16 @@ export const demoSavingsPlan: SavingsPlan = {
   totalMonthlySavings: 1000, // high savings to make optimized forecast look impressive
   newGoalDate: "2026-01-01",
   monthsSaved: 12,
-  suggestions: ["Cut eating out by $100/month", "Cancel unused subscriptions"],
+  suggestions: [
+    {
+      category: "Food & Drink",
+      monthlyCut: 100,
+      description: "Cut eating out by $100/month",
+    },
+    {
+      category: "Subscriptions",
+      monthlyCut: 20,
+      description: "Cancel unused subscriptions",
+    },
+  ],
 };
