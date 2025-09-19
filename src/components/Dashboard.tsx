@@ -1,3 +1,4 @@
+// src/components/Dashboard.tsx
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -9,6 +10,7 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
+
 import {
   demoTransactions,
   demoBalance,
@@ -22,22 +24,16 @@ function BottomBar() {
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
     >
       <div className="mx-auto max-w-screen-xl px-3 py-2 grid grid-cols-3 gap-2 text-xs">
-        <a href="/" className="text-center rounded-md border py-2">
-          Home
-        </a>
-        <a href="/connect" className="text-center rounded-md border py-2">
-          Connect
-        </a>
-        <a href="/upgrade" className="text-center rounded-md border py-2">
-          Upgrade
-        </a>
+        <a href="/" className="text-center rounded-md border py-2">Home</a>
+        <a href="/connect" className="text-center rounded-md border py-2">Connect</a>
+        <a href="/upgrade" className="text-center rounded-md border py-2">Upgrade</a>
       </div>
     </nav>
   );
 }
 
 export default function Dashboard() {
-  // Demo mode always ON for now
+  // Demo mode always on for now
   const isDemo = true;
   const userId = isDemo ? null : "real-user-id";
 
@@ -49,68 +45,34 @@ export default function Dashboard() {
     : accounts.reduce((sum, acc) => sum + acc.balance, 0);
   const savingsPlan = isDemo ? demoSavingsPlan : null;
 
-  if (!isDemo && loading) {
-    return <p className="p-6 text-center">Loading your financial data…</p>;
-  }
-
   return (
     <main>
       <section
         className="mx-auto max-w-screen-xl px-3 py-3"
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 grid-flow-row-dense">
-          {/* AI Balance Forecast */}
-          <div className="col-span-2 lg:col-span-3">
+        {/* Responsive 12-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* Left side: Forecast & supporting charts */}
+          <div className="lg:col-span-7 space-y-6">
             <SpendingForecast
               transactions={txns}
               totalBalance={totalBalance}
               savingsPlan={savingsPlan}
             />
+            <BalanceSummary />
+            <CashflowMini />
+            <SpendingByCategory />
+            <SpendingChart />
+            <UpcomingBills />
           </div>
 
-          {/* Transaction Analysis */}
-          <div id="subscriptions-section" className="col-span-2 lg:col-span-3">
-            <TransactionAnalysis transactions={txns} />
-          </div>
-
-          {/* Balance Summary */}
-          <div className="col-span-2 lg:col-span-2">
-            <BalanceSummary accounts={accounts} />
-          </div>
-
-          {/* Cashflow Mini */}
-          <div className="col-span-1 lg:col-span-2">
-            <CashflowMini transactions={txns} />
-          </div>
-
-          {/* Spending Breakdown */}
-          <div className="col-span-1 lg:col-span-2">
-            <SpendingByCategory transactions={txns} />
-          </div>
-
-          {/* Spending Chart */}
-          <div className="col-span-1 lg:col-span-2">
-            <SpendingChart transactions={txns} />
-          </div>
-
-          {/* Upcoming Bills */}
-          <div className="col-span-1 lg:col-span-2">
-            <UpcomingBills accounts={accounts} />
-          </div>
-
-          {/* Alerts */}
-          <div className="col-span-1 lg:col-span-2">
-            <FinancialAlerts transactions={txns} />
-          </div>
-
-          {/* Transactions List */}
-          <div className="col-span-1 lg:col-span-2">
+          {/* Right side: Transaction data & insights */}
+          <div className="lg:col-span-5 space-y-6">
             <TransactionsList transactions={txns} />
-          </div>
-
-          {/* Subscription Card */}
-          <div id="subscriptions-section" className="col-span-1 lg:col-span-2">
+            <FinancialAlerts transactions={txns} />
+            <TransactionAnalysis transactions={txns} accounts={accounts} />
             <SubscriptionCard />
           </div>
         </div>
