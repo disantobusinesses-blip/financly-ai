@@ -1,7 +1,7 @@
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
-import SpendingChart from "./SpendingChart"; 
+import SpendingChart from "./SpendingChart";
 import UpcomingBills from "./UpcomingBills";
 import SubscriptionCard from "./SubscriptionCard";
 import SpendingForecast from "./SpendingForecast";
@@ -9,6 +9,11 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
+import {
+  demoTransactions,
+  demoBalance,
+  demoSavingsPlan,
+} from "../demo/demoData";
 
 function BottomBar() {
   return (
@@ -17,23 +22,34 @@ function BottomBar() {
       style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
     >
       <div className="mx-auto max-w-screen-xl px-3 py-2 grid grid-cols-3 gap-2 text-xs">
-        <a href="/" className="text-center rounded-md border py-2">Home</a>
-        <a href="/connect" className="text-center rounded-md border py-2">Connect</a>
-        <a href="/upgrade" className="text-center rounded-md border py-2">Upgrade</a>
+        <a href="/" className="text-center rounded-md border py-2">
+          Home
+        </a>
+        <a href="/connect" className="text-center rounded-md border py-2">
+          Connect
+        </a>
+        <a href="/upgrade" className="text-center rounded-md border py-2">
+          Upgrade
+        </a>
       </div>
     </nav>
   );
 }
 
 export default function Dashboard() {
-  // TODO: replace with logged-in user ID from your auth/session
-  const userId = "demo-user";
-  const { accounts, transactions, loading } = useBasiqData(userId);
+  // Demo mode flag
+  const isDemo = true; // flip false when wiring real users
+  const userId = isDemo ? null : "real-user-id";
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const savingsPlan = null; // safe placeholder, matches SpendingForecast type
+  const { accounts, transactions, loading } = useBasiqData(userId || "");
 
-  if (loading) {
+  const txns = isDemo ? demoTransactions : transactions;
+  const totalBalance = isDemo
+    ? demoBalance
+    : accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const savingsPlan = isDemo ? demoSavingsPlan : null;
+
+  if (!isDemo && loading) {
     return <p className="p-6 text-center">Loading your financial data…</p>;
   }
 
@@ -44,39 +60,41 @@ export default function Dashboard() {
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 grid-flow-row-dense">
-          
           {/* AI Balance Forecast */}
           <div className="col-span-2 lg:col-span-3">
-            <SpendingForecast 
-              transactions={transactions}
+            <SpendingForecast
+              transactions={txns}
               totalBalance={totalBalance}
               savingsPlan={savingsPlan}
             />
           </div>
 
           {/* Transaction Analysis (Subscription Hunter lives inside) */}
-          <div className="col-span-2 lg:col-span-3">
-            <TransactionAnalysis transactions={transactions} />
+          <div
+            id="subscriptions-section"
+            className="col-span-2 lg:col-span-3"
+          >
+            <TransactionAnalysis transactions={txns} />
           </div>
 
-          {/* Balance + Accounts */}
+          {/* Balance Summary */}
           <div className="col-span-2 lg:col-span-2">
             <BalanceSummary accounts={accounts} />
           </div>
 
-          {/* Cashflow mini chart */}
+          {/* Cashflow mini */}
           <div className="col-span-1 lg:col-span-2">
-            <CashflowMini transactions={transactions} />
+            <CashflowMini transactions={txns} />
           </div>
 
           {/* Spending breakdown */}
           <div className="col-span-1 lg:col-span-2">
-            <SpendingByCategory transactions={transactions} />
+            <SpendingByCategory transactions={txns} />
           </div>
 
-          {/* Spending chart (pie) */}
+          {/* Spending chart */}
           <div className="col-span-1 lg:col-span-2">
-            <SpendingChart transactions={transactions} />
+            <SpendingChart transactions={txns} />
           </div>
 
           {/* Bills */}
@@ -86,16 +104,19 @@ export default function Dashboard() {
 
           {/* Alerts */}
           <div className="col-span-1 lg:col-span-2">
-            <FinancialAlerts transactions={transactions} />
+            <FinancialAlerts transactions={txns} />
           </div>
 
           {/* Transactions list */}
           <div className="col-span-1 lg:col-span-2">
-            <TransactionsList transactions={transactions} />
+            <TransactionsList transactions={txns} />
           </div>
 
-          {/* Subscription card */}
-          <div className="col-span-1 lg:col-span-2">
+          {/* Subscription card (also scroll target) */}
+          <div
+            id="subscriptions-section"
+            className="col-span-1 lg:col-span-2"
+          >
             <SubscriptionCard />
           </div>
         </div>
