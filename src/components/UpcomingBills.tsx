@@ -1,22 +1,27 @@
+import { Account } from "../types";
 import Card from "./Card";
 
-const bills = [
-  { name: "Spotify", date: "20 Sep", amt: 12.99 },
-  { name: "Electricity", date: "25 Sep", amt: 89.5 },
-  { name: "Rent", date: "01 Oct", amt: 1800.0 },
-];
+interface UpcomingBillsProps {
+  accounts: Account[];
+}
 
-export default function UpcomingBills() {
+export default function UpcomingBills({ accounts }: UpcomingBillsProps) {
+  // Example logic: bills come from negative balances or tagged accounts.
+  // Replace with your own API once you store bill info.
+  const mockBills = [
+    { id: "1", name: "Electricity", due: "2025-09-25", amount: 120 },
+    { id: "2", name: "Internet", due: "2025-09-28", amount: 80 },
+  ];
+
   return (
-    <Card title="Upcoming bills">
-      <ul className="space-y-1">
-        {bills.map((b) => (
-          <li key={b.name} className="flex justify-between text-sm">
-            <div className="text-gray-700">{b.name}</div>
-            <div className="text-right">
-              <div className="font-medium">${b.amt.toFixed(2)}</div>
-              <div className="text-xs text-gray-500">{b.date}</div>
-            </div>
+    <Card title="Upcoming Bills">
+      <ul className="divide-y text-sm">
+        {mockBills.map((bill) => (
+          <li key={bill.id} className="flex justify-between py-2">
+            <span>{bill.name} (due {bill.due})</span>
+            <span className="font-bold text-red-500">
+              -${bill.amount.toFixed(2)}
+            </span>
           </li>
         ))}
       </ul>

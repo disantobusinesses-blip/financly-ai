@@ -1,14 +1,14 @@
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
-import SpendingChart from "./SpendingChart"; // fixed import
+import SpendingChart from "./SpendingChart"; 
 import UpcomingBills from "./UpcomingBills";
 import SubscriptionCard from "./SubscriptionCard";
 import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
-import { useBasiqData } from "../hooks/useBasiqData"; // make sure this exists
+import { useBasiqData } from "../hooks/useBasiqData";
 
 function BottomBar() {
   return (
@@ -26,12 +26,12 @@ function BottomBar() {
 }
 
 export default function Dashboard() {
-  // Replace with real userId (from auth/session)
+  // TODO: replace with logged-in user ID from your auth/session
   const userId = "demo-user";
   const { accounts, transactions, loading } = useBasiqData(userId);
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-  const savingsPlan = null; // fixes SavingsPlan type mismatch
+  const savingsPlan = null; // safe placeholder, matches SpendingForecast type
 
   if (loading) {
     return <p className="p-6 text-center">Loading your financial data…</p>;
@@ -44,7 +44,7 @@ export default function Dashboard() {
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 grid-flow-row-dense">
-
+          
           {/* AI Balance Forecast */}
           <div className="col-span-2 lg:col-span-3">
             <SpendingForecast 
@@ -54,34 +54,50 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Transaction Analysis (includes Subscription Hunter) */}
+          {/* Transaction Analysis (Subscription Hunter lives inside) */}
           <div className="col-span-2 lg:col-span-3">
             <TransactionAnalysis transactions={transactions} />
           </div>
 
-          <div className="col-span-2 lg:col-span-2"><BalanceSummary accounts={accounts} /></div>
+          {/* Balance + Accounts */}
+          <div className="col-span-2 lg:col-span-2">
+            <BalanceSummary accounts={accounts} />
+          </div>
 
+          {/* Cashflow mini chart */}
           <div className="col-span-1 lg:col-span-2">
             <CashflowMini transactions={transactions} />
           </div>
 
-          <div className="col-span-1 lg:col-span-2"><SpendingByCategory transactions={transactions} /></div>
+          {/* Spending breakdown */}
+          <div className="col-span-1 lg:col-span-2">
+            <SpendingByCategory transactions={transactions} />
+          </div>
 
+          {/* Spending chart (pie) */}
           <div className="col-span-1 lg:col-span-2">
             <SpendingChart transactions={transactions} />
           </div>
 
-          <div className="col-span-1 lg:col-span-2"><UpcomingBills accounts={accounts} /></div>
+          {/* Bills */}
+          <div className="col-span-1 lg:col-span-2">
+            <UpcomingBills accounts={accounts} />
+          </div>
 
+          {/* Alerts */}
           <div className="col-span-1 lg:col-span-2">
             <FinancialAlerts transactions={transactions} />
           </div>
 
+          {/* Transactions list */}
           <div className="col-span-1 lg:col-span-2">
             <TransactionsList transactions={transactions} />
           </div>
 
-          <div className="col-span-1 lg:col-span-2"><SubscriptionCard /></div>
+          {/* Subscription card */}
+          <div className="col-span-1 lg:col-span-2">
+            <SubscriptionCard />
+          </div>
         </div>
       </section>
 
