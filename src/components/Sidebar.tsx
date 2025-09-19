@@ -1,92 +1,104 @@
 import { useState } from "react";
+import { useRouter } from "next/router";
+import { MenuIcon, XIcon } from "@heroicons/react/outline"; // install @heroicons/react if missing
 
 export default function Sidebar() {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
-    console.log("Logging out...");
-    // TODO: wire to your auth logic
-    window.location.href = "/login";
-  };
-
-  const handleCreateUser = () => {
-    console.log("Create user clicked");
-    window.location.href = "/signup";
-  };
-
-  const handleViewSubscriptions = () => {
-    const el = document.getElementById("subscriptions-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-      setOpen(false); // close menu after clicking
-    }
+    localStorage.removeItem("authToken");
+    router.push("/login");
   };
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between bg-white border-b p-4">
-        <h2 className="text-lg font-bold">Menu</h2>
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-2 border rounded-md"
-        >
-          {open ? "✕" : "☰"}
-        </button>
-      </div>
+      {/* Hamburger button visible only on mobile */}
+      <button
+        className="lg:hidden p-2 m-2 rounded-md border hover:bg-gray-100"
+        onClick={() => setIsOpen(true)}
+      >
+        <MenuIcon className="h-6 w-6 text-gray-700" />
+      </button>
 
-      {/* Mobile dropdown */}
-      {open && (
-        <div className="md:hidden bg-white border-b p-4 space-y-3">
-          <button
-            onClick={handleCreateUser}
-            className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
-          >
-            Create User
-          </button>
-          <button
-            onClick={handleViewSubscriptions}
-            className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
-          >
-            View Subscriptions
-          </button>
-          <button
-            onClick={handleLogout}
-            className="block w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
-          >
-            Logout
-          </button>
-        </div>
-      )}
+      {/* Sidebar overlay on mobile */}
+      {isOpen && (
+        <div className="fixed inset-0 z-40 flex lg:hidden">
+          {/* Dark background */}
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsOpen(false)}
+          ></div>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:w-64 h-screen bg-white border-r p-6 justify-between">
-        <div>
-          <h2 className="text-lg font-bold mb-6">Menu</h2>
-          <nav className="space-y-4">
+          {/* Sidebar panel */}
+          <aside className="relative z-50 w-64 bg-white border-r min-h-screen p-4 space-y-4 shadow-lg">
+            {/* Close button */}
             <button
-              onClick={handleCreateUser}
-              className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
+              className="absolute top-4 right-4 p-2 rounded hover:bg-gray-100"
+              onClick={() => setIsOpen(false)}
+            >
+              <XIcon className="h-6 w-6 text-gray-700" />
+            </button>
+
+            <h2 className="font-bold text-lg mb-6">Menu</h2>
+
+            <button
+              className="w-full text-left p-2 rounded hover:bg-gray-100"
+              onClick={() => {
+                router.push("/create-user");
+                setIsOpen(false);
+              }}
             >
               Create User
             </button>
+
             <button
-              onClick={handleViewSubscriptions}
-              className="block w-full text-left px-4 py-2 rounded-md border hover:bg-gray-100"
+              className="w-full text-left p-2 rounded hover:bg-gray-100"
+              onClick={() => {
+                router.push("/subscriptions");
+                setIsOpen(false);
+              }}
             >
               View Subscriptions
             </button>
-          </nav>
-        </div>
 
-        <div>
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600"
-          >
-            Logout
-          </button>
+            <button
+              className="w-full text-left p-2 rounded text-red-600 hover:bg-red-100"
+              onClick={() => {
+                handleLogout();
+                setIsOpen(false);
+              }}
+            >
+              Logout
+            </button>
+          </aside>
         </div>
+      )}
+
+      {/* Always visible sidebar on large screens */}
+      <aside className="hidden lg:block w-64 bg-white border-r min-h-screen p-4 space-y-4">
+        <h2 className="font-bold text-lg mb-4">Menu</h2>
+
+        <button
+          className="w-full text-left p-2 rounded hover:bg-gray-100"
+          onClick={() => router.push("/create-user")}
+        >
+          Create User
+        </button>
+
+        <button
+          className="w-full text-left p-2 rounded hover:bg-gray-100"
+          onClick={() => router.push("/subscriptions")}
+        >
+          View Subscriptions
+        </button>
+
+        <button
+          className="w-full text-left p-2 rounded text-red-600 hover:bg-red-100"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </aside>
     </>
   );
