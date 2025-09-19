@@ -1,35 +1,80 @@
-import { LockClosedIcon } from "@heroicons/react/24/outline";
+import BalanceSummary from "./BalanceSummary";
+import CashflowMini from "./CashflowMini";
+import SpendingByCategory from "./SpendingByCategory";
+import SpendingChart from "./SpendingChart";
+import UpcomingBills from "./UpcomingBills";
+import SubscriptionCard from "./SubscriptionCard";
+import SpendingForecast from "./SpendingForecast";
+import FinancialAlerts from "./FinancialAlerts";
+import TransactionsList from "./TransactionsList";
+import TransactionAnalysis from "./TransactionAnalysis";
+import { useBasiqData } from "../hooks/useBasiqData";
+import DashboardLayout from "./DashboardLayout";
 
-interface ProFeatureBlockerProps {
-  featureTitle: string;
-  teaserText: string;
-  children?: React.ReactNode;
-}
+import { demoTransactions, demoBalance, demoSavingsPlan } from "../demo/demoData";
 
-export default function ProFeatureBlocker({
-  featureTitle,
-  teaserText,
-  children,
-}: ProFeatureBlockerProps) {
+export default function Dashboard() {
+  const isDemo = true; // toggle this later if needed
+  const userId = isDemo ? null : "real-user-id";
+  const { accounts, transactions } = useBasiqData(userId || "");
+
+  const txns = isDemo ? demoTransactions : transactions;
+  const totalBalance = isDemo
+    ? demoBalance
+    : accounts.reduce((s, a) => s + a.balance, 0);
+
   return (
-    <div className="relative bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition overflow-hidden">
-      <div className="blur-sm pointer-events-none select-none">{children}</div>
+    <DashboardLayout>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Forecast always visible */}
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4">
+            <SpendingForecast
+              transactions={txns}
+              totalBalance={totalBalance}
+              savingsPlan={demoSavingsPlan}
+            />
+          </div>
 
-      <div className="absolute inset-0 bg-white/70 dark:bg-black/50 backdrop-blur flex flex-col items-center justify-center p-6 text-center">
-        <LockClosedIcon className="h-10 w-10 text-neutral-600 dark:text-neutral-300 mb-3" />
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-          {featureTitle} <span className="text-indigo-600">(Pro)</span>
-        </h3>
-        <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-4">
-          {teaserText}
-        </p>
-        <button
-          onClick={() => (window.location.href = "/pricing")}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow transition"
-        >
-          Upgrade to Pro
-        </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+              <BalanceSummary accounts={accounts} />
+            </div>
+            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+              <CashflowMini transactions={txns} />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <SpendingByCategory transactions={txns} />
+          </div>
+
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <SpendingChart transactions={txns} />
+          </div>
+
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <UpcomingBills accounts={accounts} />
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <TransactionsList transactions={txns} />
+          </div>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <FinancialAlerts transactions={txns} />
+          </div>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <TransactionAnalysis transactions={txns} />
+          </div>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <SubscriptionCard />
+          </div>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

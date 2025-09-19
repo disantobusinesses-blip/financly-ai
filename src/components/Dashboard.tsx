@@ -1,4 +1,4 @@
-import { useState } from "react";
+// src/components/Dashboard.tsx
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -10,14 +10,10 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
-import DashboardLayout from "./DashboardLayout";
-import ProFeatureBlocker from "./ProFeatureBlocker";
 import { demoTransactions, demoBalance, demoSavingsPlan } from "../demo/demoData";
 
 export default function Dashboard() {
-  const [showMore, setShowMore] = useState(false);
-
-  const isDemo = true;
+  const isDemo = true; // Toggle between demo and real
   const userId = isDemo ? null : "real-user-id";
   const { accounts, transactions } = useBasiqData(userId || "");
 
@@ -27,10 +23,11 @@ export default function Dashboard() {
     : accounts.reduce((s, a) => s + a.balance, 0);
 
   return (
-    <DashboardLayout>
-      <div className="space-y-4 sm:space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+      {/* Left column */}
+      <div className="lg:col-span-2 space-y-6">
         {/* Forecast always visible */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4 sm:p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
           <SpendingForecast
             transactions={txns}
             totalBalance={totalBalance}
@@ -38,42 +35,45 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Quick KPIs row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-3">
-            <BalanceSummary accounts={accounts} />
-          </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-3">
-            <CashflowMini transactions={txns} />
-          </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <BalanceSummary accounts={accounts} />
         </div>
 
-        {/* Accordion for secondary insights */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow">
-          <button
-            onClick={() => setShowMore(!showMore)}
-            className="w-full flex justify-between items-center p-4 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
-          >
-            <span>{showMore ? "Hide insights" : "More insights"}</span>
-            <span>{showMore ? "−" : "+"}</span>
-          </button>
-          {showMore && (
-            <div className="p-4 space-y-4">
-              <SpendingByCategory transactions={txns} />
-              <SpendingChart transactions={txns} />
-              <FinancialAlerts transactions={txns} />
-              <UpcomingBills accounts={accounts} />
-              <SubscriptionCard />
-              <TransactionAnalysis transactions={txns} />
-            </div>
-          )}
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <CashflowMini transactions={txns} />
         </div>
 
-        {/* Transactions always visible at bottom */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-          <TransactionsList transactions={txns} />
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <SpendingByCategory transactions={txns} />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <SpendingChart transactions={txns} />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <UpcomingBills accounts={accounts} />
         </div>
       </div>
-    </DashboardLayout>
+
+      {/* Right column */}
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <TransactionsList transactions={txns} />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <FinancialAlerts transactions={txns} />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <TransactionAnalysis transactions={txns} />
+        </div>
+
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <SubscriptionCard />
+        </div>
+      </div>
+    </div>
   );
 }
