@@ -13,7 +13,7 @@ import {
   demoTransactions,
   demoBalance,
   demoSavingsPlan,
-} from "./demoData";
+} from "../demoData";
 
 function BottomBar() {
   return (
