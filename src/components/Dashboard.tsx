@@ -1,4 +1,3 @@
-// src/components/Dashboard.tsx
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -32,28 +31,48 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      {/* Adaptive grid: 2/3 left, 1/3 right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
-          <SpendingForecast
-            transactions={txns}
-            totalBalance={totalBalance}
-            savingsPlan={savingsPlan}
-          />
-          <BalanceSummary accounts={accounts} />
-          <CashflowMini transactions={txns} />
-          <SpendingByCategory transactions={txns} />
-          <SpendingChart transactions={txns} />
-          <UpcomingBills accounts={accounts} />
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <SpendingForecast
+              transactions={txns}
+              totalBalance={totalBalance}
+              savingsPlan={savingsPlan}
+            />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <BalanceSummary accounts={accounts} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <CashflowMini transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <SpendingByCategory transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <SpendingChart transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <UpcomingBills accounts={accounts} />
+          </div>
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
-          <TransactionsList transactions={txns} />
-          <FinancialAlerts transactions={txns} />
-          <TransactionAnalysis transactions={txns} />
-          <SubscriptionCard />
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <TransactionsList transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <FinancialAlerts transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <TransactionAnalysis transactions={txns} />
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 overflow-hidden">
+            <SubscriptionCard />
+          </div>
         </div>
       </div>
     </DashboardLayout>
