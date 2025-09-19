@@ -1,8 +1,12 @@
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
+import SpendingChart from "./SpendingChart";
 import UpcomingBills from "./UpcomingBills";
+import FinancialAlerts from "./FinancialAlerts";
+import TransactionsList from "./TransactionsList";
 import SubscriptionCard from "./SubscriptionCard";
+import SpendingForecast from "./SpendingForecast";
 
 function BottomBar() {
   return (
@@ -27,11 +31,20 @@ export default function Dashboard() {
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 grid-flow-row-dense">
+
+          {/* SpendingForecast always on top */}
+          <div className="col-span-2 lg:col-span-3"><SpendingForecast /></div>
+
+          {/* Other widgets */}
           <div className="col-span-2 lg:col-span-2"><BalanceSummary /></div>
           <div className="col-span-1 lg:col-span-2"><CashflowMini /></div>
           <div className="col-span-1 lg:col-span-2"><SpendingByCategory /></div>
+          <div className="col-span-1 lg:col-span-2"><SpendingChart /></div>
           <div className="col-span-1 lg:col-span-2"><UpcomingBills /></div>
+          <div className="col-span-1 lg:col-span-2"><FinancialAlerts /></div>
+          <div className="col-span-1 lg:col-span-2"><TransactionsList /></div>
           <div className="col-span-1 lg:col-span-2"><SubscriptionCard /></div>
+
         </div>
       </section>
 
