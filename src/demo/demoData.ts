@@ -71,7 +71,6 @@ export const demoTransactions: Transaction[] = [
 export const demoBalance = 5000;
 
 export const demoSavingsPlan: SavingsPlan = {
-  progress: 2000,
   totalMonthlySavings: 1000, // big number so forecast shows large optimized gain
   newGoalDate: "2026-01-01",
   monthsSaved: 12,
