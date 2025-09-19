@@ -11,19 +11,24 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle button */}
-      <button
-        className="lg:hidden p-2 m-2 rounded-md border hover:bg-gray-100 dark:hover:bg-neutral-800"
-        onClick={() => setIsOpen(true)}
-        aria-label="Open menu"
-      >
-        <Bars3Icon className="h-6 w-6 text-gray-700 dark:text-neutral-200" />
-      </button>
+      {/* Mobile toggle button - only visible on small screens */}
+      <div className="lg:hidden p-2">
+        <button
+          className="p-2 rounded-md border hover:bg-gray-100 dark:hover:bg-neutral-800"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+        >
+          <Bars3Icon className="h-6 w-6 text-gray-700 dark:text-neutral-200" />
+        </button>
+      </div>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay sidebar */}
       {isOpen && (
-        <div className="fixed inset-0 z-40 flex lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setIsOpen(false)}
+          />
           <aside className="relative z-50 w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 min-h-screen p-4 space-y-4 shadow-lg">
             <button
               className="absolute top-4 right-4 p-2 rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
@@ -33,17 +38,25 @@ export default function Sidebar() {
               <XMarkIcon className="h-6 w-6 text-gray-700 dark:text-neutral-200" />
             </button>
 
-            <h2 className="font-bold text-lg mb-6 text-neutral-900 dark:text-neutral-100">Menu</h2>
+            <h2 className="font-bold text-lg mb-6 text-neutral-900 dark:text-neutral-100">
+              Menu
+            </h2>
 
             <button
               className="w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
-              onClick={() => { window.location.href = "/create-user"; setIsOpen(false); }}
+              onClick={() => {
+                window.location.href = "/create-user";
+                setIsOpen(false);
+              }}
             >
               Create User
             </button>
             <button
               className="w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
-              onClick={() => { window.location.href = "/subscriptions"; setIsOpen(false); }}
+              onClick={() => {
+                window.location.href = "/subscriptions";
+                setIsOpen(false);
+              }}
             >
               View Subscriptions
             </button>
@@ -57,9 +70,11 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:block w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 min-h-screen p-4 space-y-4">
-        <h2 className="font-bold text-lg mb-4 text-neutral-900 dark:text-neutral-100">Menu</h2>
+      {/* Desktop sidebar - only visible on large screens */}
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 min-h-screen p-4 space-y-4">
+        <h2 className="font-bold text-lg mb-4 text-neutral-900 dark:text-neutral-100">
+          Menu
+        </h2>
         <button
           className="w-full text-left p-2 rounded hover:bg-gray-100 dark:hover:bg-neutral-800"
           onClick={() => (window.location.href = "/create-user")}

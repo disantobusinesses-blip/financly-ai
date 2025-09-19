@@ -10,9 +10,12 @@ import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
 import DashboardLayout from "./DashboardLayout";
-import ProFeatureBlocker from "./ProFeatureBlocker";
 
-import { demoTransactions, demoBalance, demoSavingsPlan } from "../demo/demoData";
+import {
+  demoTransactions,
+  demoBalance,
+  demoSavingsPlan,
+} from "../demo/demoData";
 
 export default function Dashboard() {
   const isDemo = true;
@@ -20,56 +23,54 @@ export default function Dashboard() {
   const { accounts, transactions } = useBasiqData(userId || "");
 
   const txns = isDemo ? demoTransactions : transactions;
-  const totalBalance = isDemo ? demoBalance : accounts.reduce((s, a) => s + a.balance, 0);
+  const totalBalance = isDemo
+    ? demoBalance
+    : accounts.reduce((s, a) => s + a.balance, 0);
 
   return (
     <DashboardLayout>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left column (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Forecast: show teaser if not Pro (demo uses teaser to entice) */}
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
-            {isDemo ? (
-              <ProFeatureBlocker
-                featureTitle="AI Balance Forecast"
-                teaserText="Unlock your 6-month forecast and see how much you could save."
-              >
-                <SpendingForecast transactions={txns} totalBalance={totalBalance} savingsPlan={demoSavingsPlan} />
-              </ProFeatureBlocker>
-            ) : (
-              <SpendingForecast transactions={txns} totalBalance={totalBalance} savingsPlan={null} />
-            )}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+        {/* Forecast always large */}
+        <div className="col-span-1 md:col-span-2 bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-2 sm:p-4 overflow-hidden">
+          <SpendingForecast
+            transactions={txns}
+            totalBalance={totalBalance}
+            savingsPlan={demoSavingsPlan}
+            isDemo={isDemo}
+          />
+        </div>
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+        {/* Left column stacked (shrinks on mobile) */}
+        <div className="lg:col-span-2 space-y-4 md:space-y-6 text-xs sm:text-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <BalanceSummary accounts={accounts} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <CashflowMini transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <SpendingByCategory transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <SpendingChart transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <UpcomingBills accounts={accounts} />
           </div>
         </div>
 
-        {/* Right column (1/3) */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+        {/* Right column stacked */}
+        <div className="space-y-4 md:space-y-6 text-xs sm:text-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <TransactionsList transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <FinancialAlerts transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <TransactionAnalysis transactions={txns} />
           </div>
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow hover:shadow-lg transition p-4 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-2 sm:p-4">
             <SubscriptionCard />
           </div>
         </div>
