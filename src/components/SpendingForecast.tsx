@@ -30,9 +30,9 @@ const CustomTooltip = ({ active, payload, label, region }: any) => {
     return (
       <div className="bg-content-bg p-2 border border-border-color rounded-md shadow-lg">
         <p className="label font-bold text-text-primary">{`${label}`}</p>
-        {payload.map((pld: any, index: number) =>
+        {payload.map((pld: any, idx: number) =>
           pld.value ? (
-            <p key={index} style={{ color: pld.color }}>
+            <p key={idx} style={{ color: pld.color }}>
               {`${pld.name}: ${formatCurrency(pld.value, region)}`}
             </p>
           ) : null
@@ -44,7 +44,7 @@ const CustomTooltip = ({ active, payload, label, region }: any) => {
 };
 
 const LoadingSkeleton = () => (
-  <div className="h-80 w-full bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+  <div className="h-60 w-full bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
 );
 
 const SpendingForecast: React.FC<SpendingForecastProps> = ({
@@ -69,19 +69,20 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
         isVisible &&
         !hasFetched &&
         transactions.length > 0 &&
-        savingsPlan !== undefined &&
+        savingsPlan !== null &&
         user
       ) {
         setIsLoading(true);
         setHasFetched(true);
         setError(null);
         try {
-          const potentialSavings = savingsPlan?.totalMonthlySavings || 0;
+          const potentialSavings = savingsPlan.totalMonthlySavings || 0;
+          const region = user.region === "US" ? "US" : "AU"; // fallback logic
           const result = await getBalanceForecast(
             transactions,
             totalBalance,
             potentialSavings,
-            user.region as "AU" | "US" | undefined // ✅ Cast to expected type
+            region
           );
           setForecastResult(result);
         } catch (err) {
@@ -113,9 +114,10 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
   }, [forecastResult]);
 
   const renderChart = () => {
-    const { symbol } = getCurrencyInfo(user?.region as "AU" | "US" | undefined);
+    const region = user.region === "US" ? "US" : "AU";
+    const { symbol } = getCurrencyInfo(region);
     return (
-      <div className="h-80">
+      <div className="h-60 sm:h-80"> {/* shrunk for mobile but bigger for small desktops */}
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -136,7 +138,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               }
               domain={["dataMin - 1000", "dataMax + 1000"]}
             />
-            <Tooltip content={<CustomTooltip region={user?.region} />} />
+            <Tooltip content={<CustomTooltip region={region} />} />
             <Legend wrapperStyle={{ fontSize: "14px" }} />
             <Line
               type="monotone"
@@ -144,7 +146,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               name="Default Forecast"
               stroke="#A0AEC0"
               strokeWidth={2}
-              dot={true}
+              dot
             />
             <Line
               type="monotone"
@@ -152,7 +154,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               name="Optimized Forecast (with AI Plan)"
               stroke="#4F46E5"
               strokeWidth={3}
-              dot={true}
+              dot
             />
           </LineChart>
         </ResponsiveContainer>
@@ -162,29 +164,29 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
 
   return (
     <div
-      className="bg-content-bg p-6 rounded-xl border border-border-color"
+      className="bg-content-bg p-4 sm:p-6 rounded-xl border border-border-color"
       ref={ref}
     >
-      <div className="flex items-center mb-1">
-        <TrendingUpIcon className="h-7 w-7 text-primary" />
-        <h2 className="text-2xl font-bold text-text-primary ml-3">
+      <div className="flex items-center mb-2">
+        <TrendingUpIcon className="h-6 w-6 text-primary" />
+        <h2 className="text-xl sm:text-2xl font-bold text-text-primary ml-2">
           AI Balance Forecast
         </h2>
       </div>
-      <p className="text-text-secondary mb-6 ml-10">
+      <p className="text-text-secondary mb-4 ml-6 text-sm sm:text-base">
         Your projected account balance over the next 6 months.
       </p>
 
       {isLoading ? (
         <LoadingSkeleton />
       ) : error ? (
-        <div className="h-80 flex items-center justify-center">
+        <div className="h-60 sm:h-80 flex items-center justify-center">
           <p className="text-red-500">{error}</p>
         </div>
       ) : chartData.length > 1 ? (
         renderChart()
       ) : (
-        <div className="h-80 flex items-center justify-center">
+        <div className="h-60 sm:h-80 flex items-center justify-center">
           <p className="text-text-secondary">
             Not enough data to generate a forecast.
           </p>
@@ -192,7 +194,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
       )}
 
       {forecastResult && optimizedGain > 0 && user?.membershipType === "Pro" && (
-        <div className="mt-6 bg-background p-4 rounded-lg border border-border-color">
+        <div className="mt-4 bg-background p-4 rounded-lg border border-border-color">
           <h4 className="font-bold text-text-primary text-sm mb-2 flex items-center">
             <SparklesIcon className="h-5 w-5 text-primary mr-2" />
             AI Insight
@@ -203,21 +205,22 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
         </div>
       )}
 
-      {forecastResult?.keyChanges?.length && user?.membershipType === "Pro" ? (
+      {forecastResult?.keyChanges && forecastResult.keyChanges.length > 0 &&
+        user?.membershipType === "Pro" && (
         <div className="mt-4 p-4 bg-background rounded-lg border border-border-color">
           <h4 className="font-bold text-text-primary text-sm mb-3">
             Your path to the Optimized Forecast:
           </h4>
           <ul className="space-y-2">
-            {forecastResult.keyChanges!.map((change, index) => (
-              <li key={index} className="flex items-start text-sm">
-                <ArrowRightIcon className="h-4 w-4 text-secondary flex-shrink-0 mt-0.5 mr-2" />
+            {forecastResult.keyChanges.map((change, idx) => (
+              <li key={idx} className="flex items-start text-sm">
+                <ArrowRightIcon className="h-4 w-4 text-secondary flex-shrink-0 mr-2" />
                 <span className="text-text-secondary">{change.description}</span>
               </li>
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };
