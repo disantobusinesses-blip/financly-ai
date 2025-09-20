@@ -2,7 +2,7 @@ const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
 
 // Helper: Map account type
-const getAccountType = (acc: any) => {
+const getAccountType = (acc) => {
   if (acc.accountType === "savings") return "Savings";
   if (acc.accountType === "transaction") return "Checking";
   if (acc.accountType === "creditCard") return "Credit Card";
@@ -12,7 +12,7 @@ const getAccountType = (acc: any) => {
   return "Checking";
 };
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).send("Method Not Allowed");
   }
@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Step 5: Return clean accounts & transactions
-    const accounts = basiqAccounts.map((acc: any) => ({
+    const accounts = basiqAccounts.map((acc) => ({
       id: acc.id,
       name: acc.accountName,
       type: getAccountType(acc),
@@ -120,7 +120,7 @@ export default async function handler(req: any, res: any) {
       currency: acc.currency,
     }));
 
-    const transactions = basiqTransactions.map((txn: any) => ({
+    const transactions = basiqTransactions.map((txn) => ({
       id: txn.id,
       accountId: txn.account.id,
       description: txn.description,
@@ -130,7 +130,7 @@ export default async function handler(req: any, res: any) {
     }));
 
     res.status(200).json({ accounts, transactions });
-  } catch (err: any) {
+  } catch (err) {
     console.error("❌ BASIQ API error:", err.message || err);
     res.status(500).json({ error: err.message || "Internal Server Error" });
   }

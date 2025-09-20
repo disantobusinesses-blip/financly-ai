@@ -25,17 +25,25 @@ interface SpendingForecastProps {
   savingsPlan: SavingsPlan | null;
 }
 
-const CustomTooltip = ({ active, payload, label, region }: any) => {
+interface TooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  region?: string;
+}
+
+const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, label, region }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-content-bg p-2 border border-border-color rounded-md shadow-lg">
-        <p className="label font-bold text-text-primary">{`${label}`}</p>
-        {payload.map((pld: any, index: number) =>
-          pld.value ? (
-            <p key={index} style={{ color: pld.color }}>
-              {`${pld.name}: ${formatCurrency(pld.value, region)}`}
-            </p>
-          ) : null
+        <p className="label font-bold text-text-primary">{label}</p>
+        {payload.map(
+          (pld, index) =>
+            pld?.value && (
+              <p key={index} style={{ color: pld.color }}>
+                {`${pld.name}: ${formatCurrency(pld.value, region)}`}
+              </p>
+            )
         )}
       </div>
     );
@@ -43,7 +51,7 @@ const CustomTooltip = ({ active, payload, label, region }: any) => {
   return null;
 };
 
-const LoadingSkeleton = () => (
+const LoadingSkeleton: React.FC = () => (
   <div className="h-80 w-full bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
 );
 
@@ -69,14 +77,14 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
         isVisible &&
         !hasFetched &&
         transactions.length > 0 &&
-        savingsPlan !== undefined &&
+        savingsPlan &&
         user
       ) {
         setIsLoading(true);
         setHasFetched(true);
         setError(null);
         try {
-          const potentialSavings = savingsPlan?.totalMonthlySavings || 0;
+          const potentialSavings = savingsPlan.totalMonthlySavings || 0;
           const result = await getBalanceForecast(
             transactions,
             totalBalance,
@@ -144,7 +152,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               name="Default Forecast"
               stroke="#A0AEC0"
               strokeWidth={2}
-              dot={true}
+              dot
             />
             <Line
               type="monotone"
@@ -152,7 +160,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               name="Optimized Forecast (with AI Plan)"
               stroke="#4F46E5"
               strokeWidth={3}
-              dot={true}
+              dot
             />
           </LineChart>
         </ResponsiveContainer>
@@ -203,26 +211,23 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
         </div>
       )}
 
-      {forecastResult &&
-        forecastResult.keyChanges &&
-        forecastResult.keyChanges.length > 0 &&
-        user?.membershipType === "Pro" && (
-          <div className="mt-4 p-4 bg-background rounded-lg border border-border-color">
-            <h4 className="font-bold text-text-primary text-sm mb-3">
-              Your path to the Optimized Forecast:
-            </h4>
-            <ul className="space-y-2">
-              {forecastResult.keyChanges.map((change, index) => (
-                <li key={index} className="flex items-start text-sm">
-                  <ArrowRightIcon className="h-4 w-4 text-secondary flex-shrink-0 mt-0.5 mr-2" />
-                  <span className="text-text-secondary">
-                    {change.description}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+      {forecastResult?.keyChanges?.length > 0 && user?.membershipType === "Pro" && (
+        <div className="mt-4 p-4 bg-background rounded-lg border border-border-color">
+          <h4 className="font-bold text-text-primary text-sm mb-3">
+            Your path to the Optimized Forecast:
+          </h4>
+          <ul className="space-y-2">
+            {forecastResult.keyChanges.map((change, index) => (
+              <li key={index} className="flex items-start text-sm">
+                <ArrowRightIcon className="h-4 w-4 text-secondary flex-shrink-0 mt-0.5 mr-2" />
+                <span className="text-text-secondary">
+                  {change.description}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
