@@ -1,6 +1,6 @@
+// src/hooks/useBasiqData.ts
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
-import { API_BASE_URL } from "../utils/apiConfig";
 
 interface BasiqData {
   accounts: Account[];
@@ -28,9 +28,8 @@ export function useBasiqData(userId?: string): BasiqData {
       setError(null);
 
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/basiq-data?userId=${basiqUserId}`
-        );
+        // ✅ Use relative path (works locally and on Vercel)
+        const res = await fetch(`/api/basiq-data?userId=${basiqUserId}`);
 
         if (!res.ok) {
           const errText = await res.text();
@@ -40,7 +39,7 @@ export function useBasiqData(userId?: string): BasiqData {
         const data = await res.json();
 
         if (!data.accounts || !data.transactions) {
-          throw new Error("Invalid response format from /basiq-data");
+          throw new Error("Invalid response format from /api/basiq-data");
         }
 
         // Sort newest first
