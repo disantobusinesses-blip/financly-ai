@@ -63,6 +63,9 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
   const [hasFetched, setHasFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Always fallback to AU if no user.region
+  const userRegion: "AU" | "US" = (user?.region as "AU" | "US") || "AU";
+
   useEffect(() => {
     const fetchForecast = async () => {
       if (
@@ -81,7 +84,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
             transactions,
             totalBalance,
             potentialSavings,
-            user?.region as "AU" | "US" | undefined // safe cast
+            userRegion
           );
           setForecastResult(result);
         } catch (err) {
@@ -93,7 +96,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
       }
     };
     fetchForecast();
-  }, [isVisible, hasFetched, transactions, totalBalance, savingsPlan, user]);
+  }, [isVisible, hasFetched, transactions, totalBalance, savingsPlan, user, userRegion]);
 
   const chartData = useMemo(() => {
     if (!forecastResult) return [];
@@ -113,7 +116,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
   }, [forecastResult]);
 
   const renderChart = () => {
-    const { symbol } = getCurrencyInfo(user?.region as "AU" | "US" | undefined);
+    const { symbol } = getCurrencyInfo(userRegion);
     return (
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
@@ -136,7 +139,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
               }
               domain={["dataMin - 1000", "dataMax + 1000"]}
             />
-            <Tooltip content={<CustomTooltip region={user?.region} />} />
+            <Tooltip content={<CustomTooltip region={userRegion} />} />
             <Legend wrapperStyle={{ fontSize: "14px" }} />
             <Line
               type="monotone"
