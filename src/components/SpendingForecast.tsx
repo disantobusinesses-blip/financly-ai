@@ -1,27 +1,13 @@
 // src/components/SpendingForecast.tsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  Line,
-  LineChart,
-} from "recharts";
-
-import {
-  Transaction,
-  BalanceForecastResult,
-  SavingsOptimizationPlan,
-} from "../types";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line, LineChart } from "recharts";
+import { Transaction, BalanceForecastResult, SavingsOptimizationPlan } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { getBalanceForecast } from "../services/GeminiService";
 import { useOnScreen } from "../hooks/useOnScreen";
-import { formatCurrency, getCurrencyInfo } from "../utils/currency";
-import { SparklesIcon, TrendingUpIcon, ArrowRightIcon } from "./icon/Icon";
+import { formatCurrency } from "../utils/currency";
+import { SparklesIcon, TrendingUpIcon } from "./icon/Icon";
 
 interface SpendingForecastProps {
   transactions: Transaction[];
@@ -35,11 +21,7 @@ const CustomTooltip = ({ active, payload, label, region }: any) => {
       <div className="bg-content-bg p-2 border border-border-color rounded-md shadow-lg">
         <p className="label font-bold text-text-primary">{`${label}`}</p>
         {payload.map((pld: any, index: number) =>
-          pld.value ? (
-            <p key={index} style={{ color: pld.color }}>
-              {`${pld.name}: ${formatCurrency(pld.value, region)}`}
-            </p>
-          ) : null
+          pld.value ? <p key={index} style={{ color: pld.color }}>{`${pld.name}: ${formatCurrency(pld.value, region)}`}</p> : null
         )}
       </div>
     );
@@ -47,11 +29,7 @@ const CustomTooltip = ({ active, payload, label, region }: any) => {
   return null;
 };
 
-const SpendingForecast: React.FC<SpendingForecastProps> = ({
-  transactions,
-  totalBalance,
-  savingsPlan,
-}) => {
+const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, totalBalance, savingsPlan }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [forecast, setForecast] = useState<BalanceForecastResult | null>(null);
@@ -71,7 +49,8 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
           const result = await getBalanceForecast(
             transactions,
             totalBalance,
-            potentialSavings
+            potentialSavings,
+            user?.region || "AU" // 4th arg required
           );
           setForecast(result);
         } catch (err: any) {
@@ -81,10 +60,9 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
           setLoading(false);
         }
       };
-
       fetchForecast();
     }
-  }, [isOnScreen, forecast, loading, transactions, totalBalance, savingsPlan]);
+  }, [isOnScreen, forecast, loading, transactions, totalBalance, savingsPlan, user?.region]);
 
   const chartData = useMemo(() => {
     if (!forecast) return [];
@@ -96,15 +74,10 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
   }, [forecast]);
 
   return (
-    <div
-      className="bg-content-bg p-6 rounded-xl border border-border-color"
-      ref={containerRef}
-    >
+    <div className="bg-content-bg p-6 rounded-xl border border-border-color" ref={containerRef}>
       <div className="flex items-center mb-6">
         <SparklesIcon className="h-7 w-7 text-primary" />
-        <h2 className="text-2xl font-bold text-text-primary ml-3">
-          Spending Forecast
-        </h2>
+        <h2 className="text-2xl font-bold text-text-primary ml-3">Spending Forecast</h2>
       </div>
 
       {loading ? (
@@ -119,28 +92,10 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" stroke={theme === "dark" ? "#fff" : "#000"} />
                 <YAxis stroke={theme === "dark" ? "#fff" : "#000"} />
-                <Tooltip
-                  content={
-                    <CustomTooltip region={user?.region || "AU"} />
-                  }
-                />
+                <Tooltip content={<CustomTooltip region={user?.region || "AU"} />} />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="defaultForecast"
-                  stroke="#8884d8"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Default Forecast"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="optimizedForecast"
-                  stroke="#82ca9d"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Optimized Forecast"
-                />
+                <Line type="monotone" dataKey="defaultForecast" stroke="#8884d8" strokeWidth={2} dot={false} name="Default Forecast" />
+                <Line type="monotone" dataKey="optimizedForecast" stroke="#82ca9d" strokeWidth={2} dot={false} name="Optimized Forecast" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -162,9 +117,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({
           </div>
         </div>
       ) : (
-        <p className="text-text-secondary">
-          Not enough data yet to generate a forecast.
-        </p>
+        <p className="text-text-secondary">Not enough data yet to generate a forecast.</p>
       )}
     </div>
   );

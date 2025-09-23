@@ -1,12 +1,7 @@
 // src/components/AISavingsPlan.tsx
 import React from "react";
 import { Goal, SavingsOptimizationPlan } from "../types";
-import {
-  SparklesIcon,
-  ScissorsIcon,
-  CalendarIcon,
-  TrendingUpIcon,
-} from "./icon/Icon";
+import { SparklesIcon, ScissorsIcon, CalendarIcon, TrendingUpIcon } from "./icon/Icon";
 import { useAuth } from "../contexts/AuthContext";
 import ProFeatureBlocker from "./ProFeatureBlocker";
 import { formatCurrency } from "../utils/currency";
@@ -26,21 +21,14 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-const AISavingsPlan: React.FC<AISavingsPlanProps> = ({
-  goal,
-  plan,
-  isLoading,
-  error,
-}) => {
+const AISavingsPlan: React.FC<AISavingsPlanProps> = ({ goal, plan, isLoading, error }) => {
   const { user } = useAuth();
 
   return (
     <div className="bg-content-bg p-6 rounded-xl border border-border-color h-full">
       <div className="flex items-center mb-6">
         <SparklesIcon className="h-7 w-7 text-primary" />
-        <h2 className="text-2xl font-bold text-text-primary ml-3">
-          AI Savings Plan
-        </h2>
+        <h2 className="text-2xl font-bold text-text-primary ml-3">AI Savings Plan</h2>
       </div>
 
       {user?.membershipType === "Pro" ? (
@@ -51,27 +39,18 @@ const AISavingsPlan: React.FC<AISavingsPlanProps> = ({
             <p className="text-red-500">{error}</p>
           ) : plan ? (
             <div className="space-y-6">
+              <p className="text-sm text-text-secondary">
+                Based on your goal to save for your{" "}
+                <span className="font-bold text-text-primary">{goal.name}</span>, here's how you can get there faster:
+              </p>
+
               <div>
-                <p className="text-sm text-text-secondary">
-                  Based on your goal to save for your{" "}
-                  <span className="font-bold text-text-primary">
-                    {goal.name}
-                  </span>
-                  , here's how you can get there faster:
-                </p>
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-text-primary mb-3">
-                  AI-Powered Suggestions
-                </h3>
+                <h3 className="font-bold text-lg text-text-primary mb-3">AI-Powered Suggestions</h3>
                 <ul className="space-y-3">
                   {plan.suggestions.map((s, i) => {
                     const isGain = s.category === "Capital Growth";
                     return (
-                      <li
-                        key={i}
-                        className="flex justify-between items-center p-3 bg-background rounded-md border border-border-color"
-                      >
+                      <li key={i} className="flex justify-between items-center p-3 bg-background rounded-md border border-border-color">
                         <div className="flex items-center">
                           {isGain ? (
                             <TrendingUpIcon className="h-5 w-5 mr-3 text-secondary flex-shrink-0" />
@@ -79,54 +58,41 @@ const AISavingsPlan: React.FC<AISavingsPlanProps> = ({
                             <ScissorsIcon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
                           )}
                           <div>
-                            <p className="font-semibold text-text-primary">
-                              {s.category}
-                            </p>
-                            <p className="text-xs text-text-secondary">
-                              {s.description}
-                            </p>
+                            <p className="font-semibold text-text-primary">{s.category}</p>
+                            <p className="text-xs text-text-secondary">{s.description}</p>
                           </div>
                         </div>
-                        {isGain ? (
-                          <p className="font-bold text-secondary text-right whitespace-nowrap">
-                            +
-                            {formatCurrency(s.monthlyCut, user?.region)}
-                          </p>
-                        ) : (
-                          <p className="font-bold text-red-500 text-right whitespace-nowrap">
-                            -{formatCurrency(s.monthlyCut, user?.region)}
-                          </p>
-                        )}
+                        <p
+                          className={`font-bold text-right whitespace-nowrap ${
+                            isGain ? "text-secondary" : "text-red-500"
+                          }`}
+                        >
+                          {isGain ? "+" : "-"}
+                          {formatCurrency(s.monthlyCut, user?.region)}
+                        </p>
                       </li>
                     );
                   })}
                 </ul>
               </div>
+
               <div className="bg-primary-light p-4 rounded-lg text-center">
-                <p className="text-sm text-primary font-medium">
-                  Following this plan could save you an extra
-                </p>
+                <p className="text-sm text-primary font-medium">Following this plan could save you an extra</p>
                 <p className="text-3xl font-extrabold text-primary my-1">
-                  {formatCurrency(plan.totalMonthlySavings, user?.region)}
-                  /month
+                  {formatCurrency(plan.totalMonthlySavings, user?.region)}/month
                 </p>
                 <div className="flex items-center justify-center gap-2 text-primary font-bold">
                   <CalendarIcon className="h-5 w-5" />
                   <span>
                     New Goal Date:{" "}
-                    {new Date(plan.newGoalDate).toLocaleDateString("en-AU", {
-                      year: "numeric",
-                      month: "long",
-                    })}{" "}
-                    ({plan.monthsSaved} months faster!)
+                    {new Date(plan.newGoalDate).toLocaleDateString("en-AU", { year: "numeric", month: "long" })} (
+                    {plan.monthsSaved} months faster!)
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-text-secondary">
-              No savings plan available. Set a new goal to get started!
-            </p>
+            <p className="text-text-secondary">No savings plan available. Set a new goal to get started!</p>
           )}
         </>
       ) : (

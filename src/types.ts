@@ -22,7 +22,17 @@ export interface Transaction {
   category: string;
 }
 
-/** Simple savings goal used by demo */
+/** Simple goal data used in Goal UI */
+export interface Goal {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string; // ISO date
+}
+
+/** Simple savings plan list shown in demo cards */
 export interface SavingsPlan {
   name: string;
   targetAmount: number;
@@ -30,14 +40,23 @@ export interface SavingsPlan {
   monthlyContribution: number;
 }
 
-/** Advanced, AI-generated optimization plan */
+/** Advanced AI optimization plan used by AISavingsPlan + SpendingForecast */
 export interface SavingsOptimizationPlan {
   suggestions: { category: string; monthlyCut: number; description: string }[];
   totalMonthlySavings: number;
-  newGoalDate: string;
+  newGoalDate: string; // ISO date
   monthsSaved: number;
 }
 
+/** Alerts */
+export type FinancialAlertType = "Anomaly" | "Opportunity" | "Milestone";
+export interface FinancialAlert {
+  type: FinancialAlertType;
+  title: string;
+  description: string;
+}
+
+/** Forecast outputs */
 export interface SpendingForecastResult {
   forecastData: { name: string; Forecast: number }[];
   insight: string;
@@ -49,5 +68,11 @@ export interface BalanceForecastResult {
   keyChanges: { description: string }[];
 }
 
+/** User */
 export type UserMembershipType = "Free" | "Pro";
-export interface User { id: string; email: string; membershipType: UserMembershipType; region: "AU" | "US"; }
+export interface User {
+  id: string;
+  email: string;
+  membershipType: UserMembershipType;
+  region: "AU" | "US";
+}
