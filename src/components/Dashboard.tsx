@@ -1,3 +1,4 @@
+// src/components/Dashboard.tsx
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -10,14 +11,20 @@ import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
 import ProFeatureBlocker from "./ProFeatureBlocker";
-import { demoTransactions, demoBalance, demoSavingsPlan } from "../demo/demoData";
+import {
+  demoTransactions,
+  demoBalance,
+  demoOptimizationPlan,
+} from "../demo/demoData";
 
 export default function Dashboard() {
   const isDemo = false; // flip true/false depending on mode
   const userId = isDemo ? null : "real-user-id";
 
   // use hook to fetch data
-  const { accounts, transactions, loading, error } = useBasiqData(userId || "");
+  const { accounts, transactions, loading, error } = useBasiqData(
+    userId || ""
+  );
 
   // fallback to demo data
   const txns = isDemo ? demoTransactions : transactions;
@@ -55,14 +62,14 @@ export default function Dashboard() {
               <SpendingForecast
                 transactions={txns}
                 totalBalance={totalBalance}
-                savingsPlan={demoSavingsPlan}
+                savingsPlan={demoOptimizationPlan} // ✅ use optimization plan
               />
             </ProFeatureBlocker>
           ) : (
             <SpendingForecast
               transactions={txns}
               totalBalance={totalBalance}
-              savingsPlan={null}
+              savingsPlan={null} // real mode
             />
           )}
         </div>
@@ -79,24 +86,24 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
           <SpendingChart transactions={txns} />
         </div>
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-          <UpcomingBills accounts={accounts} />
-        </div>
       </div>
 
       {/* Right column */}
       <div className="space-y-6">
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-          <TransactionsList transactions={txns} />
-        </div>
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-          <FinancialAlerts transactions={txns} />
-        </div>
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-          <TransactionAnalysis transactions={txns} />
+          <UpcomingBills />
         </div>
         <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
           <SubscriptionCard />
+        </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+          <FinancialAlerts />
+        </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+          <TransactionsList transactions={txns} />
+        </div>
+        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+          <TransactionAnalysis transactions={txns} />
         </div>
       </div>
     </div>
