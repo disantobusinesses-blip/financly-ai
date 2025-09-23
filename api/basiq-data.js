@@ -2,6 +2,7 @@
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
+const DEMO_USER_ID = process.env.BASIQ_DEMO_USERID || null;
 
 // --- Helper: Map account type ---
 const getAccountType = (acc) => {
@@ -20,14 +21,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId } = req.query;
+    // Accept userId from query, otherwise fallback to demo
+    let { userId } = req.query;
     if (!userId) {
-      console.error("❌ Missing userId in request query");
-      return res.status(400).json({ error: "Basiq User ID is required." });
+      if (!DEMO_USER_ID) {
+        return res.status(400).json({
+          error: "Basiq User ID is required.",
+          details: "No userId provided and BASIQ_DEMO_USERID not configured.",
+        });
+      }
+      userId = DEMO_USER_ID;
+      console.log(`⚠️ Using demo userId: ${userId}`);
     }
 
     if (!BASIQ_API_KEY) {
-      console.error("❌ Missing BASIQ_API_KEY environment variable");
       return res.status(500).json({ error: "Server misconfigured: BASIQ_API_KEY missing." });
     }
 
@@ -44,7 +51,6 @@ export default async function handler(req, res) {
 
     if (!tokenRes.ok) {
       const errorText = await tokenRes.text();
-      console.error("❌ Failed to get BASIQ token:", errorText);
       return res.status(500).json({ error: "Failed to get BASIQ token", details: errorText });
     }
 
@@ -60,85 +66,25 @@ export default async function handler(req, res) {
 
     if (!accountsRes.ok) {
       const errorText = await accountsRes.text();
-      console.error("❌ Failed to fetch accounts for user:", userId);
-      console.error("Status:", accountsRes.status, "Response:", errorText);
-      return res.status(500).json({ error: "Failed to fetch accounts", details: errorText });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch accounts", details: errorText });
     }
 
-    const { data: basiqAccounts } = await accountsRes.json();
+    const accountsData = await accountsRes.json();
 
-    // --- Step 3: Fetch transactions ---
-    const transactionsRes = await fetch(`${BASIQ_API_URL}/users/${userId}/transactions`, {
-      headers: {
-        Authorization: `Bearer ${SERVER_TOKEN}`,
-        "basiq-version": "3.0",
-      },
-    });
-
-    if (!transactionsRes.ok) {
-      const errorText = await transactionsRes.text();
-      console.error("❌ Failed to fetch transactions for user:", userId);
-      console.error("Status:", transactionsRes.status, "Response:", errorText);
-      return res.status(500).json({ error: "Failed to fetch transactions", details: errorText });
-    }
-
-    const { data: basiqTransactions } = await transactionsRes.json();
-
-    // --- Step 4: Trigger refresh job if no data ---
-    if ((!basiqAccounts || basiqAccounts.length === 0) &&
-        (!basiqTransactions || basiqTransactions.length === 0)) {
-      console.warn("⚠️ No accounts/transactions found, starting refresh job...");
-
-      const jobRes = await fetch(`${BASIQ_API_URL}/jobs`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "Content-Type": "application/json",
-          "basiq-version": "3.0",
-        },
-        body: JSON.stringify({
-          steps: [{ type: "refresh-user", userId }],
-        }),
-      });
-
-      if (!jobRes.ok) {
-        const jobError = await jobRes.text();
-        console.error("❌ Failed to trigger refresh job:", jobError);
-        return res.status(500).json({ error: "Failed to trigger refresh job", details: jobError });
-      }
-
-      const jobData = await jobRes.json();
-      console.log("✅ Refresh job started:", jobData.id);
-
-      return res.status(202).json({
-        message: "No data yet, refresh job started.",
-        jobId: jobData.id,
-      });
-    }
-
-    // --- Step 5: Return clean accounts & transactions ---
-    const accounts = basiqAccounts.map((acc) => ({
+    // --- Step 3: Map accounts ---
+    const accounts = accountsData.data.map((acc) => ({
       id: acc.id,
-      name: acc.accountName,
+      name: acc.name,
       type: getAccountType(acc),
       balance: acc.balance,
-      currency: acc.currency,
+      institution: acc.institution?.name || "Unknown",
     }));
 
-    const transactions = basiqTransactions.map((txn) => ({
-      id: txn.id,
-      accountId: txn.account.id,
-      description: txn.description,
-      amount: txn.amount,
-      date: txn.postDate,
-      category: txn.subClass?.title || txn.class?.title || "Uncategorized",
-    }));
-
-    console.log(`✅ Returning ${accounts.length} accounts and ${transactions.length} transactions`);
-    res.status(200).json({ accounts, transactions });
-
+    return res.status(200).json({ accounts });
   } catch (err) {
-    console.error("❌ BASIQ API error (uncaught):", err);
-    res.status(500).json({ error: err.message || "Internal Server Error" });
+    console.error("❌ Unexpected error:", err);
+    return res.status(500).json({ error: "Unexpected server error", details: err.message });
   }
 }
