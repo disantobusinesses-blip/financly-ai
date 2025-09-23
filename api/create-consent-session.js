@@ -1,3 +1,4 @@
+// api/create-consent-session.js
 import fetch from 'node-fetch';
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
@@ -29,7 +30,8 @@ export default async function handler(req, res) {
     if (!serverTokRes.ok) throw new Error(await serverTokRes.text());
     const { access_token: SERVER_TOKEN } = await serverTokRes.json();
 
-    // 2. Create user
+    // 2. Create or fetch user
+    let userId;
     const userRes = await fetch(`${BASIQ_API_URL}/users`, {
       method: 'POST',
       headers: {
@@ -39,9 +41,25 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({ email }),
     });
-    if (!userRes.ok && userRes.status !== 409)
+
+    if (userRes.status === 201) {
+      const user = await userRes.json();
+      userId = user.id;
+    } else if (userRes.status === 409) {
+      // User already exists → look it up
+      const lookupRes = await fetch(`${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`, {
+        headers: {
+          Authorization: `Bearer ${SERVER_TOKEN}`,
+          'basiq-version': '3.0',
+        },
+      });
+      if (!lookupRes.ok) throw new Error(await lookupRes.text());
+      const { data } = await lookupRes.json();
+      if (!data || data.length === 0) throw new Error("User exists but could not be fetched");
+      userId = data[0].id;
+    } else {
       throw new Error(await userRes.text());
-    const user = await userRes.json();
+    }
 
     // 3. Get client token
     const clientTokRes = await fetch(`${BASIQ_API_URL}/token`, {
@@ -51,14 +69,14 @@ export default async function handler(req, res) {
         'Content-Type': 'application/x-www-form-urlencoded',
         'basiq-version': '3.0',
       },
-      body: new URLSearchParams({ scope: 'CLIENT_ACCESS', userId: user.id }),
+      body: new URLSearchParams({ scope: 'CLIENT_ACCESS', userId }),
     });
     if (!clientTokRes.ok) throw new Error(await clientTokRes.text());
     const { access_token: CLIENT_TOKEN } = await clientTokRes.json();
 
     const consentUrl = `https://consent.basiq.io/home?token=${CLIENT_TOKEN}&action=connect`;
 
-    res.json({ consentUrl, userId: user.id });
+    res.json({ consentUrl, userId });
   } catch (err) {
     console.error('❌ Error in /api/create-consent-session:', err);
     res.status(500).json({ error: String(err) });
