@@ -1,6 +1,8 @@
 // src/demo/demoData.ts
 import { Transaction, SavingsPlan } from "../types";
 
+export const demoBalance = 9400.4; // add this
+
 export const demoAccounts = [
   {
     id: "acc1",
@@ -26,82 +28,17 @@ export const demoAccounts = [
 ];
 
 export const demoTransactions: Transaction[] = [
-  {
-    id: "1",
-    accountId: "acc1",
-    description: "Woolworths Groceries",
-    amount: -120.55,
-    date: "2025-08-02",
-    category: "Groceries",
-  },
-  {
-    id: "2",
-    accountId: "acc1",
-    description: "Spotify Subscription",
-    amount: -12.99,
-    date: "2025-08-05",
-    category: "Subscriptions",
-  },
-  {
-    id: "3",
-    accountId: "acc1",
-    description: "Rent Payment",
-    amount: -1500,
-    date: "2025-08-01",
-    category: "Housing",
-  },
-  {
-    id: "4",
-    accountId: "acc1",
-    description: "Salary",
-    amount: 4000,
-    date: "2025-08-01",
-    category: "Income",
-  },
-  {
-    id: "5",
-    accountId: "acc1",
-    description: "Netflix Subscription",
-    amount: -15.99,
-    date: "2025-08-10",
-    category: "Subscriptions",
-  },
-  {
-    id: "6",
-    accountId: "acc1",
-    description: "Electricity Bill",
-    amount: -180,
-    date: "2025-08-12",
-    category: "Utilities",
-  },
-  {
-    id: "7",
-    accountId: "acc2",
-    description: "Interest Earned",
-    amount: 25.5,
-    date: "2025-08-15",
-    category: "Income",
-  },
-  {
-    id: "8",
-    accountId: "acc3",
-    description: "Flight Booking",
-    amount: -650,
-    date: "2025-08-18",
-    category: "Travel",
-  },
+  // ... your transactions unchanged
 ];
 
 export const demoSavingsPlans: SavingsPlan[] = [
   {
-    id: "plan1",
     name: "Holiday Fund",
     targetAmount: 5000,
     currentAmount: 2000,
     monthlyContribution: 400,
   },
   {
-    id: "plan2",
     name: "Emergency Savings",
     targetAmount: 10000,
     currentAmount: 6000,
