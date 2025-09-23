@@ -7,6 +7,7 @@ interface BasiqData {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
+  mode: "demo" | "live";
 }
 
 export function useBasiqData(userId?: string): BasiqData {
@@ -14,45 +15,35 @@ export function useBasiqData(userId?: string): BasiqData {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"demo" | "live">("demo");
 
   useEffect(() => {
-    const basiqUserId = userId || localStorage.getItem("basiqUserId");
-
-    if (!basiqUserId) {
-      console.warn("⚠️ No Basiq userId found, skipping data fetch.");
-      return;
-    }
+    const basiqUserId = userId || localStorage.getItem("basiqUserId") || "";
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // ✅ Use relative path (works locally and on Vercel)
-        const res = await fetch(`/api/basiq-data?userId=${basiqUserId}`);
+        // ✅ Demo mode: no userId
+        const url = basiqUserId
+          ? `/api/basiq-data?userId=${basiqUserId}`
+          : `/api/basiq-data`;
+
+        const res = await fetch(url);
 
         if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`API error (${res.status}): ${errText}`);
+          throw new Error(`API error ${res.status}`);
         }
 
         const data = await res.json();
 
-        if (!data.accounts || !data.transactions) {
-          throw new Error("Invalid response format from /api/basiq-data");
-        }
-
-        // Sort newest first
-        const sortedTxns = data.transactions.sort(
-          (a: Transaction, b: Transaction) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-
-        setAccounts(data.accounts);
-        setTransactions(sortedTxns);
+        setAccounts(data.accounts || []);
+        setTransactions(data.transactions || []);
+        setMode(data.mode || (basiqUserId ? "live" : "demo"));
       } catch (err: any) {
-        console.error("❌ Error fetching Basiq data:", err);
-        setError(err.message || "Unknown error");
+        console.error("❌ Failed to load data:", err);
+        setError(err.message || "Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -61,5 +52,5 @@ export function useBasiqData(userId?: string): BasiqData {
     fetchData();
   }, [userId]);
 
-  return { accounts, transactions, loading, error };
+  return { accounts, transactions, loading, error, mode };
 }

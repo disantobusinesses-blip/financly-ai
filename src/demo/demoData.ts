@@ -1,6 +1,30 @@
 // src/demo/demoData.ts
 import { Transaction, SavingsPlan } from "../types";
 
+export const demoAccounts = [
+  {
+    id: "acc1",
+    name: "Everyday Account",
+    type: "Checking",
+    balance: 2450.75,
+    institution: "Demo Bank",
+  },
+  {
+    id: "acc2",
+    name: "Savings Account",
+    type: "Savings",
+    balance: 8200.1,
+    institution: "Demo Bank",
+  },
+  {
+    id: "acc3",
+    name: "Credit Card",
+    type: "Credit Card",
+    balance: -1250.45,
+    institution: "Demo Bank",
+  },
+];
+
 export const demoTransactions: Transaction[] = [
   {
     id: "1",
@@ -52,38 +76,35 @@ export const demoTransactions: Transaction[] = [
   },
   {
     id: "7",
-    accountId: "acc1",
-    description: "Uber Eats",
-    amount: -35.4,
-    date: "2025-08-14",
-    category: "Food & Drink",
+    accountId: "acc2",
+    description: "Interest Earned",
+    amount: 25.5,
+    date: "2025-08-15",
+    category: "Income",
   },
   {
     id: "8",
-    accountId: "acc1",
-    description: "Gym Membership",
-    amount: -60,
-    date: "2025-08-15",
-    category: "Subscriptions",
+    accountId: "acc3",
+    description: "Flight Booking",
+    amount: -650,
+    date: "2025-08-18",
+    category: "Travel",
   },
 ];
 
-export const demoBalance = 5000;
-
-export const demoSavingsPlan: SavingsPlan = {
-  totalMonthlySavings: 1000, // big number so forecast shows large optimized gain
-  newGoalDate: "2026-01-01",
-  monthsSaved: 12,
-  suggestions: [
-    {
-      category: "Food & Drink",
-      monthlyCut: 100,
-      description: "Cut eating out by $100/month",
-    },
-    {
-      category: "Subscriptions",
-      monthlyCut: 20,
-      description: "Cancel unused subscriptions",
-    },
-  ],
-};
+export const demoSavingsPlans: SavingsPlan[] = [
+  {
+    id: "plan1",
+    name: "Holiday Fund",
+    targetAmount: 5000,
+    currentAmount: 2000,
+    monthlyContribution: 400,
+  },
+  {
+    id: "plan2",
+    name: "Emergency Savings",
+    targetAmount: 10000,
+    currentAmount: 6000,
+    monthlyContribution: 300,
+  },
+];
