@@ -11,8 +11,8 @@ export default async function handler(req, res) {
 
   const { userId } = req.query;
 
-  // --- DEMO MODE ---
-  if (!userId) {
+  // ✅ DEMO MODE if no ID or invalid ID
+  if (!userId || !userId.startsWith("u-")) {
     return res.status(200).json({
       mode: "demo",
       accounts: demoAccounts,

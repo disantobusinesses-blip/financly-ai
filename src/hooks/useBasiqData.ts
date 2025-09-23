@@ -18,29 +18,28 @@ export function useBasiqData(userId?: string): BasiqData {
   const [mode, setMode] = useState<"demo" | "live">("demo");
 
   useEffect(() => {
-    const basiqUserId = userId || localStorage.getItem("basiqUserId") || "";
+    const storedId = localStorage.getItem("basiqUserId") || "";
+    const basiqUserId = userId || storedId;
+
+    // ✅ Only consider valid if it looks like a real Basiq ID
+    const isValidUserId = basiqUserId.startsWith("u-");
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // ✅ Demo mode: no userId
-        const url = basiqUserId
+        const url = isValidUserId
           ? `/api/basiq-data?userId=${basiqUserId}`
           : `/api/basiq-data`;
 
         const res = await fetch(url);
-
-        if (!res.ok) {
-          throw new Error(`API error ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`API error ${res.status}`);
 
         const data = await res.json();
-
         setAccounts(data.accounts || []);
         setTransactions(data.transactions || []);
-        setMode(data.mode || (basiqUserId ? "live" : "demo"));
+        setMode(data.mode || (isValidUserId ? "live" : "demo"));
       } catch (err: any) {
         console.error("❌ Failed to load data:", err);
         setError(err.message || "Failed to load data");
