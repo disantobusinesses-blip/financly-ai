@@ -1,4 +1,3 @@
-// api/basiq-data.js
 import { demoAccounts, demoTransactions } from "../src/demo/demoData";
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
@@ -11,8 +10,8 @@ export default async function handler(req, res) {
 
   const { userId } = req.query;
 
-  // ✅ DEMO MODE if no ID or invalid ID
-  if (!userId || !userId.startsWith("u-")) {
+  // ✅ DEMO MODE if userId missing, empty, or not starting with "u-"
+  if (!userId || typeof userId !== "string" || !userId.startsWith("u-")) {
     return res.status(200).json({
       mode: "demo",
       accounts: demoAccounts,

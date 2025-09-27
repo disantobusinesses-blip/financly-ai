@@ -1,4 +1,3 @@
-// src/hooks/useBasiqData.ts
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
 
@@ -21,17 +20,18 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ Only consider valid if it looks like a real Basiq ID
-    const isValidUserId = basiqUserId.startsWith("u-");
+    // ✅ Only treat as valid if it looks like a real Basiq ID
+    const isValidUserId = typeof basiqUserId === "string" && basiqUserId.startsWith("u-");
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const url = isValidUserId
-          ? `/api/basiq-data?userId=${basiqUserId}`
-          : `/api/basiq-data`;
+        const url =
+          isValidUserId && basiqUserId
+            ? `/api/basiq-data?userId=${basiqUserId}`
+            : `/api/basiq-data`;
 
         const res = await fetch(url);
         if (!res.ok) throw new Error(`API error ${res.status}`);
