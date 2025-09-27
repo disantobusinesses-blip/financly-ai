@@ -10,7 +10,6 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
-import ProFeatureBlocker from "./ProFeatureBlocker";
 
 // Demo data imports
 import {
@@ -28,7 +27,6 @@ export default function Dashboard() {
   const { accounts, transactions, loading, error } = useBasiqData("real-user-id");
 
   // Derived values
-  const txns = isDemo ? demoTransactions : transactions;
   const totalBalance = isDemo
     ? demoBalance
     : accounts.reduce((s, a) => s + a.balance, 0);
