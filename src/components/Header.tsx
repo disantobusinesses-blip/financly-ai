@@ -1,5 +1,5 @@
 import React from "react";
-import { useRouter } from "next/router"; // ✅ Next.js 12; if you’re on 13+, change to "next/navigation"
+import { useRouter } from "next/navigation"; // ✅ Next.js 13+ App Router
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
 
@@ -22,7 +22,7 @@ const Header: React.FC = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      localStorage.removeItem("basiqUserId"); // clear stored ID
+      localStorage.removeItem("basiqUserId");
       router.push("/"); // ✅ back to welcome screen
     } catch (err) {
       console.error("❌ Logout error:", err);
