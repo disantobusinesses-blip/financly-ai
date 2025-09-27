@@ -1,5 +1,5 @@
 import React from "react";
-import { useRouter } from "next/navigation"; // ✅ Next.js 13+ App Router
+import { useRouter } from "next/router"; // ✅ Next.js 12 (pages router)
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
 
@@ -12,7 +12,7 @@ const Header: React.FC = () => {
     try {
       const { consentUrl, userId } = await initiateBankConnection(user.email);
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl; // redirect to Basiq consent
+      window.location.href = consentUrl;
     } catch (err) {
       console.error("❌ Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -23,7 +23,7 @@ const Header: React.FC = () => {
     try {
       await logout();
       localStorage.removeItem("basiqUserId");
-      router.push("/"); // ✅ back to welcome screen
+      router.push("/"); // back to welcome screen
     } catch (err) {
       console.error("❌ Logout error:", err);
     }
