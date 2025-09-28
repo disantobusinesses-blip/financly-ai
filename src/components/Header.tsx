@@ -1,18 +1,18 @@
 import React from "react";
-import { useRouter } from "next/router"; // ✅ Next.js 12 (pages router)
+import { useNavigate } from "react-router-dom"; // ✅ React Router for Vite/CRA
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
     try {
       const { consentUrl, userId } = await initiateBankConnection(user.email);
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl;
+      window.location.href = consentUrl; // redirect to Basiq sandbox consent
     } catch (err) {
       console.error("❌ Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -23,7 +23,7 @@ const Header: React.FC = () => {
     try {
       await logout();
       localStorage.removeItem("basiqUserId");
-      router.push("/"); // back to welcome screen
+      navigate("/"); // ✅ go back to welcome screen
     } catch (err) {
       console.error("❌ Logout error:", err);
     }
@@ -33,7 +33,7 @@ const Header: React.FC = () => {
     <header className="bg-white dark:bg-neutral-900 shadow px-4 py-3 flex items-center justify-between">
       <h1
         className="text-xl font-bold text-primary cursor-pointer"
-        onClick={() => router.push("/")}
+        onClick={() => navigate("/")}
       >
         Financly AI
       </h1>
@@ -56,13 +56,13 @@ const Header: React.FC = () => {
         ) : (
           <>
             <button
-              onClick={() => router.push("/login")}
+              onClick={() => navigate("/login")}
               className="px-4 py-2 bg-primary text-white rounded"
             >
               Login
             </button>
             <button
-              onClick={() => router.push("/signup")}
+              onClick={() => navigate("/signup")}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded"
             >
               Sign Up
