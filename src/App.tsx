@@ -1,5 +1,4 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useState } from "react";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -8,32 +7,28 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
+  const [/*showSyncing*/, /*setShowSyncing*/] = useState(false);
 
+  // Not logged in → show welcome first
+  if (!user) return <WelcomeScreen />;
+
+  // Logged in → header + dashboard
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      {/* Only show Header if user is logged in */}
-      {user && <Header />}
-
+      <Header />
       <main className="p-6">
-        <Routes>
-          <Route path="/" element={<WelcomeScreen />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
+        <Dashboard />
       </main>
     </div>
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <AuthProvider>
-      <ThemeProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </ThemeProvider>
-    </AuthProvider>
-  );
-};
+const App: React.FC = () => (
+  <AuthProvider>
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  </AuthProvider>
+);
 
 export default App;
