@@ -10,7 +10,7 @@ const Header: React.FC = () => {
     try {
       const { consentUrl, userId } = await initiateBankConnection(user.email);
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl; // Basiq consent
+      window.location.href = consentUrl;
     } catch (err) {
       console.error("Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -21,7 +21,7 @@ const Header: React.FC = () => {
     try {
       await logout();
       localStorage.removeItem("basiqUserId");
-      window.location.href = "/"; // back to welcome screen
+      window.location.href = "/";
     } catch (err) {
       console.error("Logout error:", err);
     }

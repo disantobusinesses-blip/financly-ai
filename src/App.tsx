@@ -3,25 +3,33 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
+
+  return (
+    <div className="min-h-screen bg-background text-text-primary">
+      {/* Only show Header if user is logged in */}
+      {user && <Header />}
+
+      <main className="p-6">
+        <Routes>
+          <Route path="/" element={<WelcomeScreen />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </main>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <ThemeProvider>
         <Router>
-          <div className="min-h-screen bg-background text-text-primary">
-            <Header />
-            <main className="p-6">
-              <Routes>
-                {/* ✅ Show welcome at root */}
-                <Route path="/" element={<WelcomeScreen />} />
-                {/* Dashboard on its own route */}
-                <Route path="/dashboard" element={<Dashboard />} />
-              </Routes>
-            </main>
-          </div>
+          <AppContent />
         </Router>
       </ThemeProvider>
     </AuthProvider>
