@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -10,6 +10,9 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
+import { initiateBankConnection } from "../services/BankingService";
+
+// Demo data
 import {
   demoTransactions,
   demoBalance,
@@ -18,28 +21,68 @@ import {
 } from "../demo/demoData";
 
 export default function Dashboard() {
-  const [forceDemo, setForceDemo] = useState(false);
+  const [mode, setMode] = useState<"none" | "demo" | "live">("none");
 
-  // Hook now reads localStorage for basiqUserId
-  const { accounts, transactions, loading, error, mode } = useBasiqData();
+  // Grab Basiq userId from localStorage if it exists
+  const basiqUserId = localStorage.getItem("basiqUserId") || undefined;
 
-  // Final mode = forced demo OR hook’s detected mode
-  const effectiveMode: "demo" | "live" = forceDemo ? "demo" : mode;
+  // Hook only used when live
+  const { accounts, transactions, loading, error } = useBasiqData(
+    mode === "live" ? basiqUserId : undefined
+  );
 
-  const totalBalance =
-    effectiveMode === "demo"
-      ? demoBalance
-      : accounts.reduce((s, a) => s + a.balance, 0);
+  // Auto-load live mode if a userId is already stored
+  useEffect(() => {
+    if (basiqUserId) {
+      setMode("live");
+    }
+  }, [basiqUserId]);
 
-  // --- DEMO MODE ---
-  if (effectiveMode === "demo") {
+  const handleDemoClick = () => {
+    setMode("demo");
+  };
+
+  const handleConnectBank = async () => {
+    try {
+      // For sandbox you can default to demo@financly.com
+      const { consentUrl, userId } = await initiateBankConnection("demo@financly.com");
+      localStorage.setItem("basiqUserId", userId);
+      window.location.href = consentUrl; // Redirect to consent flow
+    } catch (err) {
+      console.error("❌ Failed to start bank connection:", err);
+      alert("Unable to connect to bank right now.");
+    }
+  };
+
+  // Initial screen: no mode chosen yet
+  if (mode === "none") {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+        <button
+          onClick={handleDemoClick}
+          className="px-6 py-3 bg-primary text-white rounded-lg"
+        >
+          Show Demo Account
+        </button>
+        <button
+          onClick={handleConnectBank}
+          className="px-6 py-3 bg-green-600 text-white rounded-lg"
+        >
+          Connect Bank (Sandbox)
+        </button>
+      </div>
+    );
+  }
+
+  // DEMO MODE
+  if (mode === "demo") {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setForceDemo(false)}
-          className="px-4 py-2 bg-primary text-white rounded"
+          onClick={handleConnectBank}
+          className="px-4 py-2 bg-green-600 text-white rounded"
         >
-          Switch to Live Mode
+          Switch to Real Connection
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -87,29 +130,18 @@ export default function Dashboard() {
     );
   }
 
-  // --- LIVE MODE ---
+  // LIVE MODE
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
-        <button
-          onClick={() => setForceDemo(true)}
-          className="mb-4 px-4 py-2 bg-primary text-white rounded"
-        >
-          Back to Demo Mode
-        </button>
-        Loading your financial data...
-      </div>
-    );
+    return <div className="flex items-center justify-center h-screen">Loading your data...</div>;
   }
-
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-red-500">
+      <div className="flex flex-col items-center justify-center h-screen space-y-4 text-red-600">
         <button
-          onClick={() => setForceDemo(true)}
-          className="mb-4 px-4 py-2 bg-primary text-white rounded"
+          onClick={handleDemoClick}
+          className="px-4 py-2 bg-primary text-white rounded"
         >
-          Back to Demo Mode
+          Back to Demo Account
         </button>
         Failed to load data: {error}
       </div>
@@ -119,10 +151,10 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       <button
-        onClick={() => setForceDemo(true)}
+        onClick={handleDemoClick}
         className="px-4 py-2 bg-primary text-white rounded"
       >
-        Switch to Demo Mode
+        Switch to Demo Account
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -130,7 +162,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={totalBalance}
+              totalBalance={accounts.reduce((s, a) => s + a.balance, 0)}
               savingsPlan={null}
             />
           </div>
