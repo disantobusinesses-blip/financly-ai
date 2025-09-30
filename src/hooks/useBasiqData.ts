@@ -1,3 +1,4 @@
+// src/hooks/useBasiqData.ts
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
 import { BankingService } from "../services/BankingService";
@@ -21,7 +22,6 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ live if we have any non-empty string ID
     const isLive = typeof basiqUserId === "string" && basiqUserId.length > 0;
     const currentMode: "demo" | "live" = isLive ? "live" : "demo";
 
@@ -30,8 +30,9 @@ export function useBasiqData(userId?: string): BasiqData {
       setError(null);
 
       try {
-        const accs = await BankingService.getAccounts(currentMode, basiqUserId);
-        const txns = await BankingService.getTransactions(currentMode, basiqUserId);
+        // ✅ only pass one arg now
+        const accs = await BankingService.getAccounts(basiqUserId);
+        const txns = await BankingService.getTransactions(basiqUserId);
 
         setAccounts(accs);
         setTransactions(txns);
