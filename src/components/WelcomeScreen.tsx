@@ -3,11 +3,11 @@ import { initiateBankConnection } from "../services/BankingService";
 import { useAuth } from "../contexts/AuthContext";
 
 const WelcomeScreen: React.FC = () => {
-  const { login, signup } = useAuth();
+  const { openLoginModal, openSignupModal } = useAuth();
 
   const handleDemoClick = () => {
-    localStorage.removeItem("basiqUserId"); // ensure demo mode
-    window.location.href = "/dashboard";
+    localStorage.removeItem("basiqUserId");
+    window.location.reload();
   };
 
   const handleConnectBank = async () => {
@@ -44,14 +44,14 @@ const WelcomeScreen: React.FC = () => {
         </button>
 
         <button
-          onClick={login}
+          onClick={openLoginModal}
           className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg w-full"
         >
           Login
         </button>
 
         <button
-          onClick={signup}
+          onClick={openSignupModal}
           className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg w-full"
         >
           Sign Up

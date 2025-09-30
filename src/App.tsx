@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -7,7 +7,6 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [forceDemo, setForceDemo] = useState(false);
   const [hasBasiqUser, setHasBasiqUser] = useState(false);
 
   useEffect(() => {
@@ -15,8 +14,8 @@ const AppContent: React.FC = () => {
     setHasBasiqUser(!!basiqId);
   }, []);
 
-  // Show Welcome screen if no user, no demo, no Basiq connection
-  if (!user && !forceDemo && !hasBasiqUser) {
+  // Show Welcome screen if no user and no Basiq connection
+  if (!user && !hasBasiqUser) {
     return <WelcomeScreen />;
   }
 
