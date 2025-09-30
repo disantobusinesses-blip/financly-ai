@@ -1,10 +1,12 @@
 import React from "react";
 import { initiateBankConnection } from "../services/BankingService";
+import { useAuth } from "../contexts/AuthContext";
 
 const WelcomeScreen: React.FC = () => {
+  const { login, signup } = useAuth();
+
   const handleDemoClick = () => {
-    // Clear any stored userId so hook falls back to demo
-    localStorage.removeItem("basiqUserId");
+    localStorage.removeItem("basiqUserId"); // ensure demo mode
     window.location.href = "/dashboard";
   };
 
@@ -12,33 +14,47 @@ const WelcomeScreen: React.FC = () => {
     try {
       const { consentUrl, userId } = await initiateBankConnection("demo@financly.com");
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl; // Redirect to sandbox login
+      window.location.href = consentUrl;
     } catch (err) {
-      console.error("❌ Failed to initiate bank connection:", err);
-      alert("Unable to start bank connection right now.");
+      console.error("❌ Failed to start bank connection:", err);
+      alert("Unable to connect bank right now.");
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen space-y-6 bg-background text-text-primary">
-      <h1 className="text-3xl font-bold">Welcome to Financly AI</h1>
-      <p className="text-lg text-gray-600 dark:text-gray-300">
-        Choose how you want to get started
+    <div className="flex flex-col items-center justify-center h-screen bg-background text-text-primary">
+      <h1 className="text-4xl font-bold mb-6">Welcome to Financly AI</h1>
+      <p className="text-lg mb-8 text-gray-600 dark:text-gray-300">
+        Smarter budgeting with AI. Connect your bank or try our demo.
       </p>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 w-64">
         <button
           onClick={handleDemoClick}
-          className="px-6 py-3 bg-primary text-white rounded-lg"
+          className="px-6 py-3 bg-primary text-white rounded-lg w-full"
         >
           Try Demo Account
         </button>
 
         <button
           onClick={handleConnectBank}
-          className="px-6 py-3 bg-green-600 text-white rounded-lg"
+          className="px-6 py-3 bg-green-600 text-white rounded-lg w-full"
         >
           Connect Bank (Sandbox)
+        </button>
+
+        <button
+          onClick={login}
+          className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg w-full"
+        >
+          Login
+        </button>
+
+        <button
+          onClick={signup}
+          className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg w-full"
+        >
+          Sign Up
         </button>
       </div>
     </div>

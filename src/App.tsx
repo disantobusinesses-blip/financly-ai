@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -7,12 +7,20 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [/*showSyncing*/, /*setShowSyncing*/] = useState(false);
+  const [forceDemo, setForceDemo] = useState(false);
+  const [hasBasiqUser, setHasBasiqUser] = useState(false);
 
-  // Not logged in → show welcome first
-  if (!user) return <WelcomeScreen />;
+  useEffect(() => {
+    const basiqId = localStorage.getItem("basiqUserId");
+    setHasBasiqUser(!!basiqId);
+  }, []);
 
-  // Logged in → header + dashboard
+  // Show Welcome screen if no user, no demo, no Basiq connection
+  if (!user && !forceDemo && !hasBasiqUser) {
+    return <WelcomeScreen />;
+  }
+
+  // Otherwise → Dashboard
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <Header />
