@@ -10,8 +10,6 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
-
-// Demo data imports
 import {
   demoTransactions,
   demoBalance,
@@ -20,30 +18,31 @@ import {
 } from "../demo/demoData";
 
 export default function Dashboard() {
-  // ✅ User can toggle between Demo and Live
-  const [isDemo, setIsDemo] = useState(true);
+  const [forceDemo, setForceDemo] = useState(false);
 
-  // Live data hook
-  const { accounts, transactions, loading, error } = useBasiqData("real-user-id");
+  // Hook now reads localStorage for basiqUserId
+  const { accounts, transactions, loading, error, mode } = useBasiqData();
 
-  // Derived values
-  const totalBalance = isDemo
-    ? demoBalance
-    : accounts.reduce((s, a) => s + a.balance, 0);
+  // Final mode = forced demo OR hook’s detected mode
+  const effectiveMode: "demo" | "live" = forceDemo ? "demo" : mode;
 
-  // --- DEMO MODE: no API calls ---
-  if (isDemo) {
+  const totalBalance =
+    effectiveMode === "demo"
+      ? demoBalance
+      : accounts.reduce((s, a) => s + a.balance, 0);
+
+  // --- DEMO MODE ---
+  if (effectiveMode === "demo") {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setIsDemo(false)}
+          onClick={() => setForceDemo(false)}
           className="px-4 py-2 bg-primary text-white rounded"
         >
           Switch to Live Mode
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
               <SpendingForecast
@@ -66,7 +65,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Right column */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
               <UpcomingBills accounts={demoAccounts} />
@@ -89,12 +87,12 @@ export default function Dashboard() {
     );
   }
 
-  // --- LIVE MODE: uses API ---
+  // --- LIVE MODE ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
         <button
-          onClick={() => setIsDemo(true)}
+          onClick={() => setForceDemo(true)}
           className="mb-4 px-4 py-2 bg-primary text-white rounded"
         >
           Back to Demo Mode
@@ -108,7 +106,7 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-red-500">
         <button
-          onClick={() => setIsDemo(true)}
+          onClick={() => setForceDemo(true)}
           className="mb-4 px-4 py-2 bg-primary text-white rounded"
         >
           Back to Demo Mode
@@ -121,14 +119,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       <button
-        onClick={() => setIsDemo(true)}
+        onClick={() => setForceDemo(true)}
         className="px-4 py-2 bg-primary text-white rounded"
       >
         Switch to Demo Mode
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
@@ -151,7 +148,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Right column */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <UpcomingBills accounts={accounts} />

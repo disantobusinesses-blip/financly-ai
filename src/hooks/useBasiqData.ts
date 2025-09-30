@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
+import { BankingService } from "../services/BankingService";
 
 interface BasiqData {
   accounts: Account[];
@@ -20,26 +21,21 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ Only treat as valid if it looks like a real Basiq ID
-    const isValidUserId = typeof basiqUserId === "string" && basiqUserId.startsWith("u-");
+    // ✅ live if we have any non-empty string ID
+    const isLive = typeof basiqUserId === "string" && basiqUserId.length > 0;
+    const currentMode: "demo" | "live" = isLive ? "live" : "demo";
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const url =
-          isValidUserId && basiqUserId
-            ? `/api/basiq-data?userId=${basiqUserId}`
-            : `/api/basiq-data`;
+        const accs = await BankingService.getAccounts(currentMode, basiqUserId);
+        const txns = await BankingService.getTransactions(currentMode, basiqUserId);
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-
-        const data = await res.json();
-        setAccounts(data.accounts || []);
-        setTransactions(data.transactions || []);
-        setMode(data.mode || (isValidUserId ? "live" : "demo"));
+        setAccounts(accs);
+        setTransactions(txns);
+        setMode(currentMode);
       } catch (err: any) {
         console.error("❌ Failed to load data:", err);
         setError(err.message || "Failed to load data");

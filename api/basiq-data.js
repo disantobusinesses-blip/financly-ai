@@ -1,3 +1,4 @@
+// api/basiq-data.js
 import { demoAccounts, demoTransactions } from "../src/demo/demoData";
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
@@ -10,8 +11,8 @@ export default async function handler(req, res) {
 
   const { userId } = req.query;
 
-  // ✅ DEMO MODE if userId missing, empty, or not starting with "u-"
-  if (!userId || typeof userId !== "string" || !userId.startsWith("u-")) {
+  // ✅ Demo mode if no userId provided
+  if (!userId || typeof userId !== "string") {
     return res.status(200).json({
       mode: "demo",
       accounts: demoAccounts,
@@ -19,7 +20,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // --- REAL BASIQ MODE ---
   try {
     if (!BASIQ_API_KEY) {
       return res
@@ -37,57 +37,36 @@ export default async function handler(req, res) {
       },
       body: new URLSearchParams({ scope: "SERVER_ACCESS" }),
     });
-
     if (!tokenRes.ok) {
       const errorText = await tokenRes.text();
-      return res.status(500).json({
-        error: "Failed to get BASIQ token",
-        details: errorText,
-      });
+      return res.status(500).json({ error: "Failed to get BASIQ token", details: errorText });
     }
-
     const { access_token: SERVER_TOKEN } = await tokenRes.json();
 
     // Step 2: Fetch accounts
-    const accountsRes = await fetch(
-      `${BASIQ_API_URL}/users/${userId}/accounts`,
-      {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "basiq-version": "3.0",
-        },
-      }
-    );
-
+    const accountsRes = await fetch(`${BASIQ_API_URL}/users/${userId}/accounts`, {
+      headers: {
+        Authorization: `Bearer ${SERVER_TOKEN}`,
+        "basiq-version": "3.0",
+      },
+    });
     if (!accountsRes.ok) {
       const errorText = await accountsRes.text();
-      return res.status(500).json({
-        error: "Failed to fetch accounts",
-        details: errorText,
-      });
+      return res.status(500).json({ error: "Failed to fetch accounts", details: errorText });
     }
-
     const accountsData = await accountsRes.json();
 
     // Step 3: Fetch transactions
-    const txRes = await fetch(
-      `${BASIQ_API_URL}/users/${userId}/transactions`,
-      {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "basiq-version": "3.0",
-        },
-      }
-    );
-
+    const txRes = await fetch(`${BASIQ_API_URL}/users/${userId}/transactions`, {
+      headers: {
+        Authorization: `Bearer ${SERVER_TOKEN}`,
+        "basiq-version": "3.0",
+      },
+    });
     if (!txRes.ok) {
       const errorText = await txRes.text();
-      return res.status(500).json({
-        error: "Failed to fetch transactions",
-        details: errorText,
-      });
+      return res.status(500).json({ error: "Failed to fetch transactions", details: errorText });
     }
-
     const transactionsData = await txRes.json();
 
     return res.status(200).json({
@@ -97,9 +76,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("❌ Unexpected error:", err);
-    return res.status(500).json({
-      error: "Unexpected server error",
-      details: err.message,
-    });
+    return res.status(500).json({ error: "Unexpected server error", details: err.message });
   }
 }

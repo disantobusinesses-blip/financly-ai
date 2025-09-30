@@ -1,12 +1,12 @@
 // api/create-consent-session.js
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
-const BASIQ_API_URL = 'https://au-api.basiq.io';
+const BASIQ_API_URL = "https://au-api.basiq.io";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
+  if (req.method !== "POST") {
+    return res.status(405).send("Method Not Allowed");
   }
 
   try {
@@ -19,25 +19,25 @@ export default async function handler(req, res) {
 
     // 1. Get server token
     const serverTokRes = await fetch(`${BASIQ_API_URL}/token`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: authorizationHeader,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'basiq-version': '3.0',
+        "Content-Type": "application/x-www-form-urlencoded",
+        "basiq-version": "3.0",
       },
-      body: new URLSearchParams({ scope: 'SERVER_ACCESS' }),
+      body: new URLSearchParams({ scope: "SERVER_ACCESS" }),
     });
     if (!serverTokRes.ok) throw new Error(await serverTokRes.text());
     const { access_token: SERVER_TOKEN } = await serverTokRes.json();
 
-    // 2. Create or fetch user
+    // 2. Create or reuse sandbox user
     let userId;
     const userRes = await fetch(`${BASIQ_API_URL}/users`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${SERVER_TOKEN}`,
-        'Content-Type': 'application/json',
-        'basiq-version': '3.0',
+        "Content-Type": "application/json",
+        "basiq-version": "3.0",
       },
       body: JSON.stringify({ email }),
     });
@@ -46,30 +46,33 @@ export default async function handler(req, res) {
       const user = await userRes.json();
       userId = user.id;
     } else if (userRes.status === 409) {
-      // User already exists → look it up
-      const lookupRes = await fetch(`${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`, {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          'basiq-version': '3.0',
-        },
-      });
+      const lookupRes = await fetch(
+        `${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${SERVER_TOKEN}`,
+            "basiq-version": "3.0",
+          },
+        }
+      );
       if (!lookupRes.ok) throw new Error(await lookupRes.text());
       const { data } = await lookupRes.json();
-      if (!data || data.length === 0) throw new Error("User exists but could not be fetched");
+      if (!data || data.length === 0)
+        throw new Error("User exists but could not be fetched");
       userId = data[0].id;
     } else {
       throw new Error(await userRes.text());
     }
 
-    // 3. Get client token
+    // 3. Get client token for consent
     const clientTokRes = await fetch(`${BASIQ_API_URL}/token`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: authorizationHeader,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'basiq-version': '3.0',
+        "Content-Type": "application/x-www-form-urlencoded",
+        "basiq-version": "3.0",
       },
-      body: new URLSearchParams({ scope: 'CLIENT_ACCESS', userId }),
+      body: new URLSearchParams({ scope: "CLIENT_ACCESS", userId }),
     });
     if (!clientTokRes.ok) throw new Error(await clientTokRes.text());
     const { access_token: CLIENT_TOKEN } = await clientTokRes.json();
@@ -78,7 +81,7 @@ export default async function handler(req, res) {
 
     res.json({ consentUrl, userId });
   } catch (err) {
-    console.error('❌ Error in /api/create-consent-session:', err);
+    console.error("❌ Error in /api/create-consent-session:", err);
     res.status(500).json({ error: String(err) });
   }
 }
