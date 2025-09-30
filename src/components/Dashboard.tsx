@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -10,9 +10,8 @@ import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
-import { initiateBankConnection } from "../services/BankingService";
 
-// Demo data
+// Demo data imports
 import {
   demoTransactions,
   demoBalance,
@@ -21,71 +20,34 @@ import {
 } from "../demo/demoData";
 
 export default function Dashboard() {
-  const [mode, setMode] = useState<"none" | "demo" | "live">("none");
+  const [isDemo, setIsDemo] = useState(true);
 
-  // Grab Basiq userId from localStorage if it exists
-  const basiqUserId = localStorage.getItem("basiqUserId") || undefined;
+  useEffect(() => {
+    const demoFlag = localStorage.getItem("demoMode") === "true";
+    const basiqId = localStorage.getItem("basiqUserId");
 
-  // Hook only used when live
+    if (basiqId) {
+      setIsDemo(false); // ✅ connected → live
+    } else {
+      setIsDemo(demoFlag); // ✅ otherwise demo
+    }
+  }, []);
+
+  // Live data hook (ignored if demo)
   const { accounts, transactions, loading, error } = useBasiqData(
-    mode === "live" ? basiqUserId : undefined
+    localStorage.getItem("basiqUserId") || undefined
   );
 
-  // Auto-load live mode if a userId is already stored
-  useEffect(() => {
-    if (basiqUserId) {
-      setMode("live");
-    }
-  }, [basiqUserId]);
+  const totalBalance = isDemo
+    ? demoBalance
+    : accounts.reduce((s, a) => s + a.balance, 0);
 
-  const handleDemoClick = () => {
-    setMode("demo");
-  };
-
-  const handleConnectBank = async () => {
-    try {
-      // For sandbox you can default to demo@financly.com
-      const { consentUrl, userId } = await initiateBankConnection("demo@financly.com");
-      localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl; // Redirect to consent flow
-    } catch (err) {
-      console.error("❌ Failed to start bank connection:", err);
-      alert("Unable to connect to bank right now.");
-    }
-  };
-
-  // Initial screen: no mode chosen yet
-  if (mode === "none") {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <button
-          onClick={handleDemoClick}
-          className="px-6 py-3 bg-primary text-white rounded-lg"
-        >
-          Show Demo Account
-        </button>
-        <button
-          onClick={handleConnectBank}
-          className="px-6 py-3 bg-green-600 text-white rounded-lg"
-        >
-          Connect Bank (Sandbox)
-        </button>
-      </div>
-    );
-  }
-
-  // DEMO MODE
-  if (mode === "demo") {
+  // --- DEMO MODE ---
+  if (isDemo) {
     return (
       <div className="space-y-4">
-        <button
-          onClick={handleConnectBank}
-          className="px-4 py-2 bg-green-600 text-white rounded"
-        >
-          Switch to Real Connection
-        </button>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+          {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
               <SpendingForecast
@@ -108,6 +70,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Right column */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
               <UpcomingBills accounts={demoAccounts} />
@@ -130,19 +93,18 @@ export default function Dashboard() {
     );
   }
 
-  // LIVE MODE
+  // --- LIVE MODE ---
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading your data...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
+        Loading your financial data...
+      </div>
+    );
   }
+
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4 text-red-600">
-        <button
-          onClick={handleDemoClick}
-          className="px-4 py-2 bg-primary text-white rounded"
-        >
-          Back to Demo Account
-        </button>
+      <div className="flex flex-col items-center justify-center h-screen text-red-500">
         Failed to load data: {error}
       </div>
     );
@@ -150,19 +112,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={handleDemoClick}
-        className="px-4 py-2 bg-primary text-white rounded"
-      >
-        Switch to Demo Account
-      </button>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={accounts.reduce((s, a) => s + a.balance, 0)}
+              totalBalance={totalBalance}
               savingsPlan={null}
             />
           </div>
@@ -180,6 +136,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Right column */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <UpcomingBills accounts={accounts} />

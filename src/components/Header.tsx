@@ -9,8 +9,12 @@ const Header: React.FC = () => {
     if (!user?.email) return;
     try {
       const { consentUrl, userId } = await initiateBankConnection(user.email);
+
+      // ✅ Save Basiq userId and clear demo mode
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl;
+      localStorage.removeItem("demoMode");
+
+      window.location.href = consentUrl; // Redirect to Basiq consent
     } catch (err) {
       console.error("Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -21,7 +25,8 @@ const Header: React.FC = () => {
     try {
       await logout();
       localStorage.removeItem("basiqUserId");
-      window.location.href = "/";
+      localStorage.setItem("demoMode", "true"); // ✅ fallback to demo after logout
+      window.location.href = "/"; // back to welcome screen
     } catch (err) {
       console.error("Logout error:", err);
     }
