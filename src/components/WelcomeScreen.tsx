@@ -1,22 +1,18 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { initiateBankConnection } from "../services/BankingService";
 
 const WelcomeScreen: React.FC = () => {
-  const navigate = useNavigate();
-
   const handleDemoClick = () => {
-    // Clear any existing Basiq userId so hook falls back to demo
+    // Clear any stored userId so hook falls back to demo
     localStorage.removeItem("basiqUserId");
-    navigate("/dashboard");
+    window.location.href = "/dashboard";
   };
 
   const handleConnectBank = async () => {
     try {
-      // For sandbox you can default to demo@financly.com
       const { consentUrl, userId } = await initiateBankConnection("demo@financly.com");
       localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl; // Redirect to Basiq sandbox login
+      window.location.href = consentUrl; // Redirect to sandbox login
     } catch (err) {
       console.error("❌ Failed to initiate bank connection:", err);
       alert("Unable to start bank connection right now.");
