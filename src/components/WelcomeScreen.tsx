@@ -1,7 +1,6 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from './icon/Icon';
-import { initiateBankConnection } from '../services/BankingService';
+import React from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
   <div className="bg-white/5 p-6 rounded-lg backdrop-blur-sm text-left transition-transform transform hover:scale-105 hover:bg-white/10 shadow-lg hover:shadow-primary/30">
@@ -16,20 +15,10 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: Re
 const WelcomeScreen: React.FC = () => {
   const { setIsLoginModalOpen, setIsSignupModalOpen } = useAuth();
 
-  const handleDemoLogin = () => {
+  const handleDemoClick = () => {
+    localStorage.setItem("demoMode", "true"); // flag demo mode
     localStorage.removeItem("basiqUserId");
     window.location.reload();
-  };
-
-  const handleConnectBank = async () => {
-    try {
-      const { consentUrl, userId } = await initiateBankConnection("demo@financly.com");
-      localStorage.setItem("basiqUserId", userId);
-      window.location.href = consentUrl;
-    } catch (err) {
-      console.error("❌ Failed to connect bank:", err);
-      alert("Unable to connect bank right now.");
-    }
   };
 
   return (
@@ -40,13 +29,11 @@ const WelcomeScreen: React.FC = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/20 rounded-full filter blur-3xl opacity-50 animate-pulse animation-delay-4000"></div>
 
       <div className="relative z-10 text-center p-8 max-w-5xl mx-auto">
-        {/* Logo + tagline */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <SparklesIcon className="h-7 w-7 text-primary animate-pulse" />
           <span className="text-gray-300 font-medium tracking-wide">Powered By Financly Ai</span>
         </div>
 
-        {/* Headline */}
         <h1 className="text-5xl md:text-6xl font-extrabold mb-6 leading-tight drop-shadow-md">
           Unlock Your Financial <span className="text-primary">Potential</span>.
         </h1>
@@ -70,16 +57,10 @@ const WelcomeScreen: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-wrap justify-center gap-4">
           <button
-            onClick={handleDemoLogin}
+            onClick={handleDemoClick}
             className="px-6 py-3 bg-primary text-white rounded-lg font-medium transition-transform transform hover:scale-105 hover:shadow-lg hover:shadow-primary/40"
           >
             Try Demo Account
-          </button>
-          <button
-            onClick={handleConnectBank}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium transition-transform transform hover:scale-105 hover:shadow-lg hover:shadow-green-400/40"
-          >
-            Connect Bank (Sandbox)
           </button>
           <button
             onClick={() => setIsLoginModalOpen(true)}

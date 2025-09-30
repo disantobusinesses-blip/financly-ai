@@ -7,24 +7,25 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [hasBasiqUser, setHasBasiqUser] = useState(false);
+  const [forceDemo, setForceDemo] = useState(false);
 
   useEffect(() => {
-    const basiqId = localStorage.getItem("basiqUserId");
-    setHasBasiqUser(!!basiqId);
+    // Check if demo mode flag is set
+    const demoFlag = localStorage.getItem("demoMode");
+    setForceDemo(demoFlag === "true");
   }, []);
 
-  // Show Welcome screen if no user and no Basiq connection
-  if (!user && !hasBasiqUser) {
+  // If no login, no basiq connection, and no demo → show WelcomeScreen
+  if (!user && !forceDemo && !localStorage.getItem("basiqUserId")) {
     return <WelcomeScreen />;
   }
 
-  // Otherwise → Dashboard
+  // Otherwise → show Dashboard
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <Header />
       <main className="p-6">
-        <Dashboard />
+        <Dashboard isDemo={forceDemo} />
       </main>
     </div>
   );
