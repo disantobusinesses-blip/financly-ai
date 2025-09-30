@@ -1,5 +1,5 @@
 // api/basiq-data.js
-import { demoAccounts, demoTransactions } from "../src/demo/demoData";
+import { demoAccounts, demoTransactions } from "./demoData.js";
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
