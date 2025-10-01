@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -7,25 +7,17 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
-  const [forceDemo, setForceDemo] = useState(false);
+  const [/*showSyncing*/, /*setShowSyncing*/] = useState(false);
 
-  useEffect(() => {
-    // Check if demo mode flag is set
-    const demoFlag = localStorage.getItem("demoMode");
-    setForceDemo(demoFlag === "true");
-  }, []);
+  // Not logged in → show welcome first
+  if (!user) return <WelcomeScreen />;
 
-  // If no login, no basiq connection, and no demo → show WelcomeScreen
-  if (!user && !forceDemo && !localStorage.getItem("basiqUserId")) {
-    return <WelcomeScreen />;
-  }
-
-  // Otherwise → show Dashboard
+  // Logged in → header + dashboard
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <Header />
       <main className="p-6">
-        <Dashboard isDemo={forceDemo} />
+        <Dashboard />   {/* ✅ no props here */}
       </main>
     </div>
   );
