@@ -1,12 +1,19 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { User } from '../types';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  ReactNode,
+  useEffect,
+} from "react";
+import { User } from "../types";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, pass: string) => boolean;
-  signup: (email: string, pass: string, region: 'AU' | 'US') => boolean;
+  signup: (email: string, pass: string, region: "AU" | "US") => boolean;
   logout: () => void;
   upgradeUser: (userId: string) => void;
+
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isSignupModalOpen: boolean;
@@ -14,98 +21,107 @@ interface AuthContextType {
   isUpgradeModalOpen: boolean;
   setIsUpgradeModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
-  // ✅ new helpers
+  // helpers
   openLoginModal: () => void;
   openSignupModal: () => void;
 }
 
-// --- LocalStorage Simulation ---
+// --- LocalStorage simulation ---
 const db = {
   getUsers: (): any[] => {
-    const users = localStorage.getItem('financly_users');
+    const users = localStorage.getItem("financly_users");
     return users ? JSON.parse(users) : [];
   },
   saveUsers: (users: any[]) => {
-    localStorage.setItem('financly_users', JSON.stringify(users));
+    localStorage.setItem("financly_users", JSON.stringify(users));
   },
   getCurrentUser: (): User | null => {
-    const user = localStorage.getItem('financly_current_user');
+    const user = localStorage.getItem("financly_current_user");
     return user ? JSON.parse(user) : null;
   },
   setCurrentUser: (user: User | null) => {
     if (user) {
-      localStorage.setItem('financly_current_user', JSON.stringify(user));
+      localStorage.setItem("financly_current_user", JSON.stringify(user));
     } else {
-      localStorage.removeItem('financly_current_user');
+      localStorage.removeItem("financly_current_user");
     }
-  }
+  },
 };
+// -------------------------------
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  // Load saved user + seed demo user
+  // On initial load: hydrate user and seed demo account
   useEffect(() => {
     const savedUser = db.getCurrentUser();
     if (savedUser) setUser(savedUser);
 
     const users = db.getUsers();
-    if (!users.find(u => u.email === 'demo@financly.com')) {
+    if (!users.find((u) => u.email === "demo@financly.com")) {
       users.push({
-        id: 'user_demo_123',
-        email: 'demo@financly.com',
-        password: 'demo123',
-        membershipType: 'Pro',
-        region: 'AU'
+        id: "user_demo_123",
+        email: "demo@financly.com",
+        password: "demo123", // plain password for demo
+        membershipType: "Pro",
+        region: "AU",
       });
       db.saveUsers(users);
     }
   }, []);
 
-  const signup = (email: string, pass: string, region: 'AU' | 'US'): boolean => {
+  const signup = (email: string, pass: string, region: "AU" | "US"): boolean => {
     const users = db.getUsers();
-    if (users.find(u => u.email === email)) {
-      alert('An account with this email already exists.');
+    if (users.find((u) => u.email === email)) {
+      alert("An account with this email already exists.");
       return false;
     }
+
     const newUser: User = {
       id: `user_${Date.now()}`,
       email,
-      membershipType: 'Free',
-      region: region
+      membershipType: "Free",
+      region,
     };
+
     const newUserWithPass = { ...newUser, password: pass };
     users.push(newUserWithPass);
     db.saveUsers(users);
 
     setUser(newUser);
     db.setCurrentUser(newUser);
+
     setIsSignupModalOpen(false);
     return true;
   };
 
   const login = (email: string, pass: string): boolean => {
     const users = db.getUsers();
-    const foundUser = users.find(u => u.email === email && u.password === pass);
+    const foundUser = users.find(
+      (u) => u.email === email && u.password === pass
+    );
 
     if (foundUser) {
       const userToSave: User = {
         id: foundUser.id,
         email: foundUser.email,
         membershipType: foundUser.membershipType,
-        region: foundUser.region || 'AU'
+        region: foundUser.region || "AU",
       };
       setUser(userToSave);
       db.setCurrentUser(userToSave);
       setIsLoginModalOpen(false);
       return true;
     }
-    alert('Invalid email or password.');
+
+    alert("Invalid email or password.");
     return false;
   };
 
@@ -116,17 +132,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const upgradeUser = (userId: string) => {
     const users = db.getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-      users[userIndex].membershipType = 'Pro';
+    const idx = users.findIndex((u) => u.id === userId);
+    if (idx !== -1) {
+      users[idx].membershipType = "Pro";
       db.saveUsers(users);
-      const userFromDb = users[userIndex];
+
       const updatedUser: User = {
-        id: userFromDb.id,
-        email: userFromDb.email,
-        membershipType: userFromDb.membershipType,
-        region: userFromDb.region || 'AU'
+        id: users[idx].id,
+        email: users[idx].email,
+        membershipType: users[idx].membershipType,
+        region: users[idx].region || "AU",
       };
+
       setUser(updatedUser);
       db.setCurrentUser(updatedUser);
     }
@@ -147,7 +164,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isUpgradeModalOpen,
         setIsUpgradeModalOpen,
         openLoginModal: () => setIsLoginModalOpen(true),
-        openSignupModal: () => setIsSignupModalOpen(true)
+        openSignupModal: () => setIsSignupModalOpen(true),
       }}
     >
       {children}
@@ -158,7 +175,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
