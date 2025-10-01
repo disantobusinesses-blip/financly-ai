@@ -1,7 +1,5 @@
-// src/hooks/useBasiqData.ts
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
-import { BankingService } from "../services/BankingService";
 
 interface BasiqData {
   accounts: Account[];
@@ -9,6 +7,7 @@ interface BasiqData {
   loading: boolean;
   error: string | null;
   mode: "demo" | "live";
+  fallback: boolean; // ✅ true if backend forced demo after a live failure
 }
 
 export function useBasiqData(userId?: string): BasiqData {
@@ -17,26 +16,35 @@ export function useBasiqData(userId?: string): BasiqData {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"demo" | "live">("demo");
+  const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    const isLive = typeof basiqUserId === "string" && basiqUserId.length > 0;
-    const currentMode: "demo" | "live" = isLive ? "live" : "demo";
+    // ✅ Only treat as valid if looks like a Basiq ID
+    const isValidUserId =
+      typeof basiqUserId === "string" && basiqUserId.startsWith("u-");
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // ✅ only pass one arg now
-        const accs = await BankingService.getAccounts(basiqUserId);
-        const txns = await BankingService.getTransactions(basiqUserId);
+        const url =
+          isValidUserId && basiqUserId
+            ? `/api/basiq-data?userId=${basiqUserId}`
+            : `/api/basiq-data`;
 
-        setAccounts(accs);
-        setTransactions(txns);
-        setMode(currentMode);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+
+        const data = await res.json();
+
+        setAccounts(data.accounts || []);
+        setTransactions(data.transactions || []);
+        setMode(data.mode || (isValidUserId ? "live" : "demo"));
+        setFallback(!!data.error); // ✅ backend attached error means live failed
       } catch (err: any) {
         console.error("❌ Failed to load data:", err);
         setError(err.message || "Failed to load data");
@@ -48,5 +56,5 @@ export function useBasiqData(userId?: string): BasiqData {
     fetchData();
   }, [userId]);
 
-  return { accounts, transactions, loading, error, mode };
+  return { accounts, transactions, loading, error, mode, fallback };
 }
