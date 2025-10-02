@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React from "react";
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -11,89 +11,9 @@ import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import { useBasiqData } from "../hooks/useBasiqData";
 
-// Demo data imports
-import {
-  demoTransactions,
-  demoBalance,
-  demoOptimizationPlan,
-  demoAccounts,
-} from "../demo/demoData";
-
 export default function Dashboard() {
-  const [isDemo, setIsDemo] = useState(true);
+  const { accounts, transactions, loading, error } = useBasiqData();
 
-  useEffect(() => {
-    const demoFlag = localStorage.getItem("demoMode") === "true";
-    const basiqId = localStorage.getItem("basiqUserId");
-
-    if (basiqId) {
-      setIsDemo(false); // ✅ connected → live
-    } else {
-      setIsDemo(demoFlag); // ✅ otherwise demo
-    }
-  }, []);
-
-  // Live data hook (ignored if demo)
-  const { accounts, transactions, loading, error } = useBasiqData(
-    localStorage.getItem("basiqUserId") || undefined
-  );
-
-  const totalBalance = isDemo
-    ? demoBalance
-    : accounts.reduce((s, a) => s + a.balance, 0);
-
-  // --- DEMO MODE ---
-  if (isDemo) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Left column */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <SpendingForecast
-                transactions={demoTransactions}
-                totalBalance={demoBalance}
-                savingsPlan={demoOptimizationPlan}
-              />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <BalanceSummary accounts={demoAccounts} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <CashflowMini transactions={demoTransactions} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <SpendingByCategory transactions={demoTransactions} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <SpendingChart transactions={demoTransactions} />
-            </div>
-          </div>
-
-          {/* Right column */}
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <UpcomingBills accounts={demoAccounts} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <SubscriptionCard />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <FinancialAlerts transactions={demoTransactions} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <TransactionsList transactions={demoTransactions} />
-            </div>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-              <TransactionAnalysis transactions={demoTransactions} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- LIVE MODE ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -110,6 +30,14 @@ export default function Dashboard() {
     );
   }
 
+  if (accounts.length === 0 && transactions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
+        <p>No data yet. Connect your bank to see your dashboard.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -118,8 +46,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={totalBalance}
-              savingsPlan={null}
+              totalBalance={accounts.reduce((s, a) => s + a.balance, 0)}
+              savingsPlan={null} // ✅ live-only, no demo optimization plan
             />
           </div>
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">

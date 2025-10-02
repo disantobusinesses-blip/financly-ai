@@ -6,8 +6,7 @@ interface BasiqData {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  mode: "demo" | "live";
-  fallback: boolean; // ✅ true if backend forced demo after a live failure
+  mode: "live"; // ✅ no demo mode
 }
 
 export function useBasiqData(userId?: string): BasiqData {
@@ -15,25 +14,25 @@ export function useBasiqData(userId?: string): BasiqData {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"demo" | "live">("demo");
-  const [fallback, setFallback] = useState(false);
+  const [mode] = useState<"live">("live");
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ More flexible: accept any non-empty userId
-    const isValidUserId = typeof basiqUserId === "string" && basiqUserId.trim().length > 0;
+    // If no userId yet → blank state
+    if (!basiqUserId) {
+      setAccounts([]);
+      setTransactions([]);
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const url = isValidUserId
-          ? `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`
-          : `/api/basiq-data`;
-
+        const url = `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`API error ${res.status}`);
 
@@ -41,12 +40,8 @@ export function useBasiqData(userId?: string): BasiqData {
 
         setAccounts(data.accounts || []);
         setTransactions(data.transactions || []);
-        setMode(data.mode || (isValidUserId ? "live" : "demo"));
-
-        // ✅ backend sends error → fallback
-        setFallback(!!data.error);
       } catch (err: any) {
-        console.error("❌ Failed to load data:", err);
+        console.error("❌ Failed to load Basiq data:", err);
         setError(err.message || "Failed to load data");
       } finally {
         setLoading(false);
@@ -56,5 +51,5 @@ export function useBasiqData(userId?: string): BasiqData {
     fetchData();
   }, [userId]);
 
-  return { accounts, transactions, loading, error, mode, fallback };
+  return { accounts, transactions, loading, error, mode };
 }
