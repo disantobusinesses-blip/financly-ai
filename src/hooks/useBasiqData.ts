@@ -22,19 +22,17 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ Only treat as valid if looks like a Basiq ID
-    const isValidUserId =
-      typeof basiqUserId === "string" && basiqUserId.startsWith("u-");
+    // ✅ More flexible: accept any non-empty userId
+    const isValidUserId = typeof basiqUserId === "string" && basiqUserId.trim().length > 0;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const url =
-          isValidUserId && basiqUserId
-            ? `/api/basiq-data?userId=${basiqUserId}`
-            : `/api/basiq-data`;
+        const url = isValidUserId
+          ? `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`
+          : `/api/basiq-data`;
 
         const res = await fetch(url);
         if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -44,7 +42,9 @@ export function useBasiqData(userId?: string): BasiqData {
         setAccounts(data.accounts || []);
         setTransactions(data.transactions || []);
         setMode(data.mode || (isValidUserId ? "live" : "demo"));
-        setFallback(!!data.error); // ✅ backend attached error means live failed
+
+        // ✅ backend sends error → fallback
+        setFallback(!!data.error);
       } catch (err: any) {
         console.error("❌ Failed to load data:", err);
         setError(err.message || "Failed to load data");
