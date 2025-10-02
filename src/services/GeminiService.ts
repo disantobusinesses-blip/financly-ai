@@ -124,7 +124,7 @@ export const getBorrowingPower = async (
   totalBalance: number,
   region: User["region"]
 ): Promise<BorrowingPowerResult> => {
-  const { symbol, code } = getCurrencyInfo(region);
+  const { symbol } = getCurrencyInfo(region);
   const creditScoreContext =
     region === "US"
       ? `Credit Score: ${creditScore}/850`
