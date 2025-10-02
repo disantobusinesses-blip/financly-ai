@@ -40,29 +40,50 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, total
   const isOnScreen = useOnScreen(containerRef);
 
   useEffect(() => {
-    if (isOnScreen && !forecast && !loading) {
-      const fetchForecast = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const potentialSavings = savingsPlan?.totalMonthlySavings || 0;
-          const result = await getBalanceForecast(
-            transactions,
-            totalBalance,
-            potentialSavings,
-            user?.region || "AU" // 4th arg required
-          );
-          setForecast(result);
-        } catch (err: any) {
-          console.error("❌ Failed to generate forecast:", err);
-          setError(err.message || "Failed to generate forecast");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchForecast();
-    }
-  }, [isOnScreen, forecast, loading, transactions, totalBalance, savingsPlan, user?.region]);
+  if (isOnScreen && !forecast && !loading) {
+    const fetchForecast = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const potentialSavings = Number(savingsPlan?.totalMonthlySavings) || 0;
+
+        // ✅ Ensure transactions amounts are numbers
+        const cleanedTransactions = transactions.map((t) => ({
+          ...t,
+          amount: typeof t.amount === "string" ? parseFloat(t.amount) : t.amount,
+        }));
+
+        const numericBalance =
+          typeof totalBalance === "string"
+            ? parseFloat(totalBalance)
+            : totalBalance;
+
+        const result = await getBalanceForecast(
+          cleanedTransactions,
+          numericBalance,
+          potentialSavings,
+          user?.region || "AU"
+        );
+
+        // ✅ Ensure forecastData values are numbers
+        result.forecastData = result.forecastData.map((d: any) => ({
+          ...d,
+          defaultForecast: Number(d.defaultForecast) || 0,
+          optimizedForecast: Number(d.optimizedForecast) || 0,
+        }));
+
+        setForecast(result);
+      } catch (err: any) {
+        console.error("❌ Failed to generate forecast:", err);
+        setError(err.message || "Failed to generate forecast");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchForecast();
+  }
+}, [isOnScreen, forecast, loading, transactions, totalBalance, savingsPlan, user?.region]);
+
 
   const chartData = useMemo(() => {
     if (!forecast) return [];

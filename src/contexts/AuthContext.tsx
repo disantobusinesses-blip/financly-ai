@@ -21,7 +21,6 @@ interface AuthContextType {
   isUpgradeModalOpen: boolean;
   setIsUpgradeModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
-  // helpers
   openLoginModal: () => void;
   openSignupModal: () => void;
 }
@@ -69,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       users.push({
         id: "user_demo_123",
         email: "demo@financly.com",
-        password: "demo123", // plain password for demo
+        password: "demo123",
         membershipType: "Pro",
         region: "AU",
       });
@@ -104,25 +103,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = (email: string, pass: string): boolean => {
     const users = db.getUsers();
-    const foundUser = users.find(
+    let foundUser = users.find(
       (u) => u.email === email && u.password === pass
     );
 
-    if (foundUser) {
-      const userToSave: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        membershipType: foundUser.membershipType,
-        region: foundUser.region || "AU",
+    // ✅ If no user found, auto-create (mock signup)
+    if (!foundUser) {
+      const newUser = {
+        id: `user_${Date.now()}`,
+        email,
+        password: pass,
+        membershipType: "Free",
+        region: "AU", // default region
       };
-      setUser(userToSave);
-      db.setCurrentUser(userToSave);
-      setIsLoginModalOpen(false);
-      return true;
+      users.push(newUser);
+      db.saveUsers(users);
+      foundUser = newUser;
     }
 
-    alert("Invalid email or password.");
-    return false;
+    const userToSave: User = {
+      id: foundUser.id,
+      email: foundUser.email,
+      membershipType: foundUser.membershipType,
+      region: foundUser.region || "AU",
+    };
+
+    setUser(userToSave);
+    db.setCurrentUser(userToSave);
+    setIsLoginModalOpen(false);
+    return true;
   };
 
   const logout = () => {
