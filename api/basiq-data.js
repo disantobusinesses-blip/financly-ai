@@ -1,4 +1,5 @@
 // api/basiq-data.js
+import { demoAccounts, demoTransactions } from "./demoData.js";
 
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
@@ -10,23 +11,16 @@ export default async function handler(req, res) {
 
   const { userId } = req.query;
 
-  // ✅ If no userId, return empty arrays (no demo fallback)
   if (!userId || typeof userId !== "string") {
     return res.status(200).json({
-      mode: "live",
-      accounts: [],
-      transactions: [],
+      mode: "demo",
+      accounts: demoAccounts,
+      transactions: demoTransactions,
     });
   }
 
   try {
-    if (!BASIQ_API_KEY) {
-      return res.status(500).json({
-        error: "Server misconfigured: BASIQ_API_KEY missing.",
-      });
-    }
-
-    // Step 1: Get server token
+    // 1️⃣ Get server token
     const tokenRes = await fetch(`${BASIQ_API_URL}/token`, {
       method: "POST",
       headers: {
@@ -39,65 +33,59 @@ export default async function handler(req, res) {
 
     if (!tokenRes.ok) {
       const errorText = await tokenRes.text();
-      return res.status(500).json({
-        error: "Failed to get BASIQ token",
-        details: errorText,
-      });
+      throw new Error(`Failed to get BASIQ token: ${errorText}`);
     }
 
     const { access_token: SERVER_TOKEN } = await tokenRes.json();
 
-    // Step 2: Fetch accounts
-    const accountsRes = await fetch(
-      `${BASIQ_API_URL}/users/${userId}/accounts`,
-      {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "basiq-version": "3.0",
-        },
-      }
-    );
+    // 2️⃣ Fetch accounts
+    const accountsRes = await fetch(`${BASIQ_API_URL}/users/${userId}/accounts`, {
+      headers: {
+        Authorization: `Bearer ${SERVER_TOKEN}`,
+        "basiq-version": "3.0",
+      },
+    });
 
-    if (!accountsRes.ok) {
-      const errorText = await accountsRes.text();
-      return res.status(500).json({
-        error: "Failed to fetch accounts",
-        details: errorText,
-      });
-    }
+    const accountsRaw = await accountsRes.json();
+    const accounts = (accountsRaw.data || []).map((a) => ({
+      id: a.id,
+      name: a.name || a.institution?.name || "Account",
+      type: a.type?.toUpperCase() || "OTHER",
+      balance: a.balance?.available ?? a.balance?.current ?? 0,
+      currency: a.currency || "AUD",
+    }));
 
-    const accountsData = await accountsRes.json();
+    // 3️⃣ Fetch transactions
+    const txRes = await fetch(`${BASIQ_API_URL}/users/${userId}/transactions`, {
+      headers: {
+        Authorization: `Bearer ${SERVER_TOKEN}`,
+        "basiq-version": "3.0",
+      },
+    });
 
-    // Step 3: Fetch transactions
-    const txRes = await fetch(
-      `${BASIQ_API_URL}/users/${userId}/transactions`,
-      {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "basiq-version": "3.0",
-        },
-      }
-    );
+    const txRaw = await txRes.json();
+    const transactions = (txRaw.data || []).map((t) => ({
+      id: t.id,
+      accountId: t.account?.id || "unknown",
+      description: t.description || "Unknown Transaction",
+      amount: Number(t.amount?.value ?? 0),
+      date: t.postDate?.split("T")[0] || "Unknown",
+      category:
+        t.class?.category ||
+        t.class?.type ||
+        "Uncategorized",
+    }));
 
-    if (!txRes.ok) {
-      const errorText = await txRes.text();
-      return res.status(500).json({
-        error: "Failed to fetch transactions",
-        details: errorText,
-      });
-    }
-
-    const transactionsData = await txRes.json();
-
-    return res.status(200).json({
+    // 4️⃣ Send normalized response
+    res.status(200).json({
       mode: "live",
-      accounts: accountsData.data || [],
-      transactions: transactionsData.data || [],
+      accounts,
+      transactions,
     });
   } catch (err) {
-    console.error("❌ Unexpected error:", err);
-    return res.status(500).json({
-      error: "Unexpected server error",
+    console.error("❌ BASIQ fetch error:", err);
+    res.status(500).json({
+      error: "Failed to load Basiq data",
       details: err.message,
     });
   }
