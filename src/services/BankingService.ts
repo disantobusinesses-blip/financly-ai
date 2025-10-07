@@ -21,14 +21,40 @@ export class BankingService {
 }
 
 // Still handles Basiq consent session
-export async function initiateBankConnection(
-  email: string
-): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/create-consent-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+// src/services/BankingService.ts
+export async function initiateBankConnection(email: string): Promise<{ consentUrl: string; userId: string }> {
+  try {
+    const res = await fetch("/api/create-consent-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // ✅ Ensure JSON body is sent
+      body: JSON.stringify({ email }),
+    });
+
+    // ✅ Debug logs for Vercel runtime and frontend console
+    console.log("Basiq Connect → Request sent:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Backend returned ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+
+    if (!data.consentUrl || !data.userId) {
+      throw new Error("Invalid response from server. Missing consentUrl or userId.");
+    }
+
+    // ✅ Store userId so /api/basiq-data can use it later
+    localStorage.setItem("basiqUserId", data.userId);
+
+    // ✅ Open Basiq consent page
+    window.location.href = data.consentUrl;
+  } catch (err: any) {
+    console.error("❌ initiateBankConnection failed:", err);
+    alert("Unable to connect bank right now. Please try again later.");
+    throw err;
+  }
 }
