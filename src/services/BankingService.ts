@@ -21,7 +21,6 @@ export class BankingService {
 }
 
 // Still handles Basiq consent session
-// src/services/BankingService.ts
 export async function initiateBankConnection(email: string): Promise<{ consentUrl: string; userId: string }> {
   try {
     const res = await fetch("/api/create-consent-session", {
