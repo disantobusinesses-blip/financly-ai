@@ -6,7 +6,7 @@ interface BasiqData {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  mode: "live"; // ✅ no demo mode
+  mode: "live"; // ✅ no demo fallback
 }
 
 export function useBasiqData(userId?: string): BasiqData {
@@ -20,10 +20,11 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // If no userId yet → blank state
+    // ✅ Reset when there is no connected bank yet
     if (!basiqUserId) {
       setAccounts([]);
       setTransactions([]);
+      setError("No connected bank account yet.");
       return;
     }
 
@@ -33,22 +34,32 @@ export function useBasiqData(userId?: string): BasiqData {
 
       try {
         const url = `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`;
-        const res = await fetch(url);
+        console.info("📡 Fetching Basiq data from:", url);
+
+        const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`API error ${res.status}`);
 
         const data = await res.json();
 
-        setAccounts(data.accounts || []);
-        setTransactions(data.transactions || []);
+        if (!data.accounts || !Array.isArray(data.accounts)) {
+          throw new Error("Malformed response: accounts missing or invalid.");
+        }
+
+        setAccounts(data.accounts);
+        setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
       } catch (err: any) {
         console.error("❌ Failed to load Basiq data:", err);
-        setError(err.message || "Failed to load data");
+        setError(err.message || "Failed to load banking data.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
+
+    // ✅ Refetch when user reconnects
+    const interval = setInterval(fetchData, 60_000); // refresh every 60s
+    return () => clearInterval(interval);
   }, [userId]);
 
   return { accounts, transactions, loading, error, mode };
