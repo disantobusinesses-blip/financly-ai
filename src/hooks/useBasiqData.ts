@@ -1,3 +1,6 @@
+// 🚀 REPLACEMENT FOR: /src/hooks/useBasiqData.ts
+// Live-only hook. Optional jobId support via location.search. No demo.
+
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
 
@@ -6,7 +9,7 @@ interface BasiqData {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  mode: "live"; // ✅ no demo fallback
+  mode: "live";
 }
 
 export function useBasiqData(userId?: string): BasiqData {
@@ -20,7 +23,10 @@ export function useBasiqData(userId?: string): BasiqData {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
 
-    // ✅ Reset when there is no connected bank yet
+    // pick up jobId from redirect query params if present
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("jobId") || "";
+
     if (!basiqUserId) {
       setAccounts([]);
       setTransactions([]);
@@ -31,25 +37,16 @@ export function useBasiqData(userId?: string): BasiqData {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        const url = `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`;
-        console.info("📡 Fetching Basiq data from:", url);
-
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-
+        const qs = new URLSearchParams({ userId: basiqUserId });
+        if (jobId) qs.set("jobId", jobId);
+        const res = await fetch(`/api/basiq-data?${qs.toString()}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
         const data = await res.json();
-
-        if (!data.accounts || !Array.isArray(data.accounts)) {
-          throw new Error("Malformed response: accounts missing or invalid.");
-        }
-
-        setAccounts(data.accounts);
+        setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
         setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
-      } catch (err: any) {
-        console.error("❌ Failed to load Basiq data:", err);
-        setError(err.message || "Failed to load banking data.");
+      } catch (e: any) {
+        setError(e?.message || "Failed to load banking data.");
       } finally {
         setLoading(false);
       }
@@ -57,9 +54,9 @@ export function useBasiqData(userId?: string): BasiqData {
 
     fetchData();
 
-    // ✅ Refetch when user reconnects
-    const interval = setInterval(fetchData, 60_000); // refresh every 60s
-    return () => clearInterval(interval);
+    // periodic refresh (optional)
+    const id = setInterval(fetchData, 60_000);
+    return () => clearInterval(id);
   }, [userId]);
 
   return { accounts, transactions, loading, error, mode };
