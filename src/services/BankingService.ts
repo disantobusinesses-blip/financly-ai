@@ -1,61 +1,61 @@
-// src/services/BankingService.ts
+// 🚀 REPLACEMENT FOR: /src/services/BankingService.ts
+// Frontend initiator for consent; live-only data fetch helpers.
+
 import { Account, Transaction } from "../types";
 
-// ✅ Live only — no demo fallback
 export class BankingService {
-  static async getAccounts(userId: string): Promise<Account[]> {
-    if (!userId) return [];
-    const res = await fetch(`/api/basiq-data?userId=${encodeURIComponent(userId)}`);
-    if (!res.ok) throw new Error(`Failed to fetch accounts: ${res.status}`);
+  static getStoredUserId(): string | null {
+    return localStorage.getItem("basiqUserId");
+  }
+
+  static setStoredUserId(id: string) {
+    localStorage.setItem("basiqUserId", id);
+  }
+
+  static clearStoredUserId() {
+    localStorage.removeItem("basiqUserId");
+  }
+
+  static async getAccounts(userId?: string): Promise<Account[]> {
+    const id = userId || this.getStoredUserId();
+    if (!id) return [];
+    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     return data.accounts || [];
   }
 
-  static async getTransactions(userId: string): Promise<Transaction[]> {
-    if (!userId) return [];
-    const res = await fetch(`/api/basiq-data?userId=${encodeURIComponent(userId)}`);
-    if (!res.ok) throw new Error(`Failed to fetch transactions: ${res.status}`);
+  static async getTransactions(userId?: string): Promise<Transaction[]> {
+    const id = userId || this.getStoredUserId();
+    if (!id) return [];
+    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     return data.transactions || [];
   }
 }
 
-// Still handles Basiq consent session
-export async function initiateBankConnection(
-  email: string
-): Promise<{ consentUrl: string; userId: string }> {
-  try {
-    const res = await fetch("/api/create-consent-session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email }),
-    });
+export async function initiateBankConnection(email: string): Promise<{ consentUrl: string; userId: string }> {
+  const res = await fetch("/api/create-consent-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
 
-    console.log("Basiq Connect → Request sent:", res.status, res.statusText);
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Backend returned ${res.status}: ${errText}`);
-    }
-
-    const data = await res.json();
-
-    if (!data.consentUrl || !data.userId) {
-      throw new Error("Invalid response from server. Missing consentUrl or userId.");
-    }
-
-    localStorage.setItem("basiqUserId", data.userId);
-    window.location.href = data.consentUrl;
-
-    // ✅ Add explicit return for TypeScript (even though redirect stops it)
-    return { consentUrl: data.consentUrl, userId: data.userId };
-
-  } catch (err: any) {
-    console.error("❌ initiateBankConnection failed:", err);
-    alert("Unable to connect bank right now. Please try again later.");
-    // ✅ Explicitly rethrow or return to satisfy TS
-    throw err;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Consent session failed: ${text}`);
   }
+
+  const data = await res.json();
+  if (!data?.consentUrl || !data?.userId) {
+    throw new Error("Invalid consent response");
+  }
+
+  // Store userId so we can fetch data after redirect
+  BankingService.setStoredUserId(data.userId);
+
+  return data; // caller will set window.location.href = consentUrl
 }
