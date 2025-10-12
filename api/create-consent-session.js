@@ -1,10 +1,6 @@
-// ✅ Force Node runtime (Vercel defaults to Edge otherwise)
-export const config = {
-  runtime: "nodejs",
-  api: { bodyParser: true },
-};
+// ✅ /api/create-consent-session.js
+// Uses Vercel's built-in fetch (no node-fetch import required)
 
-// ✅ Use built-in fetch (no need to import node-fetch)
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
 
@@ -14,25 +10,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔐 Safety check
     if (!BASIQ_API_KEY) {
-      console.error("❌ Missing BASIQ_API_KEY");
-      return res.status(500).json({ error: "Missing BASIQ_API_KEY in environment." });
+      throw new Error("Missing BASIQ_API_KEY in environment variables");
     }
 
-    // ✅ Generate random email if none provided
+    // ✅ Default unique sandbox email if not provided
     const email =
-      (req.body && req.body.email)
-        ? req.body.email.toLowerCase()
-        : `user-${Date.now()}@example.com`;
+      req.body?.email?.toLowerCase() || `user-${Date.now()}@example.com`;
 
-    const authorizationHeader = `Basic ${BASIQ_API_KEY}`;
+    const authHeader = `Basic ${BASIQ_API_KEY.replace(/^Basic\s*/i, "")}`;
 
-    // 1️⃣ Get server token
+    // 🟢 1. Request server token
     const tokenRes = await fetch(`${BASIQ_API_URL}/token`, {
       method: "POST",
       headers: {
-        Authorization: authorizationHeader,
+        Authorization: `Basic ${authHeader}`,
         "Content-Type": "application/x-www-form-urlencoded",
         "basiq-version": "3.0",
       },
@@ -41,13 +33,12 @@ export default async function handler(req, res) {
 
     if (!tokenRes.ok) {
       const text = await tokenRes.text();
-      throw new Error(`Server token failed: ${tokenRes.status} ${text}`);
+      throw new Error(`Failed to get server token: ${text}`);
     }
 
     const { access_token: SERVER_TOKEN } = await tokenRes.json();
-    if (!SERVER_TOKEN) throw new Error("No SERVER_TOKEN returned by Basiq.");
 
-    // 2️⃣ Create or reuse user
+    // 🟢 2. Create sandbox user (or reuse)
     let userId;
     const userRes = await fetch(`${BASIQ_API_URL}/users`, {
       method: "POST",
@@ -63,46 +54,51 @@ export default async function handler(req, res) {
       const user = await userRes.json();
       userId = user.id;
     } else if (userRes.status === 409) {
-      // Email already exists, fetch it
-      const lookupRes = await fetch(`${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`, {
-        headers: {
-          Authorization: `Bearer ${SERVER_TOKEN}`,
-          "basiq-version": "3.0",
-        },
-      });
+      const lookupRes = await fetch(
+        `${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${SERVER_TOKEN}`,
+            "basiq-version": "3.0",
+          },
+        }
+      );
+      if (!lookupRes.ok) throw new Error(await lookupRes.text());
       const { data } = await lookupRes.json();
-      if (!data || data.length === 0) throw new Error("User exists but not found via lookup.");
-      userId = data[0].id;
+      userId = data[0]?.id;
+      if (!userId) throw new Error("User exists but could not be fetched");
     } else {
       const text = await userRes.text();
-      throw new Error(`User creation failed: ${userRes.status} ${text}`);
+      throw new Error(`Failed to create Basiq user: ${text}`);
     }
 
-    // 3️⃣ Get client token for consent
-    const clientRes = await fetch(`${BASIQ_API_URL}/token`, {
+    // 🟢 3. Request client token for consent
+    const clientTokRes = await fetch(`${BASIQ_API_URL}/token`, {
       method: "POST",
       headers: {
-        Authorization: authorizationHeader,
+        Authorization: `Basic ${authHeader}`,
         "Content-Type": "application/x-www-form-urlencoded",
         "basiq-version": "3.0",
       },
       body: new URLSearchParams({ scope: "CLIENT_ACCESS", userId }),
     });
 
-    if (!clientRes.ok) {
-      const text = await clientRes.text();
-      throw new Error(`Client token failed: ${clientRes.status} ${text}`);
+    if (!clientTokRes.ok) {
+      const text = await clientTokRes.text();
+      throw new Error(`Failed to get client token: ${text}`);
     }
 
-    const { access_token: CLIENT_TOKEN } = await clientRes.json();
-    if (!CLIENT_TOKEN) throw new Error("No CLIENT_TOKEN returned by Basiq.");
+    const { access_token: CLIENT_TOKEN } = await clientTokRes.json();
 
-    // ✅ Final consent link
+    // 🟢 4. Build consent URL
     const consentUrl = `https://consent.basiq.io/home?token=${CLIENT_TOKEN}&action=connect`;
 
+    // ✅ Return successful response
     return res.status(200).json({ consentUrl, userId });
   } catch (err) {
     console.error("❌ Error in /api/create-consent-session:", err);
-    return res.status(500).json({ error: err.message || String(err) });
+    return res
+      .status(500)
+      .json({ error: err.message || "Internal Server Error" });
   }
 }
