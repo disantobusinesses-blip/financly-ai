@@ -1,10 +1,7 @@
-import React, {
-  createContext,
-  useState,
-  useContext,
-  ReactNode,
-  useEffect,
-} from "react";
+// 🚀 REPLACEMENT FOR: /src/contexts/AuthContext.tsx
+// Mock signup/login, persists user, exposes modal toggles.
+
+import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { User } from "../types";
 
 interface AuthContextType {
@@ -25,44 +22,32 @@ interface AuthContextType {
   openSignupModal: () => void;
 }
 
-// --- LocalStorage simulation ---
 const db = {
-  getUsers: (): any[] => {
-    const users = localStorage.getItem("financly_users");
-    return users ? JSON.parse(users) : [];
-  },
-  saveUsers: (users: any[]) => {
-    localStorage.setItem("financly_users", JSON.stringify(users));
-  },
+  getUsers: (): any[] => JSON.parse(localStorage.getItem("financly_users") || "[]"),
+  saveUsers: (users: any[]) => localStorage.setItem("financly_users", JSON.stringify(users)),
   getCurrentUser: (): User | null => {
-    const user = localStorage.getItem("financly_current_user");
-    return user ? JSON.parse(user) : null;
+    const s = localStorage.getItem("financly_current_user");
+    return s ? JSON.parse(s) : null;
   },
-  setCurrentUser: (user: User | null) => {
-    if (user) {
-      localStorage.setItem("financly_current_user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("financly_current_user");
-    }
+  setCurrentUser: (u: User | null) => {
+    if (u) localStorage.setItem("financly_current_user", JSON.stringify(u));
+    else localStorage.removeItem("financly_current_user");
   },
 };
-// -------------------------------
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  // On initial load: hydrate user and seed demo account
   useEffect(() => {
-    const savedUser = db.getCurrentUser();
-    if (savedUser) setUser(savedUser);
+    const saved = db.getCurrentUser();
+    if (saved) setUser(saved);
 
+    // seed a demo user (mock auth only)
     const users = db.getUsers();
     if (!users.find((u) => u.email === "demo@financly.com")) {
       users.push({
@@ -82,54 +67,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       alert("An account with this email already exists.");
       return false;
     }
-
     const newUser: User = {
       id: `user_${Date.now()}`,
       email,
       membershipType: "Free",
       region,
     };
-
-    const newUserWithPass = { ...newUser, password: pass };
-    users.push(newUserWithPass);
+    users.push({ ...newUser, password: pass });
     db.saveUsers(users);
-
     setUser(newUser);
     db.setCurrentUser(newUser);
-
     setIsSignupModalOpen(false);
     return true;
   };
 
   const login = (email: string, pass: string): boolean => {
     const users = db.getUsers();
-    let foundUser = users.find(
-      (u) => u.email === email && u.password === pass
-    );
-
-    // ✅ If no user found, auto-create (mock signup)
-    if (!foundUser) {
-      const newUser = {
-        id: `user_${Date.now()}`,
-        email,
-        password: pass,
-        membershipType: "Free",
-        region: "AU", // default region
-      };
-      users.push(newUser);
-      db.saveUsers(users);
-      foundUser = newUser;
+    const found = users.find((u) => u.email === email && u.password === pass);
+    if (!found) {
+      alert("Invalid email or password.");
+      return false;
     }
-
-    const userToSave: User = {
-      id: foundUser.id,
-      email: foundUser.email,
-      membershipType: foundUser.membershipType,
-      region: foundUser.region || "AU",
+    const u: User = {
+      id: found.id,
+      email: found.email,
+      membershipType: found.membershipType,
+      region: found.region || "AU",
     };
-
-    setUser(userToSave);
-    db.setCurrentUser(userToSave);
+    setUser(u);
+    db.setCurrentUser(u);
     setIsLoginModalOpen(false);
     return true;
   };
@@ -137,24 +103,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const logout = () => {
     setUser(null);
     db.setCurrentUser(null);
+    // optional: clear basiqUserId if you want logout to fully reset bank link
+    // localStorage.removeItem("basiqUserId");
   };
 
   const upgradeUser = (userId: string) => {
     const users = db.getUsers();
     const idx = users.findIndex((u) => u.id === userId);
-    if (idx !== -1) {
+    if (idx >= 0) {
       users[idx].membershipType = "Pro";
       db.saveUsers(users);
-
-      const updatedUser: User = {
+      const updated: User = {
         id: users[idx].id,
         email: users[idx].email,
         membershipType: users[idx].membershipType,
         region: users[idx].region || "AU",
       };
-
-      setUser(updatedUser);
-      db.setCurrentUser(updatedUser);
+      setUser(updated);
+      db.setCurrentUser(updated);
     }
   };
 
@@ -182,9 +148,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 };
 
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 };
