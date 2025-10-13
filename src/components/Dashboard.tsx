@@ -9,7 +9,9 @@ import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
+import { useGeminiAI } from "../hooks/useGeminiAI";
 import { useBasiqData } from "../hooks/useBasiqData";
+
 
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
