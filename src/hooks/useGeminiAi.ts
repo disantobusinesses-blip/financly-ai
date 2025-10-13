@@ -1,4 +1,4 @@
-// src/hooks/useGeminiAi.ts
+// src/hooks/useGeminiAI.ts
 import { Transaction, BalanceForecastResult, User } from "../types";
 import {
   getBalanceForecast,
