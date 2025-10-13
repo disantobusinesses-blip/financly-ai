@@ -9,12 +9,21 @@ import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
-import { useGeminiAI } from "../hooks/useGeminiAI";
 import { useBasiqData } from "../hooks/useBasiqData";
+import { useAuth } from "../contexts/AuthContext";
+import { useGeminiAI } from "../hooks/useGeminiAI";
 
 
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
+  const { user } = useAuth();
+  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const {
+    alerts: aiAlerts,
+    insights: aiInsights,
+    loading: aiLoading,
+    error: aiError,
+  } = useGeminiAI(transactions, totalBalance, user?.region ?? "AU");
 
   // ✅ Case 1: Cached data is showing while fresh data is loading
   if (loading && accounts.length > 0) {
@@ -66,7 +75,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={accounts.reduce((sum, a) => sum + a.balance, 0)}
+              totalBalance={totalBalance}
               savingsPlan={null} // Live-only
             />
           </div>
@@ -110,6 +119,21 @@ export default function Dashboard() {
             <TransactionAnalysis transactions={transactions} />
           </div>
         </div>
+      </div>
+
+      <div className="text-center text-xs text-gray-400">
+        {aiLoading ? (
+          <span>Generating AI insights...</span>
+        ) : aiError ? (
+          <span>AI enhancements unavailable: {aiError}</span>
+        ) : aiInsights ? (
+          <span>
+            AI insights ready with {aiInsights.insights.length} suggestions and {aiAlerts.length} alert
+            {aiAlerts.length === 1 ? "" : "s"}.
+          </span>
+        ) : (
+          <span>AI enhancements ready.</span>
+        )}
       </div>
 
       {/* ✅ Optional footer info */}
