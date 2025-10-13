@@ -27,6 +27,7 @@ const toNumber = (val: any, fallback = 0): number => {
 export interface TransactionAnalysisResult {
   insights: { emoji: string; text: string }[];
   subscriptions: { name: string; amount: number; cancellationUrl: string }[];
+  disclaimer?: string;
 }
 
 export const getTransactionInsights = async (
@@ -39,20 +40,20 @@ export const getTransactionInsights = async (
     .join("\n");
 
   const prompt = `
-    You are an AI assistant providing **general financial insights only**. 
-    You are NOT a licensed advisor, so avoid providing regulated financial advice.
+    You are an AI assistant providing **general financial observations only**.
+    You are NOT a licensed advisor — include a clear disclaimer: "This is not financial advice."
 
-    Analyze the following transactions for a ${
+    Analyze the transactions for a ${
       region === "US" ? "US-based" : "Australian"
     } user.
 
     Tasks:
     1. Identify 3 interesting spending insights or patterns.
-    2. Identify recurring subscriptions ONLY if they are recognizable consumer services (Netflix, Spotify, Disney+).
-       - Exclude utilities, bank fees, government payments, or groceries.
-       - Provide name, monthly amount, and a cancellation URL.
+    2. Identify recurring subscriptions ONLY if they are consumer services (Netflix, Spotify, Disney+).
+       - Exclude utilities, government payments, groceries, or bank fees.
+    3. Include a field named "disclaimer" with the text "This is not financial advice."
 
-    Respond ONLY as valid JSON, no extra text.
+    Respond ONLY in valid JSON.
   `;
 
   try {
@@ -87,25 +88,26 @@ export const getTransactionInsights = async (
                 required: ["name", "amount", "cancellationUrl"],
               },
             },
+            disclaimer: { type: Type.STRING },
           },
-          required: ["insights", "subscriptions"],
+          required: ["insights", "subscriptions", "disclaimer"],
         },
       },
     });
 
     const jsonText = (response.text ?? "").trim();
-    if (!jsonText) return { insights: [], subscriptions: [] };
+    if (!jsonText) return { insights: [], subscriptions: [], disclaimer: "This is not financial advice." };
 
     const parsed = JSON.parse(jsonText) as TransactionAnalysisResult;
-    // ensure numbers
     parsed.subscriptions = parsed.subscriptions.map((s) => ({
       ...s,
       amount: toNumber(s.amount),
     }));
+    if (!parsed.disclaimer) parsed.disclaimer = "This is not financial advice.";
     return parsed;
   } catch (error) {
     console.error("❌ Gemini TransactionInsights error:", error);
-    return { insights: [], subscriptions: [] };
+    return { insights: [], subscriptions: [], disclaimer: "This is not financial advice." };
   }
 };
 
@@ -116,6 +118,7 @@ export interface BorrowingPowerResult {
   estimatedLoanAmount: number;
   estimatedInterestRate: number;
   advice: string;
+  disclaimer?: string;
 }
 
 export const getBorrowingPower = async (
@@ -131,16 +134,21 @@ export const getBorrowingPower = async (
       : `Credit Score: ${creditScore}/1000`;
 
   const prompt = `
-    You are an AI assistant. Provide only an **informational estimation** 
-    of borrowing power for a ${region === "US" ? "US" : "Australian"} user. 
-    This is NOT financial advice and should not be relied on for real decisions.
+    You are an AI providing an **informational borrowing power estimate** only.
+    You are not a financial advisor. Include disclaimer: "This is not financial advice."
 
     Data:
     - ${creditScoreContext}
     - Income: ${symbol}${totalIncome.toFixed(2)}
     - Net Worth: ${symbol}${totalBalance.toFixed(2)}
 
-    Return JSON with estimatedLoanAmount, estimatedInterestRate, and a short advisory note.
+    Return valid JSON:
+    {
+      "estimatedLoanAmount": number,
+      "estimatedInterestRate": number,
+      "advice": string,
+      "disclaimer": "This is not financial advice."
+    }
   `;
 
   try {
@@ -155,20 +163,21 @@ export const getBorrowingPower = async (
             estimatedLoanAmount: { type: Type.NUMBER },
             estimatedInterestRate: { type: Type.NUMBER },
             advice: { type: Type.STRING },
+            disclaimer: { type: Type.STRING },
           },
-          required: ["estimatedLoanAmount", "estimatedInterestRate", "advice"],
+          required: ["estimatedLoanAmount", "estimatedInterestRate", "advice", "disclaimer"],
         },
       },
     });
 
     const jsonText = (response.text ?? "").trim();
-    if (!jsonText) throw new Error("Empty AI response for borrowing power.");
     const parsed = JSON.parse(jsonText) as BorrowingPowerResult;
 
     return {
       estimatedLoanAmount: toNumber(parsed.estimatedLoanAmount),
       estimatedInterestRate: toNumber(parsed.estimatedInterestRate),
       advice: parsed.advice,
+      disclaimer: parsed.disclaimer || "This is not financial advice.",
     };
   } catch (error) {
     console.error("❌ Gemini BorrowingPower error:", error);
@@ -176,6 +185,7 @@ export const getBorrowingPower = async (
       estimatedLoanAmount: 0,
       estimatedInterestRate: 0,
       advice: "Unable to generate estimation.",
+      disclaimer: "This is not financial advice.",
     };
   }
 };
@@ -196,14 +206,11 @@ export const getFinancialAlerts = async (
     .join("\n");
 
   const prompt = `
-    You are an AI Financial Watchdog. Provide **general insights only**.
-    Do NOT provide financial advice.
+    You are an AI Financial Watchdog. Identify 3 general alerts: anomalies, opportunities, or milestones.
+    Each alert should be helpful but not advisory. Always include a disclaimer: "This is not financial advice."
 
-    Analyze transactions for anomalies, opportunities, or milestones.
-    - Max 3 alerts.
-    - "Opportunity" alerts should include a negotiation tip, but no guarantees.
-
-    Respond ONLY as a JSON array of { type, title, description }.
+    Respond ONLY as a JSON array of objects with:
+    { type, title, description, disclaimer }
   `;
 
   try {
@@ -220,16 +227,16 @@ export const getFinancialAlerts = async (
               type: { type: Type.STRING },
               title: { type: Type.STRING },
               description: { type: Type.STRING },
+              disclaimer: { type: Type.STRING },
             },
-            required: ["type", "title", "description"],
+            required: ["type", "title", "description", "disclaimer"],
           },
         },
       },
     });
 
     const jsonText = (response.text ?? "").trim();
-    if (!jsonText) return [];
-    return JSON.parse(jsonText);
+    return jsonText ? JSON.parse(jsonText) : [];
   } catch (error) {
     console.error("❌ Gemini FinancialAlerts error:", error);
     return [];
@@ -237,7 +244,7 @@ export const getFinancialAlerts = async (
 };
 
 // ------------------------------
-// Balance Forecast
+// Balance Forecast (Improved)
 // ------------------------------
 export const getBalanceForecast = async (
   transactions: Transaction[],
@@ -257,78 +264,21 @@ export const getBalanceForecast = async (
     .join("\n");
 
   const prompt = `
-    You are an AI providing **general financial forecasting only**.
-    This is NOT financial advice. Output must be safe to display.
+    You are an AI simulating a financial projection. 
+    This output is educational and **not financial advice** — include a "disclaimer" field.
 
     User Data:
     - Balance: ${symbol}${toNumber(currentBalance).toFixed(2)}
-    - Potential Extra Savings: ${symbol}${toNumber(
-      potentialMonthlySavings
-    ).toFixed(2)}
+    - Monthly extra savings potential: ${symbol}${toNumber(potentialMonthlySavings).toFixed(2)}
 
     Task:
-    1. Create a default forecast for 6 months based on current patterns.
-    2. Create an optimized forecast if extra savings are added monthly.
-    3. Provide one sentence insight comparing the two.
-    4. Provide 2-3 key changes from the savings plan that drive improvement.
+    1. Create 6-month forecast arrays for "default" and "optimized".
+    2. "Optimized" should grow faster but stay realistic.
+    3. Provide 1 insight comparing them.
+    4. Add 2–3 key change actions (description only).
+    5. Include "disclaimer": "This is not financial advice."
 
-    Respond ONLY with valid JSON.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: `${prompt}\n\nTransactions:\n${transactionSummary}`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            forecastData: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  month: { type: Type.STRING },
-                  defaultForecast: { type: Type.NUMBER },
-                  optimizedForecast: { type: Type.NUMBER },
-                },
-                required: ["month", "defaultForecast", "optimizedForecast"],
-              },
-            },
-            insight: { type: Type.STRING },
-            keyChanges: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: { description: { type: Type.STRING } },
-                required: ["description"],
-              },
-            },
-          },
-          required: ["forecastData", "insight", "keyChanges"],
-        },
-      },
-    });
-
-    const jsonText = (response.text ?? "").trim();
-    if (!jsonText) throw new Error("Empty AI response for forecast.");
-    const parsed = JSON.parse(jsonText) as BalanceForecastResult;
-
-    // Ensure numbers are numbers
-    parsed.forecastData = parsed.forecastData.map((f) => ({
-      ...f,
-      defaultForecast: toNumber(f.defaultForecast),
-      optimizedForecast: toNumber(f.optimizedForecast),
-    }));
-
-    return parsed;
-  } catch (error) {
-    console.error("❌ Gemini BalanceForecast error:", error);
-    return {
-      forecastData: [],
-      insight: "Unable to generate forecast.",
-      keyChanges: [],
-    };
-  }
-};
+    Respond only in valid JSON:
+    {
+      "forecastData": [{ "month": "Oct", "defaultForecast": 9000, "optimizedForecast": 9800 }],
+      "insight": "Following your plan could improve your balance by $800 in 6 months
