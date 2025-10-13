@@ -7,7 +7,7 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: Re
   title,
   children,
 }) => (
-  <div className="bg-white/5 p-6 rounded-lg backdrop-blur-sm text-left">
+  <div className="bg-white/5 p-6 rounded-lg text-left">
     <div className="flex items-center gap-3 mb-2">
       <div className="text-primary">{icon}</div>
       <h3 className="font-bold text-lg">{title}</h3>
@@ -23,8 +23,8 @@ const WelcomeScreen: React.FC = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white font-sans p-4 relative">
       {/* Background effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-primary/30 z-0"></div>
-      <div className="absolute top-0 left-0 w-96 h-96 bg-primary/20 rounded-full filter blur-3xl opacity-50 animate-pulse"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/20 rounded-full filter blur-3xl opacity-50 animate-pulse animation-delay-4000"></div>
+      <div className="absolute top-0 left-0 w-96 h-96 bg-primary/20 rounded-full opacity-40 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/20 rounded-full opacity-40 animate-pulse animation-delay-4000"></div>
 
       {/* Main content */}
       <div className="relative z-10 text-center p-8 max-w-4xl mx-auto">

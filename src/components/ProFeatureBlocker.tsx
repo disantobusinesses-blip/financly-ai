@@ -17,8 +17,8 @@ const ProFeatureBlocker: React.FC<ProFeatureBlockerProps> = ({
 
   return (
     <div className="relative">
-      {/* The blurred locked content */}
-      <div className="pointer-events-none blur-sm select-none opacity-60">
+      {/* The locked content overlay */}
+      <div className="pointer-events-none select-none opacity-60">
         {children}
       </div>
 
