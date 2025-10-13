@@ -62,10 +62,16 @@ export interface SpendingForecastResult {
   insight: string;
 }
 
+/** AI-enhanced financial forecast results (includes disclaimer) */
 export interface BalanceForecastResult {
-  forecastData: { month: string; defaultForecast: number; optimizedForecast: number }[];
+  forecastData: {
+    month: string;
+    defaultForecast: number;
+    optimizedForecast: number;
+  }[];
   insight: string;
   keyChanges: { description: string }[];
+  disclaimer?: string; // ✅ added for AI disclaimer compatibility
 }
 
 /** User */
