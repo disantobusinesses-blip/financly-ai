@@ -1,6 +1,4 @@
-// 🚀 REPLACEMENT FOR: /src/hooks/useBasiqData.ts
-// Live-only hook. Optional jobId support via location.search. No demo.
-
+// 🚀 Optimized useBasiqData.ts — fast + cached + parallel Gemini ready
 import { useEffect, useState } from "react";
 import { Account, Transaction } from "../types";
 
@@ -10,54 +8,78 @@ interface BasiqData {
   loading: boolean;
   error: string | null;
   mode: "live";
+  lastUpdated: string | null;
 }
 
 export function useBasiqData(userId?: string): BasiqData {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode] = useState<"live">("live");
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
-
-    // pick up jobId from redirect query params if present
-    const params = new URLSearchParams(window.location.search);
-    const jobId = params.get("jobId") || "";
-
     if (!basiqUserId) {
       setAccounts([]);
       setTransactions([]);
+      setLoading(false);
       setError("No connected bank account yet.");
       return;
     }
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+    // 🔹 Try cached data immediately
+    const cachedAccounts = localStorage.getItem("accountsCache");
+    const cachedTransactions = localStorage.getItem("transactionsCache");
+    const cachedTime = localStorage.getItem("basiqCacheTime");
+    if (cachedAccounts && cachedTransactions) {
       try {
-        const qs = new URLSearchParams({ userId: basiqUserId });
-        if (jobId) qs.set("jobId", jobId);
-        const res = await fetch(`/api/basiq-data?${qs.toString()}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+        setAccounts(JSON.parse(cachedAccounts));
+        setTransactions(JSON.parse(cachedTransactions));
+        setLastUpdated(cachedTime || null);
+        setLoading(false);
+      } catch {
+        console.warn("⚠️ Cache parse failed, fetching fresh data");
+      }
+    }
+
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) throw new Error(`API error ${res.status}`);
         const data = await res.json();
-        setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
-        setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
-      } catch (e: any) {
-        setError(e?.message || "Failed to load banking data.");
+
+        const acc = Array.isArray(data.accounts) ? data.accounts : [];
+        const tx = Array.isArray(data.transactions) ? data.transactions : [];
+
+        setAccounts(acc);
+        setTransactions(tx);
+        setError(null);
+        setLastUpdated(new Date().toISOString());
+
+        // 🔹 Save to cache for next load
+        localStorage.setItem("accountsCache", JSON.stringify(acc));
+        localStorage.setItem("transactionsCache", JSON.stringify(tx));
+        localStorage.setItem("basiqCacheTime", new Date().toISOString());
+      } catch (err: any) {
+        console.error("❌ Failed to load Basiq data:", err);
+        setError(err.message || "Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
+    // 🔹 Fetch fresh in background
     fetchData();
 
-    // periodic refresh (optional)
-    const id = setInterval(fetchData, 60_000);
+    // 🔁 Optional periodic refresh (every 5 min)
+    const id = setInterval(fetchData, 300_000);
     return () => clearInterval(id);
   }, [userId]);
 
-  return { accounts, transactions, loading, error, mode };
+  return { accounts, transactions, loading, error, mode: "live", lastUpdated };
 }
