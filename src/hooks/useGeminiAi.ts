@@ -23,7 +23,7 @@ interface GeminiAIData {
 
 /**
  * Hook to fetch all Gemini AI data in parallel.
- * @param transactions User's transaction list
+ * @param transactions User's transaction list.
  * @param totalBalance Current total balance across accounts
  * @param region 'AU' | 'US'
  */
