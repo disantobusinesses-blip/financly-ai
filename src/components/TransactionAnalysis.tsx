@@ -214,39 +214,34 @@ const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions 
                             <ScissorsIcon className="h-6 w-6 text-red-500" />
                             <h3 className="text-xl font-bold text-text-primary ml-3">Subscription Hunter</h3>
                         </div>
-                        {user?.membershipType === 'Pro' ? (
-                             <>
-                                {isLoading && <LoadingSkeleton />}
-                                {analysis && analysis.subscriptions.length > 0 && (
-                                    <ul className="space-y-3">
-                                        {analysis.subscriptions.map((sub, index) => (
-                                            <li key={index} className="flex items-center justify-between p-3 bg-background rounded-md border border-border-color">
-                                                <div>
-                                                    <span className="text-text-secondary font-medium">{sub.name}</span>
-                                                    <span className="text-text-primary font-bold ml-4">{formatCurrency(Math.abs(sub.amount), user?.region)}</span>
-                                                </div>
-                                                <a
-                                                    href={sub.cancellationUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700 transition-colors"
-                                                    aria-label={`Find out how to cancel ${sub.name}`}
-                                                >
-                                                    <TrashIcon className="h-4 w-4" />
-                                                    <span>Cancel</span>
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                                {analysis && analysis.subscriptions.length === 0 && !isLoading && (
-                                    <p className="text-text-secondary">No recurring subscriptions found in your recent transactions.</p>
-                                )}
-                            </>
-                        ) : (
-                             <ProFeatureBlocker featureTitle="Subscription Hunter" teaserText={!analysis && isLoading ? "Finding your recurring subscriptions..." : `AI found ${analysis?.subscriptions?.length || 0} recurring subscription${analysis?.subscriptions?.length !== 1 ? 's' : ''}.`}>
-                                <div className="space-y-3"><div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div></div>
-                             </ProFeatureBlocker>
+                        {isLoading && <LoadingSkeleton />}
+                        {analysis && analysis.subscriptions.length > 0 && (
+                            <ul className="space-y-3">
+                                {analysis.subscriptions.map((sub, index) => (
+                                    <li key={index} className="flex items-center justify-between p-3 bg-background rounded-md border border-border-color">
+                                        <div>
+                                            <span className="text-text-secondary font-medium">{sub.name}</span>
+                                            <span className="text-text-primary font-bold ml-4">{formatCurrency(Math.abs(sub.amount), user?.region)}</span>
+                                        </div>
+                                        <a
+                                            href={sub.cancellationUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700 transition-colors"
+                                            aria-label={`Find out how to cancel ${sub.name}`}
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                            <span>Cancel</span>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {analysis && analysis.subscriptions.length === 0 && !isLoading && (
+                            <p className="text-text-secondary">No recurring subscriptions found in your recent transactions.</p>
+                        )}
+                        {!analysis && !isLoading && (
+                            <p className="text-text-secondary">Connect more accounts or refresh to surface recurring subscriptions.</p>
                         )}
                     </div>
                 </div>
