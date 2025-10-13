@@ -1,4 +1,6 @@
 // src/components/Dashboard.tsx
+import { useMemo } from "react";
+
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -17,13 +19,38 @@ import { useGeminiAI } from "../hooks/useGeminiAI";
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
   const { user } = useAuth();
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + account.balance, 0),
+    [accounts]
+  );
   const {
     alerts: aiAlerts,
     insights: aiInsights,
     loading: aiLoading,
     error: aiError,
   } = useGeminiAI(transactions, totalBalance, user?.region ?? "AU");
+
+  const aiStatusMessage = useMemo(() => {
+    if (aiLoading) {
+      return "Generating AI insights...";
+    }
+
+    if (aiError) {
+      return `AI enhancements unavailable: ${aiError}`;
+    }
+
+    const suggestionCount = aiInsights?.insights?.length ?? 0;
+    const alertCount = aiAlerts.length;
+
+    if (suggestionCount > 0 || alertCount > 0) {
+      const suggestionLabel = suggestionCount === 1 ? "suggestion" : "suggestions";
+      const alertLabel = alertCount === 1 ? "alert" : "alerts";
+
+      return `AI insights ready with ${suggestionCount} ${suggestionLabel} and ${alertCount} ${alertLabel}.`;
+    }
+
+    return "AI enhancements ready.";
+  }, [aiAlerts, aiError, aiInsights, aiLoading]);
 
   // ✅ Case 1: Cached data is showing while fresh data is loading
   if (loading && accounts.length > 0) {
@@ -57,7 +84,7 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 4: User hasn’t connected a bank yet
+  // ✅ Case 4: User hasn't connected a bank yet
   if (accounts.length === 0 && transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -121,20 +148,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="text-center text-xs text-gray-400">
-        {aiLoading ? (
-          <span>Generating AI insights...</span>
-        ) : aiError ? (
-          <span>AI enhancements unavailable: {aiError}</span>
-        ) : aiInsights ? (
-          <span>
-            AI insights ready with {aiInsights.insights.length} suggestions and {aiAlerts.length} alert
-            {aiAlerts.length === 1 ? "" : "s"}.
-          </span>
-        ) : (
-          <span>AI enhancements ready.</span>
-        )}
-      </div>
+      <div className="text-center text-xs text-gray-400">{aiStatusMessage}</div>
 
       {/* ✅ Optional footer info */}
       {lastUpdated && (
