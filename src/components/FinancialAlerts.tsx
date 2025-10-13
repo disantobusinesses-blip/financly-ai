@@ -4,7 +4,6 @@ import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
 import { getFinancialAlerts } from '../services/GeminiService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 
 interface FinancialAlertsProps {
@@ -82,27 +81,18 @@ const FinancialAlerts: React.FC<FinancialAlertsProps> = ({ transactions }) => {
         <h2 className="text-2xl font-bold text-text-primary ml-3">AI Financial Watchdog</h2>
       </div>
 
-      {user?.membershipType === 'Pro' ? (
-        <div className="space-y-4">
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : alerts.length > 0 ? (
-            alerts.map((alert, index) => <AlertCard key={index} alert={alert} />)
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-text-secondary">No new alerts right now.</p>
-              <p className="text-sm text-text-tertiary">We'll notify you when we spot something important!</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <ProFeatureBlocker
-          featureTitle="AI Financial Watchdog"
-          teaserText={isLoading ? "Analyzing your finances for alerts..." : `AI found ${alerts.length} potential alert${alerts.length !== 1 ? 's' : ''} for you to review.`}
-        >
-           <LoadingSkeleton />
-        </ProFeatureBlocker>
-      )}
+      <div className="space-y-4">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : alerts.length > 0 ? (
+          alerts.map((alert, index) => <AlertCard key={index} alert={alert} />)
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-text-secondary">No new alerts right now.</p>
+            <p className="text-sm text-text-tertiary">We'll notify you when we spot something important!</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

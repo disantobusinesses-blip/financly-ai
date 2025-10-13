@@ -34,11 +34,19 @@ const WelcomeScreen: React.FC = () => {
         </div>
 
         <h1 className="text-5xl md:text-6xl font-extrabold mb-4 leading-tight">
-          Unlock Your Financial <span className="text-primary">Potential</span>.
+          Experience Full-Strength <span className="text-primary">Financly</span>.
         </h1>
         <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-          Go beyond simple budgeting. See your forecast, find hidden subscriptions, and take control of your money.
+          Every AI insight, subscription hunter, and forecasting tool is now free to explore—no upgrades required.
         </p>
+
+        <div className="mb-12">
+          <img
+            src="https://i.imgur.com/dwo4hf2.png"
+            alt="Preview of Financly AI's subscription hunter interface"
+            className="mx-auto rounded-xl shadow-2xl border border-white/10 max-w-full"
+          />
+        </div>
 
         {/* Buttons */}
         <div className="flex flex-wrap justify-center gap-4 mb-12">
@@ -57,8 +65,8 @@ const WelcomeScreen: React.FC = () => {
         </div>
 
         <p className="text-gray-400 mb-12">
-          Once signed in, you’ll connect your bank securely with Basiq sandbox or live credentials.  
-          Your personal dashboard will then unlock automatically.
+          Once signed in, you’ll connect your bank securely with Basiq sandbox or live credentials.
+          Your personal dashboard will light up instantly with every Financly AI tool.
         </p>
 
         {/* Feature Cards */}

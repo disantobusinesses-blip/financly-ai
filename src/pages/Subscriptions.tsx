@@ -1,24 +1,6 @@
 import { SparklesIcon } from "@heroicons/react/24/solid";
-import { useAuth } from "../contexts/AuthContext";
-import { createCheckoutSession } from "../services/StripeService";
 
 const Subscriptions = () => {
-  const { user } = useAuth();
-
-  const handleUpgrade = async () => {
-    if (!user) {
-      alert("Please log in to upgrade.");
-      return;
-    }
-
-    try {
-      const { url } = await createCheckoutSession(user);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      console.error("Stripe checkout error:", err);
-      alert("Something went wrong. Please try again.");
-    }
-  };
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -52,17 +34,26 @@ const Subscriptions = () => {
 
         <div className="bg-primary/10 p-4 rounded-lg mb-6">
           <p className="text-primary font-medium">
-            Pro users can cancel unwanted subscriptions in one click and get AI
-            recommendations to save up to $500/yr.
+            Good news! Subscription Hunter is fully unlocked. Connect your bank and cancel recurring charges directly from your dashboard.
           </p>
         </div>
 
-        <button
-          onClick={handleUpgrade}
-          className="w-full bg-primary text-white font-semibold py-3 rounded-lg hover:bg-primary-hover transition"
-        >
-          Upgrade to Pro & Unlock Cancellation
-        </button>
+        <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-2">Make the most of these tools:</h2>
+            <ul className="list-disc list-inside space-y-1">
+              <li>View AI-prioritized subscriptions with cost trends and renewal dates.</li>
+              <li>Use the built-in cancel links to take action in a click.</li>
+              <li>Track monthly savings in real time across the Financly dashboard.</li>
+            </ul>
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-2">Need a refresher?</h2>
+            <p>
+              Head back to the dashboard to explore Subscription Hunter alongside cashflow, alerts, and AI spending insights.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

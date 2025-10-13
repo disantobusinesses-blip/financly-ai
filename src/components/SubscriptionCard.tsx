@@ -1,44 +1,27 @@
-import React, { useState } from "react";
-import { createCheckoutSession } from "../services/StripeService"; // adjust the path if needed
-import { useAuth } from "../contexts/AuthContext"; // assuming you store user here
+import React from "react";
+
+const features = [
+  "AI-powered transaction insights",
+  "Subscription hunter with instant cancel links",
+  "Borrowing power guidance tailored to you",
+  "Savings plans that adapt to your goals",
+];
 
 const SubscriptionCard: React.FC = () => {
-  const { user } = useAuth(); // must expose {id, email, region} in AuthContext
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUpgrade = async () => {
-    if (!user) {
-      setError("You must be logged in to upgrade.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const { url } = await createCheckoutSession(user);
-      window.location.href = url; // redirect to Stripe Checkout
-    } catch (err: any) {
-      console.error("❌ Stripe upgrade error:", err);
-      setError(err.message || "Something went wrong. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="bg-white/10 rounded-lg p-4">
-      <h2 className="text-lg font-semibold">Subscription</h2>
-      <p className="text-gray-400 text-sm mb-3">
-        Unlock full Financly insights with Pro.
+      <h2 className="text-lg font-semibold">Financly Toolkit</h2>
+      <p className="text-gray-400 text-sm mb-4">
+        Every intelligence tool is now included for free. Explore the full suite below.
       </p>
-      {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-      <button
-        onClick={handleUpgrade}
-        disabled={loading}
-        className="bg-primary px-4 py-2 rounded-lg text-white font-semibold hover:bg-primary-hover disabled:opacity-50"
-      >
-        {loading ? "Redirecting..." : "Upgrade to Pro"}
-      </button>
+      <ul className="space-y-2 text-sm text-gray-300">
+        {features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2">
+            <span className="mt-1 inline-block h-2 w-2 rounded-full bg-primary" aria-hidden="true"></span>
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

@@ -5,7 +5,6 @@ import { getTransactionInsights, TransactionAnalysisResult } from '../services/G
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency } from '../utils/currency';
 
@@ -186,25 +185,20 @@ const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions 
                             <LightbulbIcon className="h-6 w-6 text-warning" />
                             <h3 className="text-xl font-bold text-text-primary ml-3">Spending Insights</h3>
                         </div>
-                        {user?.membershipType === 'Pro' ? (
-                            <>
-                                {isLoading && <LoadingSkeleton />}
-                                {error && <p className="text-red-500">{error}</p>}
-                                {analysis && (
-                                    <ul className="space-y-3">
-                                        {analysis.insights.map((insight, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-xl mr-3">{insight.emoji}</span>
-                                                <span className="text-text-secondary">{insight.text}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </>
-                        ) : (
-                            <ProFeatureBlocker featureTitle="AI Spending Insights" teaserText="Get AI-powered insights to improve your spending habits.">
-                                <LoadingSkeleton />
-                            </ProFeatureBlocker>
+                        {isLoading && <LoadingSkeleton />}
+                        {error && <p className="text-red-500">{error}</p>}
+                        {analysis && !isLoading && !error && (
+                            <ul className="space-y-3">
+                                {analysis.insights.map((insight, index) => (
+                                    <li key={index} className="flex items-start">
+                                        <span className="text-xl mr-3">{insight.emoji}</span>
+                                        <span className="text-text-secondary">{insight.text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {!analysis && !isLoading && !error && (
+                            <p className="text-text-secondary">Connect more transactions to unlock personalized insights on your spending.</p>
                         )}
                     </div>
 
