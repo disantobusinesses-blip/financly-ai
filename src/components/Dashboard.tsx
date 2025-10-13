@@ -13,7 +13,7 @@ import { useBasiqData } from "../hooks/useBasiqData";
 export default function Dashboard() {
   const { accounts, transactions, loading, error } = useBasiqData();
 
-  if (loading) {
+  const { accounts, transactions, loading, error } = useBasiqData();
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
         Loading your financial data...
