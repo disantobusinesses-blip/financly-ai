@@ -1,4 +1,3 @@
-import React, { useMemo } from "react";
 import { Transaction } from "../types";
 import Card from "./Card";
 import { formatCurrency } from "../utils/currency";
