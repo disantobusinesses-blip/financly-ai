@@ -9,7 +9,7 @@ import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
-import { useGeminiAi } from "../hooks/useGeminiAi";
+import { useGeminiAI } from "../hooks/useGeminiAI";
 import { useBasiqData } from "../hooks/useBasiqData";
 
 
