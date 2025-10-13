@@ -2,6 +2,8 @@ import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 
+const heroImage = new URL("../assets/welcome-hero.svg", import.meta.url).href;
+
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({
   icon,
   title,
@@ -42,7 +44,7 @@ const WelcomeScreen: React.FC = () => {
 
         <div className="mb-12">
           <img
-            src="https://i.imgur.com/dwo4hf2.png"
+            src={heroImage}
             alt="Preview of Financly AI's subscription hunter interface"
             className="mx-auto rounded-xl shadow-2xl border border-white/10 max-w-full"
           />
