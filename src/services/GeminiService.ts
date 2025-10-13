@@ -1,9 +1,7 @@
-// src/services/GeminiService.ts
 import { GoogleGenAI, Type } from "@google/genai";
 import { Transaction, BalanceForecastResult, User } from "../types";
 import { getCurrencyInfo } from "../utils/currency";
 
-// In Vite, API keys must be prefixed with VITE_
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_KEY) {
@@ -15,7 +13,7 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 const model = "gemini-2.5-flash";
 
-// --- Helper to ensure safe numbers ---
+// --- Helper ---
 const toNumber = (val: any, fallback = 0): number => {
   const n = typeof val === "string" ? parseFloat(val) : val;
   return isNaN(n) ? fallback : n;
@@ -40,21 +38,19 @@ export const getTransactionInsights = async (
     .join("\n");
 
   const prompt = `
-    You are an AI assistant providing **general financial observations only**.
-    You are NOT a licensed advisor — include a clear disclaimer: "This is not financial advice."
+You are an AI assistant providing general financial observations only.
+You are NOT a licensed advisor — include a disclaimer: "This is not financial advice."
 
-    Analyze the transactions for a ${
-      region === "US" ? "US-based" : "Australian"
-    } user.
+Analyze the transactions for a ${region === "US" ? "US-based" : "Australian"} user.
 
-    Tasks:
-    1. Identify 3 interesting spending insights or patterns.
-    2. Identify recurring subscriptions ONLY if they are consumer services (Netflix, Spotify, Disney+).
-       - Exclude utilities, government payments, groceries, or bank fees.
-    3. Include a field named "disclaimer" with the text "This is not financial advice."
+Tasks:
+1. Identify 3 interesting spending insights or patterns.
+2. Identify recurring subscriptions ONLY if they are consumer services (Netflix, Spotify, Disney+).
+   - Exclude utilities, government payments, groceries, or bank fees.
+3. Include a field named "disclaimer" with the text "This is not financial advice."
 
-    Respond ONLY in valid JSON.
-  `;
+Respond ONLY in valid JSON.
+`;
 
   try {
     const response = await ai.models.generateContent({
@@ -96,18 +92,28 @@ export const getTransactionInsights = async (
     });
 
     const jsonText = (response.text ?? "").trim();
-    if (!jsonText) return { insights: [], subscriptions: [], disclaimer: "This is not financial advice." };
+    if (!jsonText)
+      return {
+        insights: [],
+        subscriptions: [],
+        disclaimer: "This is not financial advice.",
+      };
 
     const parsed = JSON.parse(jsonText) as TransactionAnalysisResult;
     parsed.subscriptions = parsed.subscriptions.map((s) => ({
       ...s,
       amount: toNumber(s.amount),
     }));
-    if (!parsed.disclaimer) parsed.disclaimer = "This is not financial advice.";
+    if (!parsed.disclaimer)
+      parsed.disclaimer = "This is not financial advice.";
     return parsed;
   } catch (error) {
     console.error("❌ Gemini TransactionInsights error:", error);
-    return { insights: [], subscriptions: [], disclaimer: "This is not financial advice." };
+    return {
+      insights: [],
+      subscriptions: [],
+      disclaimer: "This is not financial advice.",
+    };
   }
 };
 
@@ -134,22 +140,22 @@ export const getBorrowingPower = async (
       : `Credit Score: ${creditScore}/1000`;
 
   const prompt = `
-    You are an AI providing an **informational borrowing power estimate** only.
-    You are not a financial advisor. Include disclaimer: "This is not financial advice."
+You are an AI providing an informational borrowing power estimate only.
+You are not a financial advisor. Include disclaimer: "This is not financial advice."
 
-    Data:
-    - ${creditScoreContext}
-    - Income: ${symbol}${totalIncome.toFixed(2)}
-    - Net Worth: ${symbol}${totalBalance.toFixed(2)}
+Data:
+- ${creditScoreContext}
+- Income: ${symbol}${totalIncome.toFixed(2)}
+- Net Worth: ${symbol}${totalBalance.toFixed(2)}
 
-    Return valid JSON:
-    {
-      "estimatedLoanAmount": number,
-      "estimatedInterestRate": number,
-      "advice": string,
-      "disclaimer": "This is not financial advice."
-    }
-  `;
+Return JSON:
+{
+  "estimatedLoanAmount": number,
+  "estimatedInterestRate": number,
+  "advice": string,
+  "disclaimer": "This is not financial advice."
+}
+`;
 
   try {
     const response = await ai.models.generateContent({
@@ -165,7 +171,12 @@ export const getBorrowingPower = async (
             advice: { type: Type.STRING },
             disclaimer: { type: Type.STRING },
           },
-          required: ["estimatedLoanAmount", "estimatedInterestRate", "advice", "disclaimer"],
+          required: [
+            "estimatedLoanAmount",
+            "estimatedInterestRate",
+            "advice",
+            "disclaimer",
+          ],
         },
       },
     });
@@ -206,12 +217,12 @@ export const getFinancialAlerts = async (
     .join("\n");
 
   const prompt = `
-    You are an AI Financial Watchdog. Identify 3 general alerts: anomalies, opportunities, or milestones.
-    Each alert should be helpful but not advisory. Always include a disclaimer: "This is not financial advice."
+You are an AI Financial Watchdog. Identify 3 general alerts: anomalies, opportunities, or milestones.
+Each alert should be helpful but not advisory. Always include a disclaimer: "This is not financial advice."
 
-    Respond ONLY as a JSON array of objects with:
-    { type, title, description, disclaimer }
-  `;
+Respond ONLY as a JSON array of objects:
+[{ "type": string, "title": string, "description": string, "disclaimer": string }]
+`;
 
   try {
     const response = await ai.models.generateContent({
@@ -264,21 +275,90 @@ export const getBalanceForecast = async (
     .join("\n");
 
   const prompt = `
-    You are an AI simulating a financial projection. 
-    This output is educational and **not financial advice** — include a "disclaimer" field.
+You are an AI simulating a financial projection. 
+This output is educational and not financial advice — include a "disclaimer" field.
 
-    User Data:
-    - Balance: ${symbol}${toNumber(currentBalance).toFixed(2)}
-    - Monthly extra savings potential: ${symbol}${toNumber(potentialMonthlySavings).toFixed(2)}
+User Data:
+- Balance: ${symbol}${toNumber(currentBalance).toFixed(2)}
+- Monthly extra savings potential: ${symbol}${toNumber(
+    potentialMonthlySavings
+  ).toFixed(2)}
 
-    Task:
-    1. Create 6-month forecast arrays for "default" and "optimized".
-    2. "Optimized" should grow faster but stay realistic.
-    3. Provide 1 insight comparing them.
-    4. Add 2–3 key change actions (description only).
-    5. Include "disclaimer": "This is not financial advice."
+Task:
+1. Create 6-month forecast arrays for "default" and "optimized".
+2. "Optimized" should grow faster but remain realistic.
+3. Provide one insight comparing the two.
+4. Add 2–3 key change actions (description only).
+5. Include "disclaimer": "This is not financial advice."
 
-    Respond only in valid JSON:
-    {
-      "forecastData": [{ "month": "Oct", "defaultForecast": 9000, "optimizedForecast": 9800 }],
-      "insight": "Following your plan could improve your balance by $800 in 6 months
+Respond only in valid JSON:
+{
+  "forecastData": [
+    { "month": "Oct", "defaultForecast": 9000, "optimizedForecast": 9800 }
+  ],
+  "insight": "Following your plan could improve your balance by $800 in 6 months.",
+  "keyChanges": [{ "description": "Reduce discretionary spending" }],
+  "disclaimer": "This is not financial advice."
+}
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: `${prompt}\n\nTransactions:\n${transactionSummary}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            forecastData: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  month: { type: Type.STRING },
+                  defaultForecast: { type: Type.NUMBER },
+                  optimizedForecast: { type: Type.NUMBER },
+                },
+                required: ["month", "defaultForecast", "optimizedForecast"],
+              },
+            },
+            insight: { type: Type.STRING },
+            keyChanges: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { description: { type: Type.STRING } },
+                required: ["description"],
+              },
+            },
+            disclaimer: { type: Type.STRING },
+          },
+          required: ["forecastData", "insight", "keyChanges", "disclaimer"],
+        },
+      },
+    });
+
+    const jsonText = (response.text ?? "").trim();
+    const parsed = JSON.parse(jsonText) as BalanceForecastResult & {
+      disclaimer?: string;
+    };
+
+    parsed.forecastData = parsed.forecastData.map((f) => ({
+      ...f,
+      defaultForecast: toNumber(f.defaultForecast),
+      optimizedForecast: toNumber(f.optimizedForecast),
+    }));
+
+    (parsed as any).disclaimer ||= "This is not financial advice.";
+    return parsed;
+  } catch (error) {
+    console.error("❌ Gemini BalanceForecast error:", error);
+    return {
+      forecastData: [],
+      insight: "Unable to generate forecast.",
+      keyChanges: [],
+      disclaimer: "This is not financial advice.",
+    };
+  }
+};
