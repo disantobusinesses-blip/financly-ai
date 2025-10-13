@@ -1,4 +1,5 @@
 // src/hooks/useGeminiAI.ts
+import { useState, useEffect } from "react";
 import { Transaction, BalanceForecastResult, User } from "../types";
 import {
   getBalanceForecast,
