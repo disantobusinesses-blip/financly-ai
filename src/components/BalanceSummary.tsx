@@ -21,17 +21,37 @@ interface BalanceSummaryProps {
   accounts: Account[];
 }
 
+const toAmount = (value: unknown): number => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
+
 export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
 
-  const netWorth = useMemo(
-    () => accounts.reduce((sum, acc) => sum + acc.balance, 0),
+  const normalisedAccounts = useMemo(
+    () =>
+      accounts.map((account) => ({
+        ...account,
+        balance: toAmount(account.balance),
+      })),
     [accounts]
   );
 
+  const netWorth = useMemo(
+    () => normalisedAccounts.reduce((sum, acc) => sum + acc.balance, 0),
+    [normalisedAccounts]
+  );
+
   const grouped = useMemo(() => {
-    const sorted = [...accounts].sort(
+    const sorted = [...normalisedAccounts].sort(
       (a, b) => Math.abs(b.balance) - Math.abs(a.balance)
     );
 
@@ -54,17 +74,18 @@ export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
       }
     });
 
-    return TYPE_ORDER.filter((type) => lookup.has(type)).map(
-      (type) => lookup.get(type)!
+    return TYPE_ORDER.filter((type) => lookup.has(type)).map((type) =>
+      lookup.get(type)!
     );
-  }, [accounts]);
+  }, [normalisedAccounts]);
 
   return (
     <div className="p-4 rounded-lg border bg-content-bg">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-text-primary">Balance Summary</h2>
         <span className="text-xs text-text-secondary">
-          {accounts.length} linked account{accounts.length === 1 ? "" : "s"}
+          {normalisedAccounts.length} linked account
+          {normalisedAccounts.length === 1 ? "" : "s"}
         </span>
       </div>
 

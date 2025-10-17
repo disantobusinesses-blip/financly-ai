@@ -29,6 +29,7 @@ const getCategoryAccent = (category: string) =>
 export default function TransactionsList({ transactions }: { transactions: Transaction[] }) {
   const { user } = useAuth();
   const region = user?.region || "AU";
+  const locale = region === "US" ? "en-US" : "en-AU";
 
   // Sort directly — no useMemo needed
   const sortedTxns = [...transactions].sort(
@@ -46,8 +47,12 @@ export default function TransactionsList({ transactions }: { transactions: Trans
           sortedTxns.map((txn: Transaction) => {
             const category = txn.category || "General Spending";
             const badgeClass = getCategoryAccent(category);
-            const dateLabel = formatTransactionDate(txn.date);
-            const amountColor = txn.amount < 0 ? "text-red-400" : "text-green-400";
+            const dateLabel = formatTransactionDate(txn.date, locale);
+            const amountValue =
+              typeof txn.amount === "number"
+                ? txn.amount
+                : Number.parseFloat(String(txn.amount || 0));
+            const amountColor = amountValue < 0 ? "text-red-400" : "text-green-400";
             return (
               <div
                 key={txn.id}
@@ -65,7 +70,7 @@ export default function TransactionsList({ transactions }: { transactions: Trans
                   </div>
                 </div>
                 <p className={`font-semibold ${amountColor}`}>
-                  {formatCurrency(txn.amount, region)}
+                  {formatCurrency(amountValue, region)}
                 </p>
               </div>
             );

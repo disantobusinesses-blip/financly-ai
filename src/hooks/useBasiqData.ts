@@ -19,8 +19,16 @@ const parseNumber = (value: unknown): number => {
   }
 
   if (typeof value === "string") {
-    // Some payloads come through concatenated (e.g. "06397.5712000.00") which
-    // breaks simple parseFloat. Grab the first numeric token instead.
+    // Try to pull out any properly formatted currency fragments first so
+    // concatenated payloads like "06397.5712000.002400.00" split cleanly.
+    const strictMatches = value.match(/-?\d+\.\d{2}/g);
+    if (strictMatches && strictMatches.length > 0) {
+      const parsedStrict = Number.parseFloat(strictMatches[0]);
+      if (Number.isFinite(parsedStrict)) {
+        return parsedStrict;
+      }
+    }
+
     const numericMatches = value.match(/-?\d+(?:\.\d+)?/g);
     if (numericMatches && numericMatches.length > 0) {
       const parsed = Number.parseFloat(numericMatches[0]);
@@ -35,6 +43,29 @@ const parseNumber = (value: unknown): number => {
   }
 
   return 0;
+};
+
+const resolveDateInput = (value: unknown): string | null => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString();
+
+  if (typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object") {
+    const dateLike = (value as Record<string, unknown>);
+    if (typeof dateLike.iso === "string") return dateLike.iso;
+    if (typeof dateLike.date === "string") return dateLike.date;
+    if (typeof dateLike.datetime === "string") return dateLike.datetime;
+  }
+
+  return null;
 };
 
 const mapAccountType = (rawType: unknown): AccountType => {
@@ -98,9 +129,12 @@ const normaliseTransaction = (raw: RawTransaction): Transaction | null => {
     Math.round(
       parseNumber(raw.amount ?? raw.value ?? raw.balance ?? 0) * 100
     ) / 100;
-  const dateSource =
-    raw.date ?? raw.postDate ?? raw.posted_at ?? raw.transactionDate;
-  const parsedDate = dateSource ? new Date(dateSource) : new Date();
+  const dateCandidate =
+    resolveDateInput(raw.date) ??
+    resolveDateInput(raw.postDate) ??
+    resolveDateInput(raw.posted_at) ??
+    resolveDateInput(raw.transactionDate);
+  const parsedDate = dateCandidate ? new Date(dateCandidate) : new Date();
   const date = Number.isNaN(parsedDate.getTime())
     ? new Date().toISOString()
     : parsedDate.toISOString();

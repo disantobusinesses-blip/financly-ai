@@ -12,6 +12,7 @@ export default function UpcomingBills({ accounts }: UpcomingBillsProps) {
   const linkedCount = accounts?.length ?? 0; // uses the prop
   const { user } = useAuth();
   const region = user?.region ?? "AU";
+  const locale = region === "US" ? "en-US" : "en-AU";
 
   // TODO: replace with real bills once available
   const mockBills = [
@@ -32,7 +33,7 @@ export default function UpcomingBills({ accounts }: UpcomingBillsProps) {
                 {bill.name}
               </span>
               <span className="text-xs text-text-secondary">
-                Due {formatTransactionDate(bill.due)}
+                Due {formatTransactionDate(bill.due, locale)}
               </span>
             </span>
             <span className="font-bold text-red-500">

@@ -130,20 +130,45 @@ export const categorizeTransaction = (
   return "General Spending";
 };
 
+const parseDateValue = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === "object") {
+    const dateLike = value as Record<string, unknown>;
+    if (dateLike.iso) return parseDateValue(dateLike.iso);
+    if (dateLike.date) return parseDateValue(dateLike.date);
+    if (dateLike.datetime) return parseDateValue(dateLike.datetime);
+  }
+  return null;
+};
+
 export const formatTransactionDate = (
-  value: string | null | undefined,
+  value: unknown,
   locale?: string
 ): string => {
-  if (!value) return "Pending";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
     return "Pending";
   }
-  return parsed.toLocaleDateString(locale || undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  try {
+    return parsed.toLocaleDateString(locale || undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return parsed.toISOString().split("T")[0];
+  }
 };
 
 export const enhanceTransactions = (transactions: Transaction[]): Transaction[] =>

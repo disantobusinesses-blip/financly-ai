@@ -96,20 +96,22 @@ export default function Dashboard() {
 
   // ✅ Case 5: Normal dashboard view
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-6 p-4">
+      <FinancialWellnessScore accounts={accounts} transactions={transactions} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <BalanceSummary accounts={accounts} />
+          </div>
+
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
               totalBalance={totalBalance}
               savingsPlan={null} // Live-only
             />
-          </div>
-
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <BalanceSummary accounts={accounts} />
           </div>
 
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
@@ -127,12 +129,6 @@ export default function Dashboard() {
 
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <FinancialWellnessScore
-              accounts={accounts}
-              transactions={transactions}
-            />
-          </div>
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <UpcomingBills accounts={accounts} />
           </div>
