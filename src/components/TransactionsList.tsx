@@ -3,6 +3,7 @@ import Card from "./Card";
 import { formatCurrency } from "../utils/currency";
 import { formatTransactionDate } from "../utils/transactions";
 import { useAuth } from "../contexts/AuthContext";
+import { useMemo } from "react";
 
 const CATEGORY_ACCENTS: Record<string, string> = {
   Income: "bg-emerald-500/10 text-emerald-400",
@@ -31,16 +32,45 @@ export default function TransactionsList({ transactions }: { transactions: Trans
   const region = user?.region || "AU";
   const locale = region === "US" ? "en-US" : "en-AU";
 
-  // Sort directly — no useMemo needed
-  const sortedTxns = [...transactions].sort(
-    (a: Transaction, b: Transaction) => Date.parse(b.date) - Date.parse(a.date)
+  const sortedTxns = useMemo(
+    () =>
+      [...transactions].sort(
+        (a: Transaction, b: Transaction) => Date.parse(b.date) - Date.parse(a.date)
+      ),
+    [transactions]
   );
 
+  const totals = useMemo(() => {
+    const income = sortedTxns
+      .filter((txn) => txn.amount > 0)
+      .reduce((sum, txn) => sum + txn.amount, 0);
+    const expenses = sortedTxns
+      .filter((txn) => txn.amount < 0)
+      .reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
+    return { income, expenses };
+  }, [sortedTxns]);
+
   return (
-    <Card title="Recent Transactions">
-      <div className="overflow-y-auto max-h-96 divide-y divide-gray-800">
+    <Card
+      title="Recent transactions"
+      subtitle="A live feed of everything hitting your accounts."
+      insights={[
+        { label: "Entries", value: String(sortedTxns.length) },
+        {
+          label: "Income",
+          value: formatCurrency(totals.income, region),
+          tone: "positive",
+        },
+        {
+          label: "Outgoings",
+          value: formatCurrency(totals.expenses, region),
+          tone: "negative",
+        },
+      ]}
+    >
+      <div className="max-h-96 space-y-2 overflow-y-auto pr-2">
         {sortedTxns.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-10">
+          <p className="py-10 text-center text-sm text-white/70">
             No transactions yet.
           </p>
         ) : (
@@ -52,24 +82,24 @@ export default function TransactionsList({ transactions }: { transactions: Trans
               typeof txn.amount === "number"
                 ? txn.amount
                 : Number.parseFloat(String(txn.amount || 0));
-            const amountColor = amountValue < 0 ? "text-red-400" : "text-green-400";
+            const amountColor = amountValue < 0 ? "text-rose-200" : "text-emerald-200";
             return (
               <div
                 key={txn.id}
-                className="flex justify-between items-center py-2 px-1 hover:bg-white/5 transition rounded-md"
+                className="flex items-center justify-between gap-4 rounded-xl bg-white/5 px-3 py-3"
               >
-                <div>
-                  <p className="text-white text-sm font-medium">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">
                     {txn.description || "Unnamed"}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-400">{dateLabel}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeClass}`}>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-white/60">{dateLabel}</span>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${badgeClass}`}>
                       {category}
                     </span>
                   </div>
                 </div>
-                <p className={`font-semibold ${amountColor}`}>
+                <p className={`shrink-0 text-sm font-semibold ${amountColor}`}>
                   {formatCurrency(amountValue, region)}
                 </p>
               </div>

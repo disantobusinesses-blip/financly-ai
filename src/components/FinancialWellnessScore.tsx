@@ -149,7 +149,9 @@ export default function FinancialWellnessScore({
 
   const { label, summary } = getScoreLabel(score);
   const savingsRatePercent = Math.round(savingsRate * 100);
-  const debtToIncomePercent = Math.min(999, Math.round(debtToIncome * 100));
+  const debtToIncomeRatio = debtToIncome > 0
+    ? Math.max(0, Math.min(9.99, Number.isFinite(debtToIncome) ? debtToIncome : 0))
+    : 0;
 
   if (!accounts.length) {
     return (
@@ -248,7 +250,7 @@ export default function FinancialWellnessScore({
               Debt-to-income
             </p>
             <p className="mt-1 text-lg font-semibold">
-              {debtToIncomePercent}%
+              {debtToIncomeRatio.toFixed(2)}x
             </p>
           </div>
         </div>

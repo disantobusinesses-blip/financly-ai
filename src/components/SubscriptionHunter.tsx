@@ -5,6 +5,7 @@ import { CreditCardIcon } from "@heroicons/react/24/outline";
 import { Transaction } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
+import Card from "./Card";
 
 interface Props {
   transactions: Transaction[];
@@ -22,44 +23,47 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
   const totalSpent = subscriptions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
   const region = user?.region;
 
-  const content = (
-    <div className="space-y-4">
-      {subscriptions.length > 0 ? (
-        <>
-          <p className="text-text-secondary">
-            We found <span className="font-bold">{subscriptions.length}</span>{" "}
-            active subscriptions. You’re spending{" "}
-            <span className="font-bold">{formatCurrency(totalSpent, region)}</span>/mo.
-          </p>
-          <ul className="space-y-2">
-            {subscriptions.map((sub) => (
-              <li
-                key={sub.id}
-                className="flex justify-between items-center bg-gray-50 dark:bg-neutral-800 rounded-md px-3 py-2"
-              >
-                <span className="text-text-primary">{sub.description}</span>
-                <span className="text-text-secondary">
-                  {formatCurrency(Math.abs(sub.amount), region)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p className="text-text-secondary">No subscriptions detected.</p>
-      )}
-    </div>
-  );
-
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <CreditCardIcon className="h-6 w-6 text-primary" />
-        <h2 className="text-xl font-bold text-text-primary">Subscription Hunter</h2>
-      </div>
-
-      {content}
-    </div>
+    <Card
+      title="Subscription hunter"
+      subtitle="Track recurring charges, spot price hikes and cancel the ones you don’t need."
+      icon={<CreditCardIcon className="h-6 w-6" />}
+      insights={[
+        { label: "Active", value: String(subscriptions.length) },
+        {
+          label: "Monthly spend",
+          value: formatCurrency(totalSpent, region),
+          tone: totalSpent > 0 ? "negative" : "neutral",
+        },
+        {
+          label: "Region",
+          value: region ?? "AU",
+        },
+      ]}
+    >
+      {subscriptions.length > 0 ? (
+        <ul className="space-y-3 text-sm text-white/80">
+          {subscriptions.map((sub) => (
+            <li
+              key={sub.id}
+              className="flex items-center justify-between gap-4 rounded-xl bg-white/5 px-3 py-3"
+            >
+              <div>
+                <p className="font-semibold text-white">{sub.description}</p>
+                <p className="text-xs uppercase tracking-wide text-white/60">
+                  {formatCurrency(Math.abs(sub.amount), region)} / month
+                </p>
+              </div>
+              <button className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-white/20">
+                Cancel
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-white/70">No subscriptions detected.</p>
+      )}
+    </Card>
   );
 };
 

@@ -30,42 +30,74 @@ export default function SpendingByCategory({ transactions }: { transactions: Tra
       const category = txn.category || "General Spending";
       const amt = Math.abs(txn.amount || 0);
 
-      // Only include expenses (negative or outgoing transfers)
       if (txn.amount < 0 || category === "Fees & Charges") {
         totals[category] = (totals[category] || 0) + amt;
       }
     });
 
-    // Sort by total descending
     const sorted = Object.entries(totals)
       .map(([category, total]) => ({ category, total }))
       .sort((a, b) => b.total - a.total);
 
-    return sorted.slice(0, 8);
+    return sorted.slice(0, 10);
   }, [transactions]);
 
+  const topCategory = data[0];
+  const totalSpending = data.reduce((sum, item) => sum + item.total, 0);
+
   return (
-    <Card title="Spending by Category">
-      <div className="h-72">
+    <Card
+      title="Spending by Category"
+      subtitle="See where your dollars are flowing so you can cap the costliest habits."
+      insights={[
+        topCategory
+          ? {
+              label: "Top category",
+              value: `${topCategory.category}`,
+              tone: "neutral",
+            }
+          : { label: "Top category", value: "-" },
+        {
+          label: "Tracked spend",
+          value: formatCurrency(totalSpending, region),
+          tone: "negative",
+        },
+        {
+          label: "Categories",
+          value: String(data.length || 0),
+        },
+      ]}
+    >
+      <div className="h-96">
         {data.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-10">
+          <p className="py-12 text-center text-base text-white/70">
             No categorized transactions yet.
           </p>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
-              <XAxis dataKey="category" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" />
-              <YAxis tick={{ fontSize: 11 }} />
+              <XAxis
+                dataKey="category"
+                tick={{ fontSize: 12, fill: "#F8FAFC" }}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+              />
+              <YAxis tick={{ fontSize: 12, fill: "#E2E8F0" }} />
               <Tooltip
                 formatter={(value: number) =>
-                  typeof value === "number"
-                    ? formatCurrency(-Math.abs(value), region)
-                    : value
+                  typeof value === "number" ? formatCurrency(value, region) : value
                 }
                 labelFormatter={(label: string) => label}
-                contentStyle={{ backgroundColor: "#fff", borderRadius: 6 }}
+                contentStyle={{
+                  background: "rgba(30, 41, 59, 0.95)",
+                  color: "#F8FAFC",
+                  borderRadius: 12,
+                  border: "none",
+                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.25)",
+                }}
               />
-              <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="total" radius={[10, 10, 4, 4]}>
                 {data.map((_, idx) => (
                   <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                 ))}

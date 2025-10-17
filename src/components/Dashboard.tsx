@@ -6,12 +6,13 @@ import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
 import SpendingChart from "./SpendingChart";
 import UpcomingBills from "./UpcomingBills";
-import SubscriptionCard from "./SubscriptionCard";
 import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
 import FinancialWellnessScore from "./FinancialWellnessScore";
+import SubscriptionHunter from "./SubscriptionHunter";
+import SavingsCoach from "./SavingsCoach";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -102,52 +103,34 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <BalanceSummary accounts={accounts} />
-          </div>
+          <BalanceSummary accounts={accounts} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <SpendingForecast
-              transactions={transactions}
-              totalBalance={totalBalance}
-              savingsPlan={null} // Live-only
-            />
-          </div>
+          <SpendingForecast
+            transactions={transactions}
+            totalBalance={totalBalance}
+            savingsPlan={null}
+          />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <CashflowMini transactions={transactions} />
-          </div>
+          <CashflowMini transactions={transactions} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <SpendingByCategory transactions={transactions} />
-          </div>
+          <SpendingByCategory transactions={transactions} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <SpendingChart transactions={transactions} />
-          </div>
+          <SpendingChart transactions={transactions} />
         </div>
 
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <UpcomingBills accounts={accounts} />
-          </div>
+          <SubscriptionHunter transactions={transactions} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <SubscriptionCard />
-          </div>
+          <SavingsCoach transactions={transactions} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <FinancialAlerts transactions={transactions} />
-          </div>
+          <UpcomingBills accounts={accounts} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <TransactionsList transactions={transactions} />
-          </div>
+          <FinancialAlerts transactions={transactions} />
 
-          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
-            <TransactionAnalysis transactions={transactions} />
-          </div>
+          <TransactionsList transactions={transactions} />
+
+          <TransactionAnalysis transactions={transactions} />
         </div>
       </div>
 

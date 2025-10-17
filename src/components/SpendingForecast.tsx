@@ -8,6 +8,7 @@ import { getBalanceForecast } from "../services/GeminiService";
 import { useOnScreen } from "../hooks/useOnScreen";
 import { formatCurrency } from "../utils/currency";
 import { SparklesIcon, TrendingUpIcon } from "./icon/Icon";
+import Card from "./Card";
 
 interface SpendingForecastProps {
   transactions: Transaction[];
@@ -18,10 +19,14 @@ interface SpendingForecastProps {
 const CustomTooltip = ({ active, payload, label, region }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-content-bg p-2 border border-border-color rounded-md shadow-lg">
-        <p className="label font-bold text-text-primary">{`${label}`}</p>
+      <div className="rounded-xl bg-slate-900/90 p-3 text-white shadow-xl">
+        <p className="text-sm font-semibold">{label}</p>
         {payload.map((pld: any, index: number) =>
-          pld.value ? <p key={index} style={{ color: pld.color }}>{`${pld.name}: ${formatCurrency(pld.value, region)}`}</p> : null
+          pld.value ? (
+            <p key={index} className="text-xs" style={{ color: pld.color }}>
+              {pld.name}: {formatCurrency(pld.value, region)}
+            </p>
+          ) : null
         )}
       </div>
     );
@@ -36,7 +41,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, total
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const isOnScreen = useOnScreen(containerRef);
 
   useEffect(() => {
@@ -94,53 +99,88 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, total
     }));
   }, [forecast]);
 
-  return (
-    <div className="bg-content-bg p-6 rounded-xl border border-border-color" ref={containerRef}>
-      <div className="flex items-center mb-6">
-        <SparklesIcon className="h-7 w-7 text-primary" />
-        <h2 className="text-2xl font-bold text-text-primary ml-3">Spending Forecast</h2>
-      </div>
+  const optimisedLift = forecast
+    ? (() => {
+        const lastPoint = forecast.forecastData[forecast.forecastData.length - 1];
+        if (!lastPoint) return 0;
+        return lastPoint.optimizedForecast - lastPoint.defaultForecast;
+      })()
+    : 0;
 
+  return (
+    <Card
+      ref={containerRef}
+      title="Spending forecast"
+      subtitle="Compare your current trajectory with the optimised plan our AI recommends."
+      icon={<SparklesIcon className="h-7 w-7" />}
+      insights={[
+        {
+          label: "Months modelled",
+          value: String(forecast?.forecastData.length ?? 0),
+        },
+        {
+          label: "Optimised lift",
+          value: formatCurrency(optimisedLift || 0, user?.region || "AU"),
+          tone: optimisedLift >= 0 ? "positive" : "negative",
+        },
+        {
+          label: "Status",
+          value: loading ? "Running" : error ? "Error" : "Ready",
+          tone: error ? "negative" : loading ? "neutral" : "positive",
+        },
+      ]}
+    >
       {loading ? (
-        <p className="text-text-secondary">Generating forecast...</p>
+        <p className="text-sm text-white/80">Generating forecast...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <p className="text-sm text-rose-200">{error}</p>
       ) : forecast ? (
         <div className="space-y-6">
-          <div className="h-64">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" stroke={theme === "dark" ? "#fff" : "#000"} />
-                <YAxis stroke={theme === "dark" ? "#fff" : "#000"} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.4} />
+                <XAxis dataKey="month" stroke={theme === "dark" ? "#e2e8f0" : "#0f172a"} />
+                <YAxis stroke={theme === "dark" ? "#e2e8f0" : "#0f172a"} />
                 <Tooltip content={<CustomTooltip region={user?.region || "AU"} />} />
-                <Legend />
-                <Line type="monotone" dataKey="defaultForecast" stroke="#8884d8" strokeWidth={2} dot={false} name="Default Forecast" />
-                <Line type="monotone" dataKey="optimizedForecast" stroke="#82ca9d" strokeWidth={2} dot={false} name="Optimized Forecast" />
+                <Legend wrapperStyle={{ color: "#e2e8f0" }} />
+                <Line
+                  type="monotone"
+                  dataKey="defaultForecast"
+                  stroke="#a855f7"
+                  strokeWidth={2.5}
+                  dot={false}
+                  name="Current path"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="optimizedForecast"
+                  stroke="#22c55e"
+                  strokeWidth={2.5}
+                  dot={false}
+                  name="Optimised"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-primary-light p-4 rounded-lg text-center">
-            <p className="text-sm text-primary font-medium">{forecast.insight}</p>
-            <div className="flex items-center justify-center gap-2 text-primary font-bold mt-2">
-              <TrendingUpIcon className="h-5 w-5" />
-              <span>
-                Key changes:{" "}
-                {forecast.keyChanges.map((kc, i) => (
-                  <span key={i} className="ml-1">
-                    {kc.description}
-                    {i < forecast.keyChanges.length - 1 && ", "}
-                  </span>
-                ))}
-              </span>
+          <div className="rounded-2xl bg-white/10 p-5 text-center text-sm text-white/80">
+            <p>{forecast.insight}</p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs uppercase tracking-wide text-white">
+              <TrendingUpIcon className="h-4 w-4" />
+              <span>Key changes</span>
+              {forecast.keyChanges.map((kc, i) => (
+                <span key={i} className="rounded-full bg-white/10 px-3 py-1 text-white/80">
+                  {kc.description}
+                </span>
+              ))}
             </div>
           </div>
         </div>
       ) : (
-        <p className="text-text-secondary">Not enough data yet to generate a forecast.</p>
+        <p className="text-sm text-white/70">Not enough data yet to generate a forecast.</p>
       )}
-    </div>
+    </Card>
   );
 };
 
