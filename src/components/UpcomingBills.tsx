@@ -1,5 +1,8 @@
 import { Account } from "../types";
 import Card from "./Card";
+import { useAuth } from "../contexts/AuthContext";
+import { formatCurrency } from "../utils/currency";
+import { formatTransactionDate } from "../utils/transactions";
 
 interface UpcomingBillsProps {
   accounts: Account[];
@@ -7,6 +10,8 @@ interface UpcomingBillsProps {
 
 export default function UpcomingBills({ accounts }: UpcomingBillsProps) {
   const linkedCount = accounts?.length ?? 0; // uses the prop
+  const { user } = useAuth();
+  const region = user?.region ?? "AU";
 
   // TODO: replace with real bills once available
   const mockBills = [
@@ -22,9 +27,16 @@ export default function UpcomingBills({ accounts }: UpcomingBillsProps) {
       <ul className="divide-y text-sm">
         {mockBills.map((bill) => (
           <li key={bill.id} className="flex justify-between py-2">
-            <span>{bill.name} (due {bill.due})</span>
+            <span>
+              <span className="block font-medium text-text-primary">
+                {bill.name}
+              </span>
+              <span className="text-xs text-text-secondary">
+                Due {formatTransactionDate(bill.due)}
+              </span>
+            </span>
             <span className="font-bold text-red-500">
-              -${bill.amount.toFixed(2)}
+              {formatCurrency(-bill.amount, region)}
             </span>
           </li>
         ))}

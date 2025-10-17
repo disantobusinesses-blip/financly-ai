@@ -1,25 +1,101 @@
-import { Account } from "../types";
+import { useMemo } from "react";
+import { Account, AccountType } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { formatCurrency } from "../utils/currency";
+
+const GROUP_LABELS: Record<AccountType, string> = {
+  [AccountType.CHECKING]: "Everyday Accounts",
+  [AccountType.SAVINGS]: "Savings & Goals",
+  [AccountType.CREDIT_CARD]: "Credit Cards",
+  [AccountType.LOAN]: "Loans & Liabilities",
+};
+
+const TYPE_ORDER = [
+  AccountType.CHECKING,
+  AccountType.SAVINGS,
+  AccountType.CREDIT_CARD,
+  AccountType.LOAN,
+];
 
 interface BalanceSummaryProps {
   accounts: Account[];
 }
 
 export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
-  const total = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const { user } = useAuth();
+  const region = user?.region ?? "AU";
+
+  const netWorth = useMemo(
+    () => accounts.reduce((sum, acc) => sum + acc.balance, 0),
+    [accounts]
+  );
+
+  const grouped = useMemo(() => {
+    const sorted = [...accounts].sort(
+      (a, b) => Math.abs(b.balance) - Math.abs(a.balance)
+    );
+
+    const lookup = new Map<
+      AccountType,
+      { label: string; total: number; accounts: Account[] }
+    >();
+
+    sorted.forEach((account) => {
+      const bucket = lookup.get(account.type);
+      if (bucket) {
+        bucket.accounts.push(account);
+        bucket.total += account.balance;
+      } else {
+        lookup.set(account.type, {
+          label: GROUP_LABELS[account.type] ?? account.type,
+          total: account.balance,
+          accounts: [account],
+        });
+      }
+    });
+
+    return TYPE_ORDER.filter((type) => lookup.has(type)).map(
+      (type) => lookup.get(type)!
+    );
+  }, [accounts]);
 
   return (
     <div className="p-4 rounded-lg border bg-content-bg">
-      <h2 className="text-lg font-bold text-text-primary">Balance Summary</h2>
-      <p className="text-2xl font-bold text-primary mt-2">
-        {total.toLocaleString("en-AU", { style: "currency", currency: "AUD" })}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-text-primary">Balance Summary</h2>
+        <span className="text-xs text-text-secondary">
+          {accounts.length} linked account{accounts.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <p className="text-3xl font-bold text-primary mt-2">
+        {formatCurrency(netWorth, region)}
       </p>
-      <ul className="mt-3 space-y-1 text-sm text-text-secondary">
-        {accounts.map((acc) => (
-          <li key={acc.id}>
-            {acc.name} — {acc.balance.toLocaleString("en-AU", { style: "currency", currency: acc.currency })}
-          </li>
+
+      <div className="mt-4 space-y-4">
+        {grouped.map((group) => (
+          <div key={group.label}>
+            <div className="flex items-center justify-between text-sm font-semibold text-text-primary">
+              <span>{group.label}</span>
+              <span>{formatCurrency(group.total, region)}</span>
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-text-secondary">
+              {group.accounts.map((acc) => {
+                const amountClass =
+                  acc.balance < 0 ? "text-red-500" : "text-emerald-500";
+                return (
+                  <li key={acc.id} className="flex items-center justify-between">
+                    <span className="truncate pr-2">{acc.name}</span>
+                    <span className={`font-medium ${amountClass}`}>
+                      {formatCurrency(acc.balance, region, acc.currency)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

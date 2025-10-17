@@ -1,7 +1,17 @@
 import { useMemo } from "react";
 import { Transaction } from "../types";
 import Card from "./Card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import { useAuth } from "../contexts/AuthContext";
+import { formatCurrency } from "../utils/currency";
 
 // Define a friendly color palette
 const COLORS = [
@@ -9,39 +19,15 @@ const COLORS = [
   "#C7D2FE", "#F59E0B", "#10B981", "#EF4444", "#3B82F6"
 ];
 
-// Heuristic category mapping (for better readability)
-function mapCategory(txn: Transaction): string {
-  if (!txn) return "Uncategorized";
-
-  const raw =
-    txn.category ||
-    (txn as any)?.class?.category ||
-    txn.description?.toLowerCase() ||
-    "";
-
-  if (raw.includes("salary") || raw.includes("payroll")) return "Income";
-  if (raw.includes("coles") || raw.includes("woolworth")) return "Groceries";
-  if (raw.includes("afterpay")) return "Debt / Buy Now Pay Later";
-  if (raw.includes("rent") || raw.includes("mortgage")) return "Housing";
-  if (raw.includes("uber") || raw.includes("fuel") || raw.includes("petrol"))
-    return "Transport";
-  if (raw.includes("spotify") || raw.includes("netflix") || raw.includes("stan"))
-    return "Entertainment";
-  if (raw.includes("gym") || raw.includes("fitness")) return "Health & Fitness";
-  if (raw.includes("transfer") || raw.includes("to jared"))
-    return "Transfers";
-  if (raw.includes("interest") || raw.includes("fee"))
-    return "Fees & Charges";
-
-  return "Uncategorized";
-}
-
 export default function SpendingByCategory({ transactions }: { transactions: Transaction[] }) {
+  const { user } = useAuth();
+  const region = user?.region ?? "AU";
+
   const data = useMemo(() => {
     const totals: Record<string, number> = {};
 
     transactions.forEach((txn) => {
-      const category = mapCategory(txn);
+      const category = txn.category || "General Spending";
       const amt = Math.abs(txn.amount || 0);
 
       // Only include expenses (negative or outgoing transfers)
@@ -55,7 +41,7 @@ export default function SpendingByCategory({ transactions }: { transactions: Tra
       .map(([category, total]) => ({ category, total }))
       .sort((a, b) => b.total - a.total);
 
-    return sorted;
+    return sorted.slice(0, 8);
   }, [transactions]);
 
   return (
@@ -71,7 +57,12 @@ export default function SpendingByCategory({ transactions }: { transactions: Tra
               <XAxis dataKey="category" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip
-                formatter={(value: number) => `$${value.toFixed(2)}`}
+                formatter={(value: number) =>
+                  typeof value === "number"
+                    ? formatCurrency(-Math.abs(value), region)
+                    : value
+                }
+                labelFormatter={(label: string) => label}
                 contentStyle={{ backgroundColor: "#fff", borderRadius: 6 }}
               />
               <Bar dataKey="total" radius={[6, 6, 0, 0]}>

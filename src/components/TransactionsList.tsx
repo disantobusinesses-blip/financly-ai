@@ -1,19 +1,30 @@
 import { Transaction } from "../types";
 import Card from "./Card";
 import { formatCurrency } from "../utils/currency";
+import { formatTransactionDate } from "../utils/transactions";
 import { useAuth } from "../contexts/AuthContext";
 
-// Simple category mapping helper
-function mapCategory(txn: Transaction): string {
-  const desc = txn.description?.toLowerCase() || "";
-  if (desc.includes("salary")) return "Income";
-  if (desc.includes("coles") || desc.includes("woolworth")) return "Groceries";
-  if (desc.includes("afterpay")) return "Debt";
-  if (desc.includes("spotify") || desc.includes("netflix")) return "Entertainment";
-  if (desc.includes("rent") || desc.includes("mortgage")) return "Housing";
-  if (desc.includes("uber") || desc.includes("fuel") || desc.includes("petrol")) return "Transport";
-  return "Other";
-}
+const CATEGORY_ACCENTS: Record<string, string> = {
+  Income: "bg-emerald-500/10 text-emerald-400",
+  "Groceries": "bg-lime-500/10 text-lime-500",
+  "Dining Out": "bg-orange-500/10 text-orange-400",
+  "Shopping": "bg-sky-500/10 text-sky-400",
+  "Transport": "bg-purple-500/10 text-purple-400",
+  "Utilities": "bg-cyan-500/10 text-cyan-400",
+  "Housing": "bg-amber-500/10 text-amber-500",
+  "Health & Fitness": "bg-rose-500/10 text-rose-400",
+  "Debt Repayments": "bg-red-500/10 text-red-400",
+  "Fees & Charges": "bg-slate-500/10 text-slate-300",
+  Subscriptions: "bg-indigo-500/10 text-indigo-400",
+  Travel: "bg-fuchsia-500/10 text-fuchsia-400",
+  Insurance: "bg-teal-500/10 text-teal-400",
+  Education: "bg-yellow-500/10 text-yellow-500",
+  Savings: "bg-emerald-500/10 text-emerald-400",
+  Transfers: "bg-slate-500/10 text-slate-300",
+};
+
+const getCategoryAccent = (category: string) =>
+  CATEGORY_ACCENTS[category] ?? "bg-slate-600/10 text-slate-200";
 
 export default function TransactionsList({ transactions }: { transactions: Transaction[] }) {
   const { user } = useAuth();
@@ -33,7 +44,9 @@ export default function TransactionsList({ transactions }: { transactions: Trans
           </p>
         ) : (
           sortedTxns.map((txn: Transaction) => {
-            const category = mapCategory(txn);
+            const category = txn.category || "General Spending";
+            const badgeClass = getCategoryAccent(category);
+            const dateLabel = formatTransactionDate(txn.date);
             const amountColor = txn.amount < 0 ? "text-red-400" : "text-green-400";
             return (
               <div
@@ -44,9 +57,12 @@ export default function TransactionsList({ transactions }: { transactions: Trans
                   <p className="text-white text-sm font-medium">
                     {txn.description || "Unnamed"}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(txn.date).toLocaleDateString()} · {category}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-400">{dateLabel}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeClass}`}>
+                      {category}
+                    </span>
+                  </div>
                 </div>
                 <p className={`font-semibold ${amountColor}`}>
                   {formatCurrency(txn.amount, region)}

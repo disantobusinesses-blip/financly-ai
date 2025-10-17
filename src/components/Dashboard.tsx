@@ -1,4 +1,6 @@
 // src/components/Dashboard.tsx
+import { useMemo } from "react";
+
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -9,12 +11,47 @@ import SpendingForecast from "./SpendingForecast";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import TransactionAnalysis from "./TransactionAnalysis";
-import { useGeminiAI } from "../hooks/useGeminiAI";
+import FinancialWellnessScore from "./FinancialWellnessScore";
 import { useBasiqData } from "../hooks/useBasiqData";
+import { useAuth } from "../contexts/AuthContext";
+import { useGeminiAI } from "../hooks/useGeminiAI";
 
 
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
+  const { user } = useAuth();
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + account.balance, 0),
+    [accounts]
+  );
+  const {
+    alerts: aiAlerts,
+    insights: aiInsights,
+    loading: aiLoading,
+    error: aiError,
+  } = useGeminiAI(transactions, totalBalance, user?.region ?? "AU");
+
+  const aiStatusMessage = useMemo(() => {
+    if (aiLoading) {
+      return "Generating AI insights...";
+    }
+
+    if (aiError) {
+      return `AI enhancements unavailable: ${aiError}`;
+    }
+
+    const suggestionCount = aiInsights?.insights?.length ?? 0;
+    const alertCount = aiAlerts.length;
+
+    if (suggestionCount > 0 || alertCount > 0) {
+      const suggestionLabel = suggestionCount === 1 ? "suggestion" : "suggestions";
+      const alertLabel = alertCount === 1 ? "alert" : "alerts";
+
+      return `AI insights ready with ${suggestionCount} ${suggestionLabel} and ${alertCount} ${alertLabel}.`;
+    }
+
+    return "AI enhancements ready.";
+  }, [aiAlerts, aiError, aiInsights, aiLoading]);
 
   // ✅ Case 1: Cached data is showing while fresh data is loading
   if (loading && accounts.length > 0) {
@@ -48,7 +85,7 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 4: User hasn’t connected a bank yet
+  // ✅ Case 4: User hasn't connected a bank yet
   if (accounts.length === 0 && transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -66,7 +103,7 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={accounts.reduce((sum, a) => sum + a.balance, 0)}
+              totalBalance={totalBalance}
               savingsPlan={null} // Live-only
             />
           </div>
@@ -91,6 +128,12 @@ export default function Dashboard() {
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
+            <FinancialWellnessScore
+              accounts={accounts}
+              transactions={transactions}
+            />
+          </div>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <UpcomingBills accounts={accounts} />
           </div>
 
@@ -111,6 +154,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <div className="text-center text-xs text-gray-400">{aiStatusMessage}</div>
 
       {/* ✅ Optional footer info */}
       {lastUpdated && (

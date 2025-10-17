@@ -1,9 +1,10 @@
 // src/components/SubscriptionHunter.tsx
 import React, { useMemo } from "react";
-import { Transaction } from "../types";
-import ProFeatureBlocker from "./ProFeatureBlocker";
-import { useAuth } from "../contexts/AuthContext";
 import { CreditCardIcon } from "@heroicons/react/24/outline";
+
+import { Transaction } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { formatCurrency } from "../utils/currency";
 
 interface Props {
   transactions: Transaction[];
@@ -19,6 +20,7 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
   );
 
   const totalSpent = subscriptions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const region = user?.region;
 
   const content = (
     <div className="space-y-4">
@@ -26,9 +28,8 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
         <>
           <p className="text-text-secondary">
             We found <span className="font-bold">{subscriptions.length}</span>{" "}
-            active subscriptions.  
-            You’re spending{" "}
-            <span className="font-bold">${totalSpent.toFixed(2)}/mo</span>.
+            active subscriptions. You’re spending{" "}
+            <span className="font-bold">{formatCurrency(totalSpent, region)}</span>/mo.
           </p>
           <ul className="space-y-2">
             {subscriptions.map((sub) => (
@@ -38,7 +39,7 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
               >
                 <span className="text-text-primary">{sub.description}</span>
                 <span className="text-text-secondary">
-                  ${Math.abs(sub.amount).toFixed(2)}
+                  {formatCurrency(Math.abs(sub.amount), region)}
                 </span>
               </li>
             ))}
@@ -57,16 +58,7 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
         <h2 className="text-xl font-bold text-text-primary">Subscription Hunter</h2>
       </div>
 
-      {user?.membershipType === "Pro" ? (
-        content
-      ) : (
-        <ProFeatureBlocker
-          featureTitle="Subscription Hunter"
-          teaserText="We found hidden subscriptions! Upgrade to see the full list and cancel unused ones."
-        >
-          {content}
-        </ProFeatureBlocker>
-      )}
+      {content}
     </div>
   );
 };
