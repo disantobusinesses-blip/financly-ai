@@ -84,43 +84,43 @@ export default function SavingsCoach({ transactions }: SavingsCoachProps) {
         },
       ]}
     >
-      <div className="space-y-4 text-sm text-white/80">
+      <div className="space-y-4 text-sm text-slate-600">
         {opportunities.length > 0 ? (
           <ul className="space-y-3">
             {opportunities.map((opp) => (
               <li
                 key={opp.category}
-                className="rounded-xl bg-white/5 p-4"
+                className="rounded-xl border border-slate-200 bg-white p-4"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-slate-900">
                       {opp.category}
                     </p>
-                    <p className="text-xs uppercase tracking-wide text-white/60">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">
                       Current spend {formatCurrency(opp.current, region)}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                     <TrendingUpIcon className="h-4 w-4" />
                     Save 15%
                   </span>
                 </div>
-                <p className="mt-3 text-white/75">{opp.recommendation}</p>
+                <p className="mt-3 text-slate-600">{opp.recommendation}</p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-white/70">
+          <p className="text-sm text-slate-500">
             Add more transactions to identify tailored savings opportunities.
           </p>
         )}
 
-        <div className="rounded-2xl bg-white/10 p-4">
-          <p className="text-xs uppercase tracking-wide text-white/60">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
             Weekly challenge ideas
           </p>
-          <ul className="mt-2 space-y-2 text-white/80">
+          <ul className="mt-2 space-y-2 text-slate-600">
             {defaultChallenges.map((challenge) => (
               <li key={challenge} className="leading-snug">
                 • {challenge}

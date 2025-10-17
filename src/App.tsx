@@ -15,7 +15,7 @@ const AppContent: React.FC = () => {
   if (!user) return <WelcomeScreen />;
 
   return (
-    <div className="min-h-screen bg-background text-text-primary">
+    <div className="min-h-screen bg-slate-100 text-text-primary">
       <Header />
       <main className="p-6">
         <Dashboard />

@@ -13,10 +13,10 @@ import TransactionAnalysis from "./TransactionAnalysis";
 import FinancialWellnessScore from "./FinancialWellnessScore";
 import SubscriptionHunter from "./SubscriptionHunter";
 import SavingsCoach from "./SavingsCoach";
+import RoundUpAccelerator from "./RoundUpAccelerator";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
-
 
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
@@ -54,13 +54,12 @@ export default function Dashboard() {
     return "AI enhancements ready.";
   }, [aiAlerts, aiError, aiInsights, aiLoading]);
 
-  // ✅ Case 1: Cached data is showing while fresh data is loading
   if (loading && accounts.length > 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
+      <div className="flex h-screen flex-col items-center justify-center text-gray-500">
         <p>Refreshing your live financial data...</p>
         {lastUpdated && (
-          <p className="text-xs mt-2 text-gray-400">
+          <p className="mt-2 text-xs text-gray-400">
             Last updated: {new Date(lastUpdated).toLocaleTimeString()}
           </p>
         )}
@@ -68,77 +67,107 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 2: First-time load, no cached data yet
   if (loading && accounts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
+      <div className="flex h-screen flex-col items-center justify-center text-gray-500">
         <p>Loading your financial data...</p>
       </div>
     );
   }
 
-  // ✅ Case 3: Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-red-500">
+      <div className="flex h-screen flex-col items-center justify-center text-red-500">
         <p>Failed to load data: {error}</p>
       </div>
     );
   }
 
-  // ✅ Case 4: User hasn't connected a bank yet
   if (accounts.length === 0 && transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-gray-500">
+      <div className="flex h-screen flex-col items-center justify-center text-gray-500">
         <p>No data yet. Connect your bank to see your dashboard.</p>
       </div>
     );
   }
 
-  // ✅ Case 5: Normal dashboard view
+  const mobilePanels = [
+    { key: "balance", node: <BalanceSummary accounts={accounts} /> },
+    { key: "subscription", node: <SubscriptionHunter transactions={transactions} /> },
+    {
+      key: "forecast",
+      node: (
+        <SpendingForecast
+          transactions={transactions}
+          totalBalance={totalBalance}
+          savingsPlan={null}
+        />
+      ),
+    },
+    { key: "cashflow", node: <CashflowMini transactions={transactions} /> },
+    { key: "category", node: <SpendingByCategory transactions={transactions} /> },
+    { key: "share", node: <SpendingChart transactions={transactions} /> },
+    { key: "roundups", node: <RoundUpAccelerator transactions={transactions} /> },
+    { key: "savings", node: <SavingsCoach transactions={transactions} /> },
+    { key: "alerts", node: <FinancialAlerts transactions={transactions} /> },
+    { key: "bills", node: <UpcomingBills transactions={transactions} /> },
+    { key: "transactions", node: <TransactionsList transactions={transactions} /> },
+    { key: "analysis", node: <TransactionAnalysis transactions={transactions} /> },
+  ];
+
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
       <FinancialWellnessScore accounts={accounts} transactions={transactions} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* LEFT COLUMN */}
-        <div className="lg:col-span-2 space-y-6">
-          <BalanceSummary accounts={accounts} />
-
-          <SpendingForecast
-            transactions={transactions}
-            totalBalance={totalBalance}
-            savingsPlan={null}
-          />
-
-          <CashflowMini transactions={transactions} />
-
-          <SpendingByCategory transactions={transactions} />
-
-          <SpendingChart transactions={transactions} />
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div className="space-y-6">
-          <SubscriptionHunter transactions={transactions} />
-
-          <SavingsCoach transactions={transactions} />
-
-          <UpcomingBills accounts={accounts} />
-
-          <FinancialAlerts transactions={transactions} />
-
-          <TransactionsList transactions={transactions} />
-
-          <TransactionAnalysis transactions={transactions} />
+      <div className="-mx-4 md:hidden">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4">
+          {mobilePanels.map((panel) => (
+            <div key={panel.key} className="min-w-[85vw] snap-center">
+              {panel.node}
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="text-center text-xs text-gray-400">{aiStatusMessage}</div>
+      <div className="hidden md:flex md:flex-col md:gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2 space-y-6">
+            <BalanceSummary accounts={accounts} />
+            <SpendingForecast
+              transactions={transactions}
+              totalBalance={totalBalance}
+              savingsPlan={null}
+            />
+          </div>
+          <div className="space-y-6">
+            <SubscriptionHunter transactions={transactions} />
+            <RoundUpAccelerator transactions={transactions} />
+          </div>
+        </div>
 
-      {/* ✅ Optional footer info */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <CashflowMini transactions={transactions} />
+          <SavingsCoach transactions={transactions} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <SpendingByCategory transactions={transactions} />
+          <SpendingChart transactions={transactions} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <UpcomingBills transactions={transactions} />
+          <FinancialAlerts transactions={transactions} />
+        </div>
+
+        <TransactionsList transactions={transactions} />
+        <TransactionAnalysis transactions={transactions} />
+      </div>
+
+      <div className="text-center text-xs text-slate-500">{aiStatusMessage}</div>
+
       {lastUpdated && (
-        <div className="text-center text-xs text-gray-400 mt-4">
+        <div className="text-center text-xs text-slate-400">
           Last updated: {new Date(lastUpdated).toLocaleString()}
         </div>
       )}

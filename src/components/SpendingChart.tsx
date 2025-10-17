@@ -1,34 +1,40 @@
 import { useMemo } from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import Card from "./Card";
 import { Transaction } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 
-interface SpendingChartProps {
-  transactions: Transaction[];
+interface ShareDatum {
+  name: string;
+  value: number;
+  share: number;
 }
 
-const COLORS = ["#4F46E5", "#22C55E", "#EF4444", "#F59E0B", "#3B82F6", "#9333EA"];
-
-export default function SpendingChart({ transactions }: SpendingChartProps) {
+export default function SpendingChart({ transactions }: { transactions: Transaction[] }) {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
-  const data = useMemo(() => {
+
+  const data = useMemo<ShareDatum[]>(() => {
     if (!transactions || transactions.length === 0) return [];
 
-    const totals: Record<string, number> = {};
+    const totals = new Map<string, number>();
 
     transactions.forEach((txn) => {
-      if (txn.amount < 0) {
-        const category = txn.category || "Uncategorized";
-        totals[category] = (totals[category] || 0) + Math.abs(txn.amount);
-      }
+      if (txn.amount >= 0) return;
+      const category = txn.category?.trim() || "General";
+      totals.set(category, (totals.get(category) ?? 0) + Math.abs(txn.amount));
     });
 
-    return Object.entries(totals)
+    const entries = Array.from(totals.entries())
       .map(([name, value]) => ({ name, value }))
+      .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
+
+    const total = entries.reduce((sum, item) => sum + item.value, 0);
+
+    return entries
+      .slice(0, 6)
+      .map((item) => ({ ...item, share: total > 0 ? item.value / total : 0 }));
   }, [transactions]);
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -40,7 +46,7 @@ export default function SpendingChart({ transactions }: SpendingChartProps) {
       subtitle="Compare how each category contributes to your overall outgoing spend."
       insights={[
         largest
-          ? { label: "Largest", value: largest.name, tone: "neutral" }
+          ? { label: "Largest", value: largest.name }
           : { label: "Largest", value: "-" },
         {
           label: "Total analysed",
@@ -52,45 +58,32 @@ export default function SpendingChart({ transactions }: SpendingChartProps) {
         },
       ]}
     >
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius="80%"
-              label={({ name, percent }) =>
-                `${name} ${(percent * 100).toFixed(1)}%`
-              }
-            >
-              {data.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number) =>
-                typeof value === "number" ? formatCurrency(value, region) : value
-              }
-              contentStyle={{
-                background: "rgba(15, 23, 42, 0.95)",
-                color: "#F8FAFC",
-                borderRadius: 12,
-                border: "none",
-                boxShadow: "0 10px 30px rgba(15, 23, 42, 0.25)",
-              }}
-            />
-            <Legend
-              wrapperStyle={{
-                color: "#E2E8F0",
-                paddingTop: 20,
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+      {data.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-500">
+          No spending activity to analyse yet.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {data.map((item) => (
+            <div key={item.name} className="space-y-2">
+              <div className="flex items-baseline justify-between text-sm text-slate-600">
+                <span className="font-semibold text-slate-800">{item.name}</span>
+                <span>{formatCurrency(item.value, region)}</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-500"
+                  style={{ width: `${Math.min(100, Math.round(item.share * 100))}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>{(item.share * 100).toFixed(1)}% of tracked spend</span>
+                <span>Share rank #{data.indexOf(item) + 1}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

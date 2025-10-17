@@ -198,15 +198,15 @@ const WelcomeScreen: React.FC = () => {
           <div className="space-y-8 text-left">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
               <SparklesIcon className="h-4 w-4" />
-              All access unlocked
+              1 free showcase available
             </div>
 
             <div className="space-y-6">
               <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-                Command every Financly tool with <span className="text-primary">zero upgrades</span>.
+                Explore Financly AI’s toolkit with a curated welcome tour.
               </h1>
               <p className="max-w-xl text-lg text-white/70">
-                Real-time bank feeds, AI-powered savings plans, and subscription intelligence come bundled for free. Connect, explore, and start saving within minutes.
+                Preview your wellness score, cashflow forecast, and subscription intelligence in a single guided experience built for mobile and desktop.
               </p>
             </div>
 
@@ -215,7 +215,7 @@ const WelcomeScreen: React.FC = () => {
                 onClick={openSignupModal}
                 className="rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-primary/40 transition hover:bg-primary/90"
               >
-                Create your account
+                Start the showcase
               </button>
               <button
                 onClick={openLoginModal}
@@ -234,9 +234,6 @@ const WelcomeScreen: React.FC = () => {
               </FeatureCard>
               <FeatureCard icon={<ChartIcon />} title="Smart cashflow">
                 Predict spend, spot trends, and reset budgets instantly.
-              </FeatureCard>
-              <FeatureCard icon={<SparklesIcon />} title="AI co-pilot">
-                Automate challenges, cancellations, and savings plays.
               </FeatureCard>
             </div>
 

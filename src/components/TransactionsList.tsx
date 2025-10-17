@@ -1,31 +1,31 @@
+import { useMemo } from "react";
 import { Transaction } from "../types";
 import Card from "./Card";
 import { formatCurrency } from "../utils/currency";
 import { formatTransactionDate } from "../utils/transactions";
 import { useAuth } from "../contexts/AuthContext";
-import { useMemo } from "react";
 
 const CATEGORY_ACCENTS: Record<string, string> = {
-  Income: "bg-emerald-500/10 text-emerald-400",
-  "Groceries": "bg-lime-500/10 text-lime-500",
-  "Dining Out": "bg-orange-500/10 text-orange-400",
-  "Shopping": "bg-sky-500/10 text-sky-400",
-  "Transport": "bg-purple-500/10 text-purple-400",
-  "Utilities": "bg-cyan-500/10 text-cyan-400",
-  "Housing": "bg-amber-500/10 text-amber-500",
-  "Health & Fitness": "bg-rose-500/10 text-rose-400",
-  "Debt Repayments": "bg-red-500/10 text-red-400",
-  "Fees & Charges": "bg-slate-500/10 text-slate-300",
-  Subscriptions: "bg-indigo-500/10 text-indigo-400",
-  Travel: "bg-fuchsia-500/10 text-fuchsia-400",
-  Insurance: "bg-teal-500/10 text-teal-400",
-  Education: "bg-yellow-500/10 text-yellow-500",
-  Savings: "bg-emerald-500/10 text-emerald-400",
-  Transfers: "bg-slate-500/10 text-slate-300",
+  Income: "bg-emerald-100 text-emerald-700",
+  Groceries: "bg-lime-100 text-lime-700",
+  "Dining Out": "bg-orange-100 text-orange-700",
+  Shopping: "bg-sky-100 text-sky-700",
+  Transport: "bg-purple-100 text-purple-700",
+  Utilities: "bg-cyan-100 text-cyan-700",
+  Housing: "bg-amber-100 text-amber-700",
+  "Health & Fitness": "bg-rose-100 text-rose-700",
+  "Debt Repayments": "bg-red-100 text-red-700",
+  "Fees & Charges": "bg-slate-100 text-slate-600",
+  Subscriptions: "bg-indigo-100 text-indigo-700",
+  Travel: "bg-fuchsia-100 text-fuchsia-700",
+  Insurance: "bg-teal-100 text-teal-700",
+  Education: "bg-yellow-100 text-yellow-700",
+  Savings: "bg-emerald-100 text-emerald-700",
+  Transfers: "bg-slate-100 text-slate-600",
 };
 
 const getCategoryAccent = (category: string) =>
-  CATEGORY_ACCENTS[category] ?? "bg-slate-600/10 text-slate-200";
+  CATEGORY_ACCENTS[category] ?? "bg-slate-100 text-slate-600";
 
 export default function TransactionsList({ transactions }: { transactions: Transaction[] }) {
   const { user } = useAuth();
@@ -70,9 +70,7 @@ export default function TransactionsList({ transactions }: { transactions: Trans
     >
       <div className="max-h-96 space-y-2 overflow-y-auto pr-2">
         {sortedTxns.length === 0 ? (
-          <p className="py-10 text-center text-sm text-white/70">
-            No transactions yet.
-          </p>
+          <p className="py-10 text-center text-sm text-slate-500">No transactions yet.</p>
         ) : (
           sortedTxns.map((txn: Transaction) => {
             const category = txn.category || "General Spending";
@@ -82,18 +80,18 @@ export default function TransactionsList({ transactions }: { transactions: Trans
               typeof txn.amount === "number"
                 ? txn.amount
                 : Number.parseFloat(String(txn.amount || 0));
-            const amountColor = amountValue < 0 ? "text-rose-200" : "text-emerald-200";
+            const amountColor = amountValue < 0 ? "text-rose-600" : "text-emerald-600";
             return (
               <div
                 key={txn.id}
-                className="flex items-center justify-between gap-4 rounded-xl bg-white/5 px-3 py-3"
+                className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-3 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="truncate text-sm font-semibold text-slate-800">
                     {txn.description || "Unnamed"}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-white/60">{dateLabel}</span>
+                    <span className="text-xs text-slate-400">{dateLabel}</span>
                     <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${badgeClass}`}>
                       {category}
                     </span>

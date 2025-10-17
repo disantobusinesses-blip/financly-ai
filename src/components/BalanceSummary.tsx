@@ -134,23 +134,17 @@ export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-indigo-900 text-white shadow-xl">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-24 bottom-0 h-60 w-60 rounded-full bg-indigo-400/20 blur-2xl"
-      />
-      <div className="relative space-y-6 p-6 md:p-8">
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="space-y-6 p-6 md:p-8">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/60">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
               Balance summary
             </p>
-            <h2 className="text-3xl font-bold md:text-4xl">{formatCurrency(netWorth, region)}</h2>
-            <p className="mt-2 text-sm text-white/70">
+            <h2 className="text-3xl font-bold text-slate-900 md:text-4xl">
+              {formatCurrency(netWorth, region)}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
               {normalisedAccounts.length} linked account
               {normalisedAccounts.length === 1 ? "" : "s"} tracked in real time.
             </p>
@@ -159,7 +153,7 @@ export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
             {insightChips.map((chip) => (
               <span
                 key={chip}
-                className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
               >
                 {chip}
               </span>
@@ -168,75 +162,72 @@ export default function BalanceSummary({ accounts }: BalanceSummaryProps) {
         </header>
 
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl bg-white/15 p-4">
-            <dt className="text-xs uppercase tracking-wide text-white/70">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">
               {hasMortgage ? "Spending available" : "Liquid funds"}
             </dt>
-            <dd className="mt-1 text-2xl font-semibold">
+            <dd className="mt-1 text-2xl font-semibold text-slate-900">
               {formatCurrency(spendingAvailable || 0, region)}
             </dd>
-            <p className="mt-2 text-xs text-white/70">
+            <p className="mt-2 text-xs text-slate-500">
               Everyday cash ready to deploy across your goals.
             </p>
           </div>
-          <div className="rounded-xl bg-white/15 p-4">
-            <dt className="text-xs uppercase tracking-wide text-white/70">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+            <dt className="text-xs uppercase tracking-wide text-slate-500">
               Total net worth
             </dt>
-            <dd className="mt-1 text-2xl font-semibold">
+            <dd className="mt-1 text-2xl font-semibold text-slate-900">
               {formatCurrency(netWorth, region)}
             </dd>
-            <p className="mt-2 text-xs text-white/70">
+            <p className="mt-2 text-xs text-slate-500">
               Includes savings, investments, mortgages and debts.
             </p>
           </div>
           {hasMortgage ? (
-            <div className="rounded-xl bg-white/15 p-4">
-              <dt className="text-xs uppercase tracking-wide text-white/70">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+              <dt className="text-xs uppercase tracking-wide text-slate-500">
                 Mortgage balance
               </dt>
-              <dd className="mt-1 text-2xl font-semibold">
+              <dd className="mt-1 text-2xl font-semibold text-slate-900">
                 {formatCurrency(-Math.abs(mortgageTotal), region)}
               </dd>
-              <p className="mt-2 text-xs text-white/70">
-                Factor this into accelerated repayments to save interest.
+              <p className="mt-2 text-xs text-slate-500">
+                Linked mortgages and home loans.
               </p>
             </div>
           ) : (
-            <div className="rounded-xl bg-white/15 p-4">
-              <dt className="text-xs uppercase tracking-wide text-white/70">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+              <dt className="text-xs uppercase tracking-wide text-slate-500">
                 Savings total
               </dt>
-              <dd className="mt-1 text-2xl font-semibold">
+              <dd className="mt-1 text-2xl font-semibold text-slate-900">
                 {formatCurrency(savingsTotal, region)}
               </dd>
-              <p className="mt-2 text-xs text-white/70">
-                Keep at least three months of spending in reserve.
+              <p className="mt-2 text-xs text-slate-500">
+                Your combined goal and savings account balance.
               </p>
             </div>
           )}
         </dl>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 md:grid-cols-2">
           {grouped.map((group) => (
-            <div key={group.label} className="rounded-2xl bg-white/10 p-4 text-sm">
-              <div className="flex items-center justify-between font-semibold text-white">
+            <div key={group.label} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between font-semibold text-slate-900">
                 <span>{group.label}</span>
                 <span>{formatCurrency(group.total, region)}</span>
               </div>
-              <ul className="mt-3 space-y-2 text-white/80">
-                {group.accounts.map((acc) => {
-                  const amountClass =
-                    acc.balance < 0 ? "text-rose-300" : "text-emerald-200";
-                  return (
-                    <li key={acc.id} className="flex items-center justify-between">
-                      <span className="truncate pr-2">{acc.name}</span>
-                      <span className={`font-semibold ${amountClass}`}>
-                        {formatCurrency(acc.balance, region, acc.currency)}
-                      </span>
-                    </li>
-                  );
-                })}
+              <ul className="mt-3 space-y-2 text-slate-600">
+                {group.accounts.map((account) => (
+                  <li
+                    key={account.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="truncate pr-3">{account.name}</span>
+                    <span>{formatCurrency(account.balance, region)}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           ))}
