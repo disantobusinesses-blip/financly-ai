@@ -55,35 +55,6 @@ const formatRelativeTime = (date: Date) => {
   return `${diffYears.toFixed(diffYears < 2 ? 1 : 0)} year${diffYears < 2 ? "" : "s"}`;
 };
 
-const ConfettiOverlay: React.FC<{ celebrationKey: string }> = ({ celebrationKey }) => {
-  const pieces = useMemo(() => {
-    const colours = ["#6f3cff", "#a855f7", "#22d3ee", "#f97316", "#10b981", "#f472b6"];
-    return Array.from({ length: 120 }, (_, index) => ({
-      left: Math.random() * 100,
-      delay: Math.random() * 0.8,
-      duration: 2.3 + Math.random() * 0.9,
-      color: colours[index % colours.length],
-    }));
-  }, [celebrationKey]);
-
-  return (
-    <div className="confetti-container">
-      {pieces.map((piece, index) => (
-        <span
-          key={`${celebrationKey}-${index}`}
-          className="confetti-piece"
-          style={{
-            left: `${piece.left}%`,
-            animationDelay: `${piece.delay}s`,
-            animationDuration: `${piece.duration}s`,
-            background: piece.color,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
 interface CelebrationState {
   id: string;
   goalName: string;
@@ -100,6 +71,14 @@ interface UpdateGoalOptions {
 const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSuggestions = [] }) => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
+  const celebrantName = useMemo(() => {
+    if (!user?.email) return "there";
+    const [localPart] = user.email.split("@");
+    if (!localPart) return "there";
+    const formatted = localPart.replace(/[^a-zA-Z0-9]/g, " ").trim();
+    if (!formatted) return "there";
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }, [user?.email]);
   const [goals, setGoals] = useState<StoredGoal[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("progress");
   const [celebration, setCelebration] = useState<CelebrationState | null>(null);
@@ -460,7 +439,7 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
             <PiggyBankIcon className="h-12 w-12 text-white/50" />
             <p className="text-base font-semibold">No goals yet</p>
             <p className="max-w-xl text-sm">
-              Create your first goal to see live progress bars, AI tips, and celebratory confetti when you hit each milestone.
+              Create your first goal to see live progress bars, AI tips, and celebratory shout-outs when you hit each milestone.
             </p>
           </div>
         ) : (
@@ -726,25 +705,19 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
       </div>
 
       {celebration && (
-        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center">
-          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" aria-hidden="true" />
-          <div className="relative z-10 max-w-md rounded-3xl bg-white/90 px-8 py-6 text-center text-slate-900 shadow-2xl">
-            <h3 className="text-2xl font-bold">
-              {celebration.kind === "milestone"
-                ? celebration.milestone >= 1
-                  ? "Goal complete!"
-                  : "Milestone unlocked!"
-                : "Contribution logged!"}
-            </h3>
-            <p className="mt-3 text-sm">
+        <div className="pointer-events-none fixed inset-x-0 top-6 z-40 flex justify-center px-4 sm:justify-end sm:px-6">
+          <div className="pointer-events-auto w-full max-w-sm rounded-3xl bg-white/95 px-6 py-5 text-slate-900 shadow-2xl ring-1 ring-slate-900/10">
+            <p className="text-lg font-semibold">Great stuff {celebrantName}!</p>
+            <p className="mt-2 text-sm text-slate-600">
               {celebration.kind === "milestone"
                 ? celebration.milestone >= 1
                   ? `${celebration.goalName} is officially complete. Incredible effort!`
                   : `${celebration.goalName} just passed the ${Math.round(celebration.milestone * 100)}% mark — keep the streak alive!`
-                : `Added ${formatCurrency(celebration.amount ?? 0, region)} to ${celebration.goalName}. Keep up the momentum!`}
+                : celebration.amount
+                ? `That ${formatCurrency(celebration.amount, region)} boost keeps ${celebration.goalName} on track.`
+                : `${celebration.goalName} is tracking brilliantly — keep the deposits coming!`}
             </p>
           </div>
-          <ConfettiOverlay celebrationKey={celebration.id} />
         </div>
       )}
     </section>

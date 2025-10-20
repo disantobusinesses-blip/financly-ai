@@ -1,5 +1,5 @@
 // src/components/Dashboard.tsx
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import BalanceSummary from "./BalanceSummary";
 import CashflowMini from "./CashflowMini";
@@ -15,6 +15,7 @@ import SubscriptionHunter from "./SubscriptionHunter";
 import SavingsCoach from "./SavingsCoach";
 import GoalPlanner from "./GoalPlanner";
 import DashboardTour from "./DashboardTour";
+import { SparklesIcon } from "./icon/Icon";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -22,6 +23,7 @@ import { useGeminiAI } from "../hooks/useGeminiAI";
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
   const { user } = useAuth();
+  const [tourSignal, setTourSignal] = useState(0);
   const totalBalance = useMemo(
     () => accounts.reduce((sum, account) => sum + account.balance, 0),
     [accounts]
@@ -181,9 +183,26 @@ export default function Dashboard() {
     },
   ];
 
+  const triggerTour = () => {
+    setTourSignal((prev) => prev + 1);
+  };
+
   return (
     <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
-      <DashboardTour enabled={accounts.length > 0} />
+      <DashboardTour enabled={accounts.length > 0} restartSignal={tourSignal} />
+      {accounts.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-30">
+          <button
+            type="button"
+            onClick={triggerTour}
+            className="flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-white"
+          >
+            <SparklesIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Need a tour?</span>
+            <span className="sm:hidden">Tour</span>
+          </button>
+        </div>
+      )}
       {primarySections.map((section) => (
         <section
           key={section.key}

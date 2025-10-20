@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { SparklesIcon } from "./icon/Icon";
 
 interface DashboardTourProps {
   enabled: boolean;
+  restartSignal?: number;
 }
 
 interface Step {
@@ -28,7 +29,7 @@ const steps: Step[] = [
     id: "goal-planner",
     title: "Celebrate every goal",
     description:
-      "Create savings goals, log contributions, and watch Financly celebrate your milestones with confetti and AI tips.",
+      "Create savings goals, log contributions, and watch Financly celebrate your milestones with upbeat shout-outs and AI tips.",
   },
   {
     id: "financial-wellness-card",
@@ -125,11 +126,12 @@ function findTargetElement(stepId: string): HTMLElement | null {
   return nodes[0] ?? null;
 }
 
-export default function DashboardTour({ enabled }: DashboardTourProps) {
+export default function DashboardTour({ enabled, restartSignal }: DashboardTourProps) {
   const [isClient, setIsClient] = useState(false);
   const [status, setStatus] = useState<"idle" | "prompt" | "running" | "finished">("idle");
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
+  const restartRef = useRef(restartSignal);
 
   useEffect(() => {
     setIsClient(true);
@@ -186,6 +188,19 @@ export default function DashboardTour({ enabled }: DashboardTourProps) {
       window.removeEventListener("scroll", handleScroll, true);
     };
   }, [isClient, stepIndex, status]);
+
+  useEffect(() => {
+    if (!isClient || !enabled) return;
+    if (restartSignal === undefined) return;
+    if (restartRef.current === restartSignal) return;
+    restartRef.current = restartSignal;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, "revisit");
+    }
+    setStepIndex(0);
+    setHighlightRect(null);
+    setStatus("running");
+  }, [enabled, isClient, restartSignal]);
 
   const activeStep = useMemo(() => steps[stepIndex] ?? null, [stepIndex]);
   const isLastStep = stepIndex === steps.length - 1;
@@ -261,7 +276,7 @@ export default function DashboardTour({ enabled }: DashboardTourProps) {
 
   if (status === "prompt") {
     return createPortal(
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 px-4">
         <div className="w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-xl">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
@@ -302,15 +317,15 @@ export default function DashboardTour({ enabled }: DashboardTourProps) {
 
   return createPortal(
     <div className="pointer-events-none fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-slate-950/35" />
       {highlightRect ? (
         <>
           {highlightBoxStyle && (
             <div
-              className="pointer-events-none absolute rounded-3xl border-2 border-indigo-400/90 shadow-[0_0_0_9999px_rgba(15,23,42,0.4)]"
+              className="pointer-events-none absolute rounded-3xl border-2 border-indigo-400/90 shadow-[0_0_0_9999px_rgba(15,23,42,0.3)]"
               style={{
                 ...highlightBoxStyle,
-                boxShadow: "0 0 0 9999px rgba(15,23,42,0.55)",
+                boxShadow: "0 0 0 9999px rgba(15,23,42,0.35)",
               }}
             />
           )}
