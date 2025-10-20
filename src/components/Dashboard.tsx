@@ -160,15 +160,15 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
       <DashboardTour enabled={accounts.length > 0} />
+      <div data-tour-id="financial-wellness-card" data-tour-variant="shared">
+        <FinancialWellnessScore accounts={accounts} transactions={transactions} />
+      </div>
       <div data-tour-id="goal-planner" data-tour-variant="shared">
         <GoalPlanner
           accounts={accounts}
           transactions={transactions}
           aiSuggestions={goalSuggestions}
         />
-      </div>
-      <div data-tour-id="financial-wellness-card" data-tour-variant="shared">
-        <FinancialWellnessScore accounts={accounts} transactions={transactions} />
       </div>
 
       <div className="-mx-4 md:hidden">

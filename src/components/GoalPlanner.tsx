@@ -28,6 +28,8 @@ const STORAGE_KEY = "financly-ai-goals-v2";
 const milestoneThresholds = [0.25, 0.5, 0.75, 1];
 const fallbackEmojis = ["🚗", "🏡", "🌴", "🎓", "🎉", "🧘", "💡", "📚", "🛠", "🛫"];
 
+const createCelebrationId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 const createId = () => Math.random().toString(36).slice(2, 10);
 
 const clampNumber = (value: number) => (Number.isFinite(value) && value >= 0 ? value : 0);
@@ -83,8 +85,16 @@ const ConfettiOverlay: React.FC<{ celebrationKey: string }> = ({ celebrationKey 
 };
 
 interface CelebrationState {
+  id: string;
   goalName: string;
   milestone: number;
+  kind: "contribution" | "milestone";
+  amount?: number;
+}
+
+interface UpdateGoalOptions {
+  celebrateAlways?: boolean;
+  contributionAmount?: number;
 }
 
 const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSuggestions = [] }) => {
@@ -250,8 +260,8 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
     event.currentTarget.reset();
   };
 
-  const triggerCelebration = (goalName: string, milestone: number) => {
-    setCelebration({ goalName, milestone });
+  const triggerCelebration = (details: CelebrationState) => {
+    setCelebration(details);
   };
 
   const handleDeleteGoal = (id: string) => {
@@ -262,10 +272,17 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
     });
   };
 
-  const updateGoal = (id: string, updates: Partial<StoredGoal>) => {
-    let celebrationDetails: CelebrationState | null = null;
-    setGoals((prev) =>
-      prev.map((goal) => {
+  const updateGoal = (
+    id: string,
+    updates: Partial<StoredGoal>,
+    options: UpdateGoalOptions = {}
+  ) => {
+    let upcomingCelebration: CelebrationState | null = null;
+    let latestProgress = 0;
+    let latestGoalName: string | null = null;
+
+    setGoals((prev) => {
+      const next = prev.map((goal) => {
         if (goal.id !== id) return goal;
         const previousProgress = goal.targetAmount > 0 ? goal.currentAmount / goal.targetAmount : 0;
         const updated: StoredGoal = {
@@ -273,23 +290,41 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
           ...updates,
         };
         updated.currentAmount = Math.min(updated.currentAmount, updated.targetAmount);
-        const newProgress =
+        latestGoalName = updated.name;
+        latestProgress =
           updated.targetAmount > 0 ? updated.currentAmount / updated.targetAmount : previousProgress;
         const celebrated = new Set(updated.celebratedMilestones ?? []);
         for (const threshold of milestoneThresholds) {
-          if (previousProgress < threshold && newProgress >= threshold && !celebrated.has(threshold)) {
-            celebrationDetails = { goalName: updated.name, milestone: threshold };
+          if (previousProgress < threshold && latestProgress >= threshold && !celebrated.has(threshold)) {
             celebrated.add(threshold);
+            upcomingCelebration = {
+              id: createCelebrationId(),
+              goalName: updated.name,
+              milestone: threshold,
+              kind: "milestone",
+            };
             break;
           }
         }
         updated.celebratedMilestones = Array.from(celebrated);
         return updated;
-      })
-    );
-    if (celebrationDetails !== null) {
-      const { goalName, milestone } = celebrationDetails as CelebrationState;
-      triggerCelebration(goalName, milestone);
+      });
+
+      if (!upcomingCelebration && options.celebrateAlways && latestGoalName) {
+        upcomingCelebration = {
+          id: createCelebrationId(),
+          goalName: latestGoalName,
+          milestone: latestProgress,
+          kind: "contribution",
+          amount: options.contributionAmount,
+        };
+      }
+
+      return next;
+    });
+
+    if (upcomingCelebration) {
+      triggerCelebration(upcomingCelebration);
     }
   };
 
@@ -297,7 +332,11 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
     event.preventDefault();
     const amount = clampNumber(parseNumber(contributionDrafts[goal.id] ?? "0"));
     if (amount <= 0) return;
-    updateGoal(goal.id, { currentAmount: goal.currentAmount + amount });
+    updateGoal(
+      goal.id,
+      { currentAmount: goal.currentAmount + amount },
+      { celebrateAlways: true, contributionAmount: amount }
+    );
     setContributionDrafts((prev) => ({ ...prev, [goal.id]: "" }));
   };
 
@@ -691,15 +730,21 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions, aiSug
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" aria-hidden="true" />
           <div className="relative z-10 max-w-md rounded-3xl bg-white/90 px-8 py-6 text-center text-slate-900 shadow-2xl">
             <h3 className="text-2xl font-bold">
-              {celebration.milestone >= 1 ? "Goal complete!" : "Milestone unlocked!"}
+              {celebration.kind === "milestone"
+                ? celebration.milestone >= 1
+                  ? "Goal complete!"
+                  : "Milestone unlocked!"
+                : "Contribution logged!"}
             </h3>
             <p className="mt-3 text-sm">
-              {celebration.milestone >= 1
-                ? `${celebration.goalName} is officially complete. Incredible effort!`
-                : `${celebration.goalName} just passed the ${Math.round(celebration.milestone * 100)}% mark — keep the streak alive!`}
+              {celebration.kind === "milestone"
+                ? celebration.milestone >= 1
+                  ? `${celebration.goalName} is officially complete. Incredible effort!`
+                  : `${celebration.goalName} just passed the ${Math.round(celebration.milestone * 100)}% mark — keep the streak alive!`
+                : `Added ${formatCurrency(celebration.amount ?? 0, region)} to ${celebration.goalName}. Keep up the momentum!`}
             </p>
           </div>
-          <ConfettiOverlay celebrationKey={`${celebration.goalName}-${celebration.milestone}`} />
+          <ConfettiOverlay celebrationKey={celebration.id} />
         </div>
       )}
     </section>
