@@ -189,28 +189,28 @@ const WelcomeScreen: React.FC = () => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950" />
-      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-primary/40 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-0 h-[28rem] w-[28rem] rounded-full bg-indigo-600/40 blur-[160px]" />
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-72 -translate-y-1/2 bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.45),_transparent_60%)]" />
+      <div className="pointer-events-none absolute -left-24 -top-32 hidden h-96 w-96 rounded-full bg-primary/40 blur-3xl sm:block" />
+      <div className="pointer-events-none absolute -right-24 bottom-0 hidden h-[28rem] w-[28rem] rounded-full bg-indigo-600/40 blur-[160px] sm:block" />
+      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-72 -translate-y-1/2 bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.35),_transparent_65%)]" />
 
-      <main className="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center px-6 py-16">
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-12 sm:px-6 lg:py-16">
         <div className="grid w-full gap-12 lg:grid-cols-2 lg:items-center">
-          <div className="space-y-8 text-left">
+          <div className="space-y-8 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
               <SparklesIcon className="h-4 w-4" />
               1 free showcase available
             </div>
 
             <div className="space-y-6">
-              <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+              <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
                 Explore Financly AI’s toolkit with a curated welcome tour.
               </h1>
-              <p className="max-w-xl text-lg text-white/70">
+              <p className="mx-auto max-w-xl text-lg text-white/70 lg:mx-0">
                 Preview your wellness score, cashflow forecast, and subscription intelligence in a single guided experience built for mobile and desktop.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap justify-center gap-4 lg:justify-start">
               <button
                 onClick={openSignupModal}
                 className="rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-primary/40 transition hover:bg-primary/90"
@@ -225,7 +225,32 @@ const WelcomeScreen: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="mx-auto w-full max-w-lg rounded-2xl bg-white/5 p-5 text-left shadow-lg shadow-black/10 backdrop-blur sm:p-6 lg:mx-0">
+              <p className="text-sm text-white/80">
+                Be on top of financial news and receive free tips on how to budget.
+              </p>
+              <form className="mt-3 flex flex-col gap-3 sm:flex-row">
+                <label htmlFor="welcome-newsletter" className="sr-only">
+                  Email address
+                </label>
+                <input
+                  id="welcome-newsletter"
+                  type="email"
+                  placeholder="you@email.com"
+                  className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/40"
+                  autoComplete="email"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="w-full rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-slate-900 shadow sm:w-auto"
+                >
+                  Join the list
+                </button>
+              </form>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<GaugeIcon />} title="Wellness score">
                 Your finances graded with actionable next steps.
               </FeatureCard>
@@ -243,8 +268,8 @@ const WelcomeScreen: React.FC = () => {
           </div>
 
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-xl rounded-[2.5rem] bg-white/5 p-6 backdrop-blur">
-              <div className="absolute inset-x-12 -top-6 h-24 rounded-full bg-gradient-to-r from-primary/40 to-indigo-500/40 blur-3xl" aria-hidden="true" />
+            <div className="relative w-full max-w-sm rounded-[2rem] bg-white/5 p-5 shadow-lg shadow-black/20 sm:max-w-md sm:p-6 lg:max-w-xl lg:p-8">
+              <div className="absolute inset-x-12 -top-6 hidden h-20 rounded-full bg-gradient-to-r from-primary/40 to-indigo-500/40 blur-3xl sm:block" aria-hidden="true" />
               <SubscriptionHunterIllustration />
             </div>
           </div>

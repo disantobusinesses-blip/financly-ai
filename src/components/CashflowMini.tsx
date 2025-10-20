@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import Card from "./Card";
-import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+} from "recharts";
 import { Transaction } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
@@ -102,6 +110,7 @@ export default function CashflowMini({ transactions }: CashflowMiniProps) {
                 return [formatCurrency(value, region), label];
               }}
             />
+            <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" strokeWidth={1} />
             <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#inG)" />
             <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#outG)" />
             <Area type="monotone" dataKey="net" stroke="#38bdf8" strokeWidth={2} fillOpacity={0} />

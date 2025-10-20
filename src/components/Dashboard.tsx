@@ -13,7 +13,6 @@ import TransactionAnalysis from "./TransactionAnalysis";
 import FinancialWellnessScore from "./FinancialWellnessScore";
 import SubscriptionHunter from "./SubscriptionHunter";
 import SavingsCoach from "./SavingsCoach";
-import RoundUpAccelerator from "./RoundUpAccelerator";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -107,7 +106,6 @@ export default function Dashboard() {
     { key: "cashflow", node: <CashflowMini transactions={transactions} /> },
     { key: "category", node: <SpendingByCategory transactions={transactions} /> },
     { key: "share", node: <SpendingChart transactions={transactions} /> },
-    { key: "roundups", node: <RoundUpAccelerator transactions={transactions} /> },
     { key: "savings", node: <SavingsCoach transactions={transactions} /> },
     { key: "alerts", node: <FinancialAlerts transactions={transactions} /> },
     { key: "bills", node: <UpcomingBills transactions={transactions} /> },
@@ -141,7 +139,6 @@ export default function Dashboard() {
           </div>
           <div className="space-y-6">
             <SubscriptionHunter transactions={transactions} />
-            <RoundUpAccelerator transactions={transactions} />
           </div>
         </div>
 

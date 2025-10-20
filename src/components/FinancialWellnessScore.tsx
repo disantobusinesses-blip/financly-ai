@@ -149,9 +149,19 @@ export default function FinancialWellnessScore({
 
   const { label, summary } = getScoreLabel(score);
   const savingsRatePercent = Math.round(savingsRate * 100);
-  const debtToIncomeRatio = debtToIncome > 0
-    ? Math.max(0, Math.min(9.99, Number.isFinite(debtToIncome) ? debtToIncome : 0))
+  const debtToIncomePercent = debtToIncome > 0 && Number.isFinite(debtToIncome)
+    ? Math.max(0, debtToIncome * 100)
     : 0;
+  const scoreTone =
+    score >= 75 ? "text-emerald-200" : score >= 50 ? "text-amber-200" : "text-rose-200";
+  const scoreBackground =
+    score >= 75 ? "bg-emerald-400/25" : score >= 50 ? "bg-amber-400/25" : "bg-rose-400/25";
+  const debtTone =
+    debtToIncomePercent <= 35
+      ? "text-emerald-100"
+      : debtToIncomePercent <= 50
+      ? "text-amber-100"
+      : "text-rose-100";
 
   if (!accounts.length) {
     return (
@@ -179,7 +189,10 @@ export default function FinancialWellnessScore({
               Financial wellness
             </p>
             <div className="flex flex-wrap items-end gap-4">
-              <span className="text-5xl font-black leading-none">{score}</span>
+              <div className={`flex items-baseline gap-2 rounded-2xl px-4 py-2 ${scoreBackground}`}>
+                <span className={`text-5xl font-black leading-none ${scoreTone}`}>{score}</span>
+                <span className="text-sm font-semibold text-white/70">/100</span>
+              </div>
               <div className="space-y-2">
                 <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
                   {label}
@@ -189,7 +202,7 @@ export default function FinancialWellnessScore({
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/25">
               <div
-                className="h-full rounded-full bg-white"
+                className={`h-full rounded-full ${score >= 75 ? "bg-emerald-200" : score >= 50 ? "bg-amber-200" : "bg-rose-200"}`}
                 style={{ width: `${score}%` }}
               />
             </div>
@@ -246,12 +259,13 @@ export default function FinancialWellnessScore({
             </p>
           </div>
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-wide text-white/70">
-              Debt-to-income
-            </p>
-            <p className="mt-1 text-lg font-semibold">
-              {debtToIncomeRatio.toFixed(2)}x
-            </p>
+            <p className="text-xs uppercase tracking-wide text-white/70">Debt-to-income</p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className={`text-lg font-semibold ${debtTone}`}>
+                {debtToIncomePercent.toFixed(1)}%
+              </p>
+              <span className="text-xs uppercase tracking-wide text-white/60">of income</span>
+            </div>
           </div>
         </div>
 

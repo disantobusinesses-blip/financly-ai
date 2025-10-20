@@ -32,6 +32,8 @@ const RAW_CATEGORY_MAP: Record<string, string> = {
   "savings": "Savings",
   "transfer": "Transfers",
   "transfers": "Transfers",
+  "transaction": "General Spending",
+  "transactions": "General Spending",
   "income": "Income",
   "payroll": "Income",
   "salary": "Income",
@@ -120,7 +122,11 @@ export const categorizeTransaction = (
   }
 
   if (candidateCategory) {
-    return normaliseCategoryLabel(candidateCategory);
+    const label = normaliseCategoryLabel(candidateCategory);
+    if (label === "Transaction") {
+      return amount >= 0 ? "Income" : "General Spending";
+    }
+    return label;
   }
 
   if (amount >= 0) {
