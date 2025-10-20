@@ -13,6 +13,7 @@ import TransactionAnalysis from "./TransactionAnalysis";
 import FinancialWellnessScore from "./FinancialWellnessScore";
 import SubscriptionHunter from "./SubscriptionHunter";
 import SavingsCoach from "./SavingsCoach";
+import GoalPlanner from "./GoalPlanner";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -30,6 +31,7 @@ export default function Dashboard() {
     loading: aiLoading,
     error: aiError,
   } = useGeminiAI(transactions, totalBalance, user?.region ?? "AU");
+  const goalSuggestions = aiInsights?.insights ?? [];
 
   const aiStatusMessage = useMemo(() => {
     if (aiLoading) {
@@ -115,6 +117,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
+      <GoalPlanner accounts={accounts} transactions={transactions} aiSuggestions={goalSuggestions} />
       <FinancialWellnessScore accounts={accounts} transactions={transactions} />
 
       <div className="-mx-4 md:hidden">

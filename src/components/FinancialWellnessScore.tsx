@@ -162,6 +162,49 @@ export default function FinancialWellnessScore({
       : debtToIncomePercent <= 50
       ? "text-amber-100"
       : "text-rose-100";
+  const debtIncomeRatio =
+    debtToIncome > 0 && Number.isFinite(debtToIncome) ? debtToIncome : 0;
+  const formattedDebtRatio = debtIncomeRatio > 0 ? `${debtIncomeRatio.toFixed(2)} : 1` : "0 : 1";
+  const debtGuidance =
+    debtToIncomePercent > 50
+      ? {
+          title: "Stabilise your debt load",
+          message:
+            "Your debt-to-income ratio is leaning high. Focus on breaking even by prioritising high-interest repayments and pausing new debt commitments until the ratio retreats below 50%.",
+        }
+      : {
+          title: "Keep your momentum",
+          message:
+            "Great job keeping debt in check. Set a stretch goal to push the ratio even lower by accelerating repayments or redirecting surplus cash into savings goals.",
+        };
+  const monthlyIncomeForRule = Math.max(0, monthlyIncome);
+  const ruleAllocations = useMemo(
+    () =>
+      [
+        {
+          label: "Essentials",
+          percent: 50,
+          amount: monthlyIncomeForRule * 0.5,
+          color: "bg-emerald-300/80",
+          dotColor: "bg-emerald-200",
+        },
+        {
+          label: "Lifestyle",
+          percent: 30,
+          amount: monthlyIncomeForRule * 0.3,
+          color: "bg-indigo-300/80",
+          dotColor: "bg-indigo-200",
+        },
+        {
+          label: "Savings",
+          percent: 20,
+          amount: monthlyIncomeForRule * 0.2,
+          color: "bg-sky-300/80",
+          dotColor: "bg-sky-200",
+        },
+      ],
+    [monthlyIncomeForRule]
+  );
 
   if (!accounts.length) {
     return (
@@ -266,6 +309,51 @@ export default function FinancialWellnessScore({
               </p>
               <span className="text-xs uppercase tracking-wide text-white/60">of income</span>
             </div>
+            <p className="mt-1 text-xs text-white/60">≈ {formattedDebtRatio} debt : income</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 text-sm text-white/80 md:grid-cols-2">
+          <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-wide text-white/70">Debt-to-income focus</p>
+            <p className="mt-2 text-base font-semibold text-white">{debtGuidance.title}</p>
+            <p className="mt-2 leading-relaxed text-white/80">{debtGuidance.message}</p>
+          </div>
+          <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-wide text-white/70">50/30/20 rule</p>
+            {monthlyIncomeForRule > 0 ? (
+              <>
+                <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/15">
+                  {ruleAllocations.map((segment) => (
+                    <div
+                      key={segment.label}
+                      className={`h-full ${segment.color}`}
+                      style={{ width: `${segment.percent}%` }}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 space-y-2">
+                  {ruleAllocations.map((segment) => (
+                    <div
+                      key={segment.label}
+                      className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-white"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${segment.dotColor}`} />
+                        <span className="font-medium">{segment.label}</span>
+                      </div>
+                      <span className="text-sm text-white/80">
+                        {segment.percent}% · {formatCurrency(segment.amount, region)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-white/75">
+                We'll generate your 50/30/20 split once a full month of income activity is available.
+              </p>
+            )}
           </div>
         </div>
 

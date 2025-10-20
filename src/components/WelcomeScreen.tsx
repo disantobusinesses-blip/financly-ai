@@ -206,7 +206,7 @@ const WelcomeScreen: React.FC = () => {
                 Explore Financly AI’s toolkit with a curated welcome tour.
               </h1>
               <p className="mx-auto max-w-xl text-lg text-white/70 lg:mx-0">
-                Preview your wellness score, cashflow forecast, and subscription intelligence in a single guided experience built for mobile and desktop.
+                Dive into your wellness score, cashflow forecast, and subscription intelligence through a guided tour tuned for every screen size.
               </p>
             </div>
 
@@ -262,9 +262,6 @@ const WelcomeScreen: React.FC = () => {
               </FeatureCard>
             </div>
 
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">
-              Connect securely with Basiq sandbox or live credentials.
-            </p>
           </div>
 
           <div className="relative flex justify-center lg:justify-end">
