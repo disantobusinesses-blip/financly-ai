@@ -93,6 +93,30 @@ export default function Dashboard() {
     );
   }
 
+  const primarySections = [
+    {
+      key: "financial-wellness",
+      tourId: "financial-wellness-card",
+      content: (
+        <FinancialWellnessScore
+          accounts={accounts}
+          transactions={transactions}
+        />
+      ),
+    },
+    {
+      key: "goal-planner",
+      tourId: "goal-planner",
+      content: (
+        <GoalPlanner
+          accounts={accounts}
+          transactions={transactions}
+          aiSuggestions={goalSuggestions}
+        />
+      ),
+    },
+  ];
+
   const mobilePanels = [
     {
       key: "balance",
@@ -160,16 +184,15 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
       <DashboardTour enabled={accounts.length > 0} />
-      <div data-tour-id="financial-wellness-card" data-tour-variant="shared">
-        <FinancialWellnessScore accounts={accounts} transactions={transactions} />
-      </div>
-      <div data-tour-id="goal-planner" data-tour-variant="shared">
-        <GoalPlanner
-          accounts={accounts}
-          transactions={transactions}
-          aiSuggestions={goalSuggestions}
-        />
-      </div>
+      {primarySections.map((section) => (
+        <section
+          key={section.key}
+          data-tour-id={section.tourId}
+          data-tour-variant="shared"
+        >
+          {section.content}
+        </section>
+      ))}
 
       <div className="-mx-4 md:hidden">
         <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4">
