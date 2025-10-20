@@ -14,6 +14,7 @@ import FinancialWellnessScore from "./FinancialWellnessScore";
 import SubscriptionHunter from "./SubscriptionHunter";
 import SavingsCoach from "./SavingsCoach";
 import GoalPlanner from "./GoalPlanner";
+import DashboardTour from "./DashboardTour";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -93,10 +94,19 @@ export default function Dashboard() {
   }
 
   const mobilePanels = [
-    { key: "balance", node: <BalanceSummary accounts={accounts} /> },
-    { key: "subscription", node: <SubscriptionHunter transactions={transactions} /> },
+    {
+      key: "balance",
+      id: "balance-summary-card",
+      node: <BalanceSummary accounts={accounts} />,
+    },
+    {
+      key: "subscription",
+      id: "subscription-hunter-card",
+      node: <SubscriptionHunter transactions={transactions} />,
+    },
     {
       key: "forecast",
+      id: "spending-forecast-card",
       node: (
         <SpendingForecast
           transactions={transactions}
@@ -105,25 +115,71 @@ export default function Dashboard() {
         />
       ),
     },
-    { key: "cashflow", node: <CashflowMini transactions={transactions} /> },
-    { key: "category", node: <SpendingByCategory transactions={transactions} /> },
-    { key: "share", node: <SpendingChart transactions={transactions} /> },
-    { key: "savings", node: <SavingsCoach transactions={transactions} /> },
-    { key: "alerts", node: <FinancialAlerts transactions={transactions} /> },
-    { key: "bills", node: <UpcomingBills transactions={transactions} /> },
-    { key: "transactions", node: <TransactionsList transactions={transactions} /> },
-    { key: "analysis", node: <TransactionAnalysis transactions={transactions} /> },
+    {
+      key: "cashflow",
+      id: "cashflow-mini-card",
+      node: <CashflowMini transactions={transactions} />,
+    },
+    {
+      key: "category",
+      id: "spending-by-category-card",
+      node: <SpendingByCategory transactions={transactions} />,
+    },
+    {
+      key: "share",
+      id: "spending-chart-card",
+      node: <SpendingChart transactions={transactions} />,
+    },
+    {
+      key: "savings",
+      id: "savings-coach-card",
+      node: <SavingsCoach transactions={transactions} />,
+    },
+    {
+      key: "alerts",
+      id: "financial-alerts-card",
+      node: <FinancialAlerts transactions={transactions} />,
+    },
+    {
+      key: "bills",
+      id: "upcoming-bills-card",
+      node: <UpcomingBills transactions={transactions} />,
+    },
+    {
+      key: "transactions",
+      id: "transactions-card",
+      node: <TransactionsList transactions={transactions} />,
+    },
+    {
+      key: "analysis",
+      id: "transaction-analysis-card",
+      node: <TransactionAnalysis transactions={transactions} />,
+    },
   ];
 
   return (
     <div className="space-y-6 px-4 pb-10 pt-4 sm:px-6">
-      <GoalPlanner accounts={accounts} transactions={transactions} aiSuggestions={goalSuggestions} />
-      <FinancialWellnessScore accounts={accounts} transactions={transactions} />
+      <DashboardTour enabled={accounts.length > 0} />
+      <div data-tour-id="goal-planner" data-tour-variant="shared">
+        <GoalPlanner
+          accounts={accounts}
+          transactions={transactions}
+          aiSuggestions={goalSuggestions}
+        />
+      </div>
+      <div data-tour-id="financial-wellness-card" data-tour-variant="shared">
+        <FinancialWellnessScore accounts={accounts} transactions={transactions} />
+      </div>
 
       <div className="-mx-4 md:hidden">
         <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4">
           {mobilePanels.map((panel) => (
-            <div key={panel.key} className="min-w-[85vw] snap-center">
+            <div
+              key={panel.key}
+              className="min-w-[85vw] snap-center"
+              data-tour-id={panel.id}
+              data-tour-variant="mobile"
+            >
               {panel.node}
             </div>
           ))}
@@ -133,35 +189,59 @@ export default function Dashboard() {
       <div className="hidden md:flex md:flex-col md:gap-6">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <div className="xl:col-span-2 space-y-6">
-            <BalanceSummary accounts={accounts} />
-            <SpendingForecast
-              transactions={transactions}
-              totalBalance={totalBalance}
-              savingsPlan={null}
-            />
+            <div data-tour-id="balance-summary-card" data-tour-variant="desktop">
+              <BalanceSummary accounts={accounts} />
+            </div>
+            <div data-tour-id="spending-forecast-card" data-tour-variant="desktop">
+              <SpendingForecast
+                transactions={transactions}
+                totalBalance={totalBalance}
+                savingsPlan={null}
+              />
+            </div>
           </div>
           <div className="space-y-6">
-            <SubscriptionHunter transactions={transactions} />
+            <div data-tour-id="subscription-hunter-card" data-tour-variant="desktop">
+              <SubscriptionHunter transactions={transactions} />
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <CashflowMini transactions={transactions} />
-          <SavingsCoach transactions={transactions} />
+          <div data-tour-id="cashflow-mini-card" data-tour-variant="desktop">
+            <CashflowMini transactions={transactions} />
+          </div>
+          <div data-tour-id="savings-coach-card" data-tour-variant="desktop">
+            <SavingsCoach transactions={transactions} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <SpendingByCategory transactions={transactions} />
-          <SpendingChart transactions={transactions} />
+          <div data-tour-id="spending-by-category-card" data-tour-variant="desktop">
+            <SpendingByCategory transactions={transactions} />
+          </div>
+          <div data-tour-id="spending-chart-card" data-tour-variant="desktop">
+            <SpendingChart transactions={transactions} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <UpcomingBills transactions={transactions} />
-          <FinancialAlerts transactions={transactions} />
+          <div data-tour-id="upcoming-bills-card" data-tour-variant="desktop">
+            <UpcomingBills transactions={transactions} />
+          </div>
+          <div data-tour-id="financial-alerts-card" data-tour-variant="desktop">
+            <FinancialAlerts transactions={transactions} />
+          </div>
         </div>
 
-        <TransactionsList transactions={transactions} />
-        <TransactionAnalysis transactions={transactions} />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div data-tour-id="transactions-card" data-tour-variant="desktop">
+            <TransactionsList transactions={transactions} />
+          </div>
+          <div data-tour-id="transaction-analysis-card" data-tour-variant="desktop">
+            <TransactionAnalysis transactions={transactions} />
+          </div>
+        </div>
       </div>
 
       <div className="text-center text-xs text-slate-500">{aiStatusMessage}</div>

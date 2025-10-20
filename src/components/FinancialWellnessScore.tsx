@@ -301,7 +301,10 @@ export default function FinancialWellnessScore({
               {formatCurrency(-Math.abs(monthlyExpenses), region)}
             </p>
           </div>
-          <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+          <div
+            className="rounded-xl bg-white/10 p-4 backdrop-blur-sm"
+            data-tour-id="financial-wellness-dti"
+          >
             <p className="text-xs uppercase tracking-wide text-white/70">Debt-to-income</p>
             <div className="mt-1 flex items-baseline gap-2">
               <p className={`text-lg font-semibold ${debtTone}`}>
@@ -319,7 +322,10 @@ export default function FinancialWellnessScore({
             <p className="mt-2 text-base font-semibold text-white">{debtGuidance.title}</p>
             <p className="mt-2 leading-relaxed text-white/80">{debtGuidance.message}</p>
           </div>
-          <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+          <div
+            className="rounded-xl bg-white/10 p-4 backdrop-blur-sm"
+            data-tour-id="financial-wellness-rule"
+          >
             <p className="text-xs uppercase tracking-wide text-white/70">50/30/20 rule</p>
             {monthlyIncomeForRule > 0 ? (
               <>
