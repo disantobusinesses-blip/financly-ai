@@ -42,7 +42,7 @@ export const useBrevoNewsletter = () => {
       return { ok: false, message: "Please provide an email address." };
     }
 
-    const apiKey = import.meta.env.VITE_API_KEY;
+    const apiKey = import.meta.env.VITE_BREVO_KEY;
 
     if (!apiKey) {
       const message = "Newsletter signup is unavailable at the moment. Please try again later.";
