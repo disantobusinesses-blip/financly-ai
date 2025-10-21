@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
+import { useBrevoNewsletter } from "../hooks/useBrevoNewsletter";
 
 const SpotifyBadge = () => (
   <div className="w-11 h-11 rounded-2xl bg-[#1DB954] flex items-center justify-center shadow-inner">
@@ -185,6 +186,24 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: Re
 
 const WelcomeScreen: React.FC = () => {
   const { openLoginModal, openSignupModal } = useAuth();
+  const [email, setEmail] = useState("");
+  const { status, error, subscribe, reset } = useBrevoNewsletter();
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const result = await subscribe(email.trim());
+    if (result.ok) {
+      setEmail("");
+    }
+  };
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (status === "error") {
+      reset();
+    }
+
+    setEmail(event.target.value);
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -229,7 +248,7 @@ const WelcomeScreen: React.FC = () => {
               <p className="text-sm text-white/80">
                 Be on top of financial news and receive free tips on how to budget.
               </p>
-              <form className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <form className="mt-3 flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
                 <label htmlFor="welcome-newsletter" className="sr-only">
                   Email address
                 </label>
@@ -240,14 +259,23 @@ const WelcomeScreen: React.FC = () => {
                   className="w-full rounded-full border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/40"
                   autoComplete="email"
                   required
+                  value={email}
+                  onChange={handleEmailChange}
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-slate-900 shadow sm:w-auto"
+                  className="w-full rounded-full bg-white/90 px-5 py-3 text-sm font-semibold text-slate-900 shadow transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  disabled={status === "loading"}
                 >
-                  Join the list
+                  {status === "loading" ? "Joining…" : "Join the list"}
                 </button>
               </form>
+              <div className="min-h-[1.25rem] pt-1 text-sm" aria-live="polite" role="status">
+                {status === "success" && (
+                  <span className="text-emerald-200">You're all set! Please check your inbox for a welcome message.</span>
+                )}
+                {status === "error" && error && <span className="text-rose-200">{error}</span>}
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
