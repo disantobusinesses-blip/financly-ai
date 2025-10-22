@@ -4,7 +4,6 @@ import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
 import { getFinancialAlerts } from '../services/GeminiService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import ProFeatureBlocker from './ProFeatureBlocker';
 import { useOnScreen } from '../hooks/useOnScreen';
 
 interface FinancialAlertsProps {
@@ -76,33 +75,26 @@ const FinancialAlerts: React.FC<FinancialAlertsProps> = ({ transactions }) => {
   }, [isVisible, transactions, hasFetched, user]);
 
   return (
-    <div className="bg-content-bg p-6 rounded-xl border border-border-color h-full" ref={ref}>
-      <div className="flex items-center mb-6">
+    <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10" ref={ref}>
+      <div className="mb-6 flex items-center">
         <SparklesIcon className="h-7 w-7 text-primary" />
-        <h2 className="text-2xl font-bold text-text-primary ml-3">AI Financial Watchdog</h2>
+        <h2 className="ml-3 text-2xl font-bold text-slate-900 dark:text-white">AI Financial Watchdog</h2>
       </div>
 
-      {user?.membershipType === 'Pro' ? (
-        <div className="space-y-4">
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : alerts.length > 0 ? (
-            alerts.map((alert, index) => <AlertCard key={index} alert={alert} />)
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-text-secondary">No new alerts right now.</p>
-              <p className="text-sm text-text-tertiary">We'll notify you when we spot something important!</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <ProFeatureBlocker
-          featureTitle="AI Financial Watchdog"
-          teaserText={isLoading ? "Analyzing your finances for alerts..." : `AI found ${alerts.length} potential alert${alerts.length !== 1 ? 's' : ''} for you to review.`}
-        >
-           <LoadingSkeleton />
-        </ProFeatureBlocker>
-      )}
+      <div className="space-y-4">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : alerts.length > 0 ? (
+          alerts.map((alert, index) => <AlertCard key={index} alert={alert} />)
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-slate-600 dark:text-slate-300">No new alerts right now.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">We'll notify you when we spot something important!</p>
+          </div>
+        )}
+      </div>
+
+      <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">Insights are informational only and not financial advice.</p>
     </div>
   );
 };

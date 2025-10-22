@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.tool-carousel {
+  display: grid;
+  gap: 1.5rem;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 1fr);
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  scroll-snap-type: x mandatory;
+}
+
+.tool-carousel > * {
+  scroll-snap-align: center;
+}
+
+@media (min-width: 768px) {
+  .tool-carousel {
+    grid-auto-flow: initial;
+    grid-auto-columns: initial;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+    scroll-snap-type: none;
+  }
+  .tool-carousel > * {
+    scroll-snap-align: unset;
+  }
+}
+
+.tour-highlight {
+  position: relative;
+  outline: 3px solid rgba(79, 70, 229, 0.6);
+  box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.15);
+  border-radius: 1.5rem;
+  transition: outline-offset 0.3s ease, box-shadow 0.3s ease;
+}

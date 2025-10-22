@@ -75,10 +75,14 @@ export interface BalanceForecastResult {
 }
 
 /** User */
-export type UserMembershipType = "Free" | "Pro";
+export type UserMembershipType = "Basic" | "Pro";
 export interface User {
   id: string;
   email: string;
+  displayName: string;
+  avatar: string;
   membershipType: UserMembershipType;
   region: "AU" | "US";
+  basicTrialEnds?: string; // ISO date when a basic showcase expires
+  createdAt: string;
 }

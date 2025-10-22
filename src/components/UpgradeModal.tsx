@@ -80,11 +80,11 @@ const UpgradeModal: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-8 mt-8">
-          {/* Free Plan */}
+          {/* Basic Plan */}
           <div className="border border-border-color rounded-lg p-6">
-            <h3 className="text-xl font-bold text-text-primary">Free</h3>
-            <p className="text-text-secondary">Basic financial overview.</p>
-            <p className="text-3xl font-bold my-4 text-text-primary">$0 <span className="text-lg font-medium text-text-secondary">/ month</span></p>
+            <h3 className="text-xl font-bold text-text-primary">Basic Showcase</h3>
+            <p className="text-text-secondary">7-day preview with blurred AI insights.</p>
+            <p className="text-3xl font-bold my-4 text-text-primary">$0 <span className="text-lg font-medium text-text-secondary">/ 7 days</span></p>
             <ul className="space-y-3 text-sm">
               <Feature included={true}>Account & Transaction Sync</Feature>
               <Feature included={true}>Credit Score Monitoring</Feature>

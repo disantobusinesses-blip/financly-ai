@@ -1,13 +1,26 @@
-// 🚀 REPLACEMENT FOR: /src/contexts/AuthContext.tsx
-// Mock signup/login, persists user, exposes modal toggles.
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
+import { User, UserMembershipType } from "../types";
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { User } from "../types";
+interface SignupPayload {
+  email: string;
+  password: string;
+  region: "AU" | "US";
+  plan: UserMembershipType;
+  displayName: string;
+  avatar: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, pass: string) => boolean;
-  signup: (email: string, pass: string, region: "AU" | "US") => boolean;
+  login: (email: string, password: string) => boolean;
+  signup: (payload: SignupPayload) => boolean;
   logout: () => void;
   upgradeUser: (userId: string) => void;
 
@@ -20,19 +33,29 @@ interface AuthContextType {
 
   openLoginModal: () => void;
   openSignupModal: () => void;
+  remainingBasicDays: number | null;
 }
 
-const db = {
-  getUsers: (): any[] => JSON.parse(localStorage.getItem("financly_users") || "[]"),
-  saveUsers: (users: any[]) => localStorage.setItem("financly_users", JSON.stringify(users)),
-  getCurrentUser: (): User | null => {
-    const s = localStorage.getItem("financly_current_user");
-    return s ? JSON.parse(s) : null;
-  },
-  setCurrentUser: (u: User | null) => {
-    if (u) localStorage.setItem("financly_current_user", JSON.stringify(u));
-    else localStorage.removeItem("financly_current_user");
-  },
+interface StoredUser extends Omit<User, "createdAt"> {
+  createdAt?: string;
+  password: string;
+}
+
+const USERS_KEY = "financly_users";
+const CURRENT_USER_KEY = "financly_current_user";
+
+const normaliseUser = (raw: StoredUser): User => {
+  const createdAt = raw.createdAt || new Date().toISOString();
+  return {
+    id: raw.id,
+    email: raw.email,
+    displayName: raw.displayName || raw.email.split("@")[0],
+    avatar: raw.avatar || "💸",
+    membershipType: raw.membershipType === "Pro" ? "Pro" : "Basic",
+    region: raw.region || "AU",
+    basicTrialEnds: raw.basicTrialEnds,
+    createdAt,
+  };
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,12 +66,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  useEffect(() => {
-    const saved = db.getCurrentUser();
-    if (saved) setUser(saved);
+  const getUsers = (): StoredUser[] => {
+    try {
+      return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  };
 
-    // seed a demo user (mock auth only)
-    const users = db.getUsers();
+  const saveUsers = (users: StoredUser[]) => {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  };
+
+  useEffect(() => {
+    const stored = localStorage.getItem(CURRENT_USER_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as StoredUser;
+        setUser(normaliseUser(parsed));
+      } catch {
+        localStorage.removeItem(CURRENT_USER_KEY);
+      }
+    }
+
+    // Seed demo pro account for testing
+    const users = getUsers();
     if (!users.find((u) => u.email === "demo@financly.com")) {
       users.push({
         id: "user_demo_123",
@@ -56,95 +98,130 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password: "demo123",
         membershipType: "Pro",
         region: "AU",
+        displayName: "Financly Demo",
+        avatar: "🧠",
+        createdAt: new Date().toISOString(),
       });
-      db.saveUsers(users);
+      saveUsers(users);
     }
   }, []);
 
-  const signup = (email: string, pass: string, region: "AU" | "US"): boolean => {
-    const users = db.getUsers();
-    if (users.find((u) => u.email === email)) {
+  const persistCurrentUser = (storedUser: StoredUser | null) => {
+    if (storedUser) {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(storedUser));
+    } else {
+      localStorage.removeItem(CURRENT_USER_KEY);
+    }
+  };
+
+  const signup = (payload: SignupPayload): boolean => {
+    const users = getUsers();
+    const exists = users.some((u) => u.email === payload.email);
+    if (exists) {
       alert("An account with this email already exists.");
       return false;
     }
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      email,
-      membershipType: "Free",
-      region,
+
+    const now = new Date();
+    const storedUser: StoredUser = {
+      id: `user_${now.getTime()}`,
+      email: payload.email,
+      password: payload.password,
+      membershipType: payload.plan,
+      region: payload.region,
+      displayName: payload.displayName.trim() || payload.email.split("@")[0],
+      avatar: payload.avatar,
+      createdAt: now.toISOString(),
+      basicTrialEnds:
+        payload.plan === "Basic"
+          ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          : undefined,
     };
-    users.push({ ...newUser, password: pass });
-    db.saveUsers(users);
-    setUser(newUser);
-    db.setCurrentUser(newUser);
+
+    users.push(storedUser);
+    saveUsers(users);
+
+    const normalised = normaliseUser(storedUser);
+    setUser(normalised);
+    persistCurrentUser(storedUser);
     setIsSignupModalOpen(false);
     return true;
   };
 
-  const login = (email: string, pass: string): boolean => {
-    const users = db.getUsers();
-    const found = users.find((u) => u.email === email && u.password === pass);
+  const login = (email: string, password: string): boolean => {
+    const users = getUsers();
+    const found = users.find((u) => u.email === email && u.password === password);
     if (!found) {
       alert("Invalid email or password.");
       return false;
     }
-    const u: User = {
-      id: found.id,
-      email: found.email,
-      membershipType: found.membershipType,
-      region: found.region || "AU",
-    };
-    setUser(u);
-    db.setCurrentUser(u);
+
+    const normalised = normaliseUser(found);
+    setUser(normalised);
+    persistCurrentUser(found);
     setIsLoginModalOpen(false);
     return true;
   };
 
   const logout = () => {
     setUser(null);
-    db.setCurrentUser(null);
-    // optional: clear basiqUserId if you want logout to fully reset bank link
-    // localStorage.removeItem("basiqUserId");
+    persistCurrentUser(null);
+    localStorage.removeItem("basiqUserId");
+    localStorage.removeItem("accountsCache");
+    localStorage.removeItem("transactionsCache");
   };
 
   const upgradeUser = (userId: string) => {
-    const users = db.getUsers();
+    const users = getUsers();
     const idx = users.findIndex((u) => u.id === userId);
-    if (idx >= 0) {
-      users[idx].membershipType = "Pro";
-      db.saveUsers(users);
-      const updated: User = {
-        id: users[idx].id,
-        email: users[idx].email,
-        membershipType: users[idx].membershipType,
-        region: users[idx].region || "AU",
-      };
+    if (idx === -1) return;
+
+    users[idx].membershipType = "Pro";
+    delete users[idx].basicTrialEnds;
+    saveUsers(users);
+
+    if (user && user.id === userId) {
+      const updated = normaliseUser(users[idx]);
       setUser(updated);
-      db.setCurrentUser(updated);
+      persistCurrentUser(users[idx]);
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        signup,
-        logout,
-        upgradeUser,
-        isLoginModalOpen,
-        setIsLoginModalOpen,
-        isSignupModalOpen,
-        setIsSignupModalOpen,
-        isUpgradeModalOpen,
-        setIsUpgradeModalOpen,
-        openLoginModal: () => setIsLoginModalOpen(true),
-        openSignupModal: () => setIsSignupModalOpen(true),
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const remainingBasicDays = useMemo(() => {
+    if (!user || user.membershipType !== "Basic" || !user.basicTrialEnds) return null;
+    const expiry = new Date(user.basicTrialEnds).getTime();
+    const now = Date.now();
+    if (expiry <= now) return 0;
+    return Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+  }, [user]);
+
+  const value = useMemo(
+    () => ({
+      user,
+      login,
+      signup,
+      logout,
+      upgradeUser,
+      isLoginModalOpen,
+      setIsLoginModalOpen,
+      isSignupModalOpen,
+      setIsSignupModalOpen,
+      isUpgradeModalOpen,
+      setIsUpgradeModalOpen,
+      openLoginModal: () => setIsLoginModalOpen(true),
+      openSignupModal: () => setIsSignupModalOpen(true),
+      remainingBasicDays,
+    }),
+    [
+      user,
+      isLoginModalOpen,
+      isSignupModalOpen,
+      isUpgradeModalOpen,
+      remainingBasicDays,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
