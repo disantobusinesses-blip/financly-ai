@@ -21,6 +21,26 @@ export function useBasiqData(userId?: string): BasiqData {
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
     const basiqUserId = userId || storedId;
+    const params = new URLSearchParams(window.location.search);
+    const jobIdParam = params.get("jobId") || params.get("jobIds");
+    let jobId = jobIdParam ? jobIdParam.trim() : "";
+    const connectionError = params.get("error");
+
+    const removeQueryParams = (keys: string[]) => {
+      keys.forEach((key) => params.delete(key));
+      const query = params.toString();
+      const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.history.replaceState({}, "", nextUrl);
+    };
+
+    if (connectionError) {
+      const decoded = decodeURIComponent(connectionError);
+      setError(`Bank connection failed: ${decoded}`);
+      setLoading(false);
+      removeQueryParams(["error"]);
+      return;
+    }
+
     if (!basiqUserId) {
       setAccounts([]);
       setTransactions([]);
@@ -46,10 +66,14 @@ export function useBasiqData(userId?: string): BasiqData {
 
     const fetchData = async () => {
       try {
-        const res = await fetch(
-          `/api/basiq-data?userId=${encodeURIComponent(basiqUserId)}`,
-          { cache: "no-store" }
-        );
+        const query = new URLSearchParams({ userId: basiqUserId });
+        if (jobId) {
+          query.set("jobId", jobId);
+        }
+
+        const res = await fetch(`/api/basiq-data?${query.toString()}`, {
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const data = await res.json();
 
@@ -65,9 +89,33 @@ export function useBasiqData(userId?: string): BasiqData {
         localStorage.setItem("accountsCache", JSON.stringify(acc));
         localStorage.setItem("transactionsCache", JSON.stringify(tx));
         localStorage.setItem("basiqCacheTime", new Date().toISOString());
+
+        if (jobId) {
+          try {
+            localStorage.setItem("basiqConnectionStatus", "success");
+            const pendingId = localStorage.getItem("basiqPendingUserId");
+            if (pendingId) {
+              localStorage.setItem("basiqUserId", pendingId);
+              localStorage.removeItem("basiqPendingUserId");
+            }
+          } catch (storageErr) {
+            console.warn("Unable to finalise Basiq connection state", storageErr);
+          }
+          removeQueryParams(["jobId", "jobIds"]);
+          jobId = "";
+        }
       } catch (err: any) {
         console.error("❌ Failed to load Basiq data:", err);
         setError(err.message || "Failed to load data");
+        if (jobId) {
+          try {
+            localStorage.setItem("basiqConnectionStatus", "error");
+          } catch (storageErr) {
+            console.warn("Unable to persist connection error", storageErr);
+          }
+          jobId = "";
+          removeQueryParams(["jobId", "jobIds"]);
+        }
       } finally {
         setLoading(false);
       }
