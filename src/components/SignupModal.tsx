@@ -73,8 +73,8 @@ const SignupModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 sm:py-10">
+      <div className="relative w-full max-w-3xl max-h-[calc(100vh-3rem)] overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-neutral-900 dark:text-white sm:rounded-3xl">
         <button
           onClick={() => setIsSignupModalOpen(false)}
           className="absolute right-4 top-4 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-200"

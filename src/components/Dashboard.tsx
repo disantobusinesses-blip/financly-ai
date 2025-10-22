@@ -135,7 +135,7 @@ const Dashboard: React.FC = () => {
     : "Upgrade to unlock AI commentary on every transaction.";
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-10 lg:gap-14">
       <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
       <GoalPlanner accounts={accounts} transactions={transactions} />
 

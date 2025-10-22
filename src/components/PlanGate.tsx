@@ -14,7 +14,7 @@ const PlanGate: React.FC<PlanGateProps> = ({ allowBasic = false, feature, teaser
   const shouldGate = user?.membershipType === "Basic" && !allowBasic;
 
   return (
-    <div className="relative" data-tour-id={dataTourId}>
+    <div className="relative h-full" data-tour-id={dataTourId}>
       <div className={shouldGate ? "pointer-events-none select-none opacity-40" : ""}>{children}</div>
       {shouldGate && (
         <div className="absolute inset-0 flex items-center justify-center">
