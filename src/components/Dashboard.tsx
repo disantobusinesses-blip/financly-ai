@@ -23,8 +23,10 @@ import { useGeminiAI } from "../hooks/useGeminiAI";
 import { formatCurrency } from "../utils/currency";
 
 export default function Dashboard() {
-  const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
   const { user } = useAuth();
+  const basiqUserKey = user?.email?.trim().toLowerCase() || undefined;
+  const { accounts, transactions, loading, error, lastUpdated } =
+    useBasiqData(basiqUserKey);
   const [tourSignal, setTourSignal] = useState(0);
   const totalBalance = useMemo(
     () => accounts.reduce((sum, account) => sum + account.balance, 0),

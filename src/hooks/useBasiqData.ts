@@ -170,7 +170,11 @@ export function useBasiqData(userId?: string): BasiqData {
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
-    const basiqUserId = userId || storedId;
+    if (userId && storedId !== userId) {
+      localStorage.setItem("basiqUserId", userId);
+    }
+
+    const basiqUserId = userId || localStorage.getItem("basiqUserId") || "";
     if (!basiqUserId) {
       setAccounts([]);
       setTransactions([]);

@@ -147,7 +147,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const saved = db.getCurrentUser();
-    if (saved) setUser(normalisePublicUser(saved));
+    if (saved) {
+      const normalisedSaved = normalisePublicUser(saved);
+      setUser(normalisedSaved);
+      try {
+        localStorage.setItem(
+          "basiqUserId",
+          normalisedSaved.email.toLowerCase()
+        );
+      } catch (error) {
+        console.warn("Unable to persist basiq user id", error);
+      }
+    }
 
     // seed a demo user (mock auth only)
     const users = db
@@ -213,6 +224,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     db.saveUsers(users);
     setUser(publicUser);
     db.setCurrentUser(publicUser);
+    try {
+      localStorage.setItem("basiqUserId", email.toLowerCase());
+    } catch (error) {
+      console.warn("Unable to persist basiq user id", error);
+    }
     setIsSignupModalOpen(false);
     return true;
   };
@@ -228,6 +244,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     db.saveUsers(users);
     setUser(publicUser);
     db.setCurrentUser(publicUser);
+    try {
+      localStorage.setItem("basiqUserId", publicUser.email.toLowerCase());
+    } catch (error) {
+      console.warn("Unable to persist basiq user id", error);
+    }
     setIsLoginModalOpen(false);
     return true;
   };
@@ -235,8 +256,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     setUser(null);
     db.setCurrentUser(null);
-    // optional: clear basiqUserId if you want logout to fully reset bank link
-    // localStorage.removeItem("basiqUserId");
+    try {
+      localStorage.removeItem("basiqUserId");
+    } catch (error) {
+      console.warn("Unable to clear basiq user id", error);
+    }
   };
 
   const upgradeUser = (userId: string) => {
