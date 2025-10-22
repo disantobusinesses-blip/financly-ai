@@ -105,7 +105,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && accounts.length === 0) {
     return (
       <div className="flex h-[60vh] items-center justify-center text-red-500">
         <p>Failed to load data: {error}</p>
@@ -136,6 +136,11 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-10 lg:gap-14">
+      {error && accounts.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
+          {error}
+        </div>
+      )}
       <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
       <GoalPlanner accounts={accounts} transactions={transactions} />
 

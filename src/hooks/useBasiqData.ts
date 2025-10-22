@@ -1,5 +1,5 @@
 // 🚀 Optimized useBasiqData.ts — fast + cached + parallel Gemini ready
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Account, Transaction } from "../types";
 
 interface BasiqData {
@@ -17,6 +17,7 @@ export function useBasiqData(userId?: string): BasiqData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const hasDataRef = useRef(false);
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
@@ -46,6 +47,7 @@ export function useBasiqData(userId?: string): BasiqData {
       setTransactions([]);
       setLoading(false);
       setError("No connected bank account yet.");
+      hasDataRef.current = false;
       return;
     }
 
@@ -59,6 +61,7 @@ export function useBasiqData(userId?: string): BasiqData {
         setTransactions(JSON.parse(cachedTransactions));
         setLastUpdated(cachedTime || null);
         setLoading(false);
+        hasDataRef.current = true;
       } catch {
         console.warn("⚠️ Cache parse failed, fetching fresh data");
       }
@@ -84,6 +87,7 @@ export function useBasiqData(userId?: string): BasiqData {
         setTransactions(tx);
         setError(null);
         setLastUpdated(new Date().toISOString());
+        hasDataRef.current = acc.length > 0 || tx.length > 0 || hasDataRef.current;
 
         // 🔹 Save to cache for next load
         localStorage.setItem("accountsCache", JSON.stringify(acc));
@@ -106,7 +110,11 @@ export function useBasiqData(userId?: string): BasiqData {
         }
       } catch (err: any) {
         console.error("❌ Failed to load Basiq data:", err);
-        setError(err.message || "Failed to load data");
+        if (hasDataRef.current) {
+          setError("We're retrying your bank sync. Showing last saved balances while we reconnect.");
+        } else {
+          setError(err?.message || "Failed to load data");
+        }
         if (jobId) {
           try {
             localStorage.setItem("basiqConnectionStatus", "error");

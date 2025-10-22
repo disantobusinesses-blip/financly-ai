@@ -3,10 +3,8 @@
 @tailwind utilities;
 
 .tool-carousel {
-  display: grid;
+  display: flex;
   gap: 1.75rem;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(280px, 1fr);
   overflow-x: auto;
   padding: 0.5rem 0 1.5rem;
   scroll-snap-type: x mandatory;
@@ -14,6 +12,7 @@
 }
 
 .tool-carousel > * {
+  flex: 0 0 min(100%, 360px);
   scroll-snap-align: center;
   min-height: 100%;
 }
@@ -21,21 +20,18 @@
 @media (min-width: 768px) {
   .tool-carousel {
     gap: 2rem;
-    grid-auto-flow: initial;
-    grid-auto-columns: initial;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    overflow: visible;
-    padding: 0;
-    scroll-snap-type: none;
   }
   .tool-carousel > * {
-    scroll-snap-align: unset;
+    flex-basis: 400px;
   }
 }
 
 @media (min-width: 1280px) {
   .tool-carousel {
     gap: 2.75rem;
+  }
+  .tool-carousel > * {
+    flex-basis: 440px;
   }
 }
 

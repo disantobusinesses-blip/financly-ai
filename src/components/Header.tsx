@@ -42,19 +42,19 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/80 px-4 py-4 text-white backdrop-blur">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/85 px-4 py-4 text-white backdrop-blur">
       <div className="flex items-center gap-3">
         {user && (
           <button
             onClick={() => setMenuOpen(true)}
-            className="rounded-xl border border-white/20 px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] hover:border-white/50"
-          >
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold uppercase tracking-[0.3em] hover:border-white/50"
+            >
             ☰
           </button>
         )}
         <button
           onClick={() => onNavigate("dashboard")}
-          className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
+          className="flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
         >
           <span className="rounded-lg bg-primary px-2 py-1 text-sm font-semibold text-white">FA</span>
           Financly AI
@@ -68,13 +68,13 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </span>
           <button
             onClick={handleConnectBankClick}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
           >
             Connect bank
           </button>
           <button
             onClick={handleLogout}
-            className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-white/20 px-5 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
           >
             Logout
           </button>
@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           className="fixed inset-0 z-40 flex"
           onClick={() => setMenuOpen(false)}
         >
-          <div className="h-full w-64 bg-slate-950/95 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="h-full w-64 bg-slate-950 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
               <p className="text-lg font-semibold text-white">{user.displayName} {user.avatar}</p>
@@ -138,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               <p>Need support? hello@financly.ai</p>
             </div>
           </div>
-          <div className="flex-1 bg-black/40" />
+          <div className="flex-1 bg-black/70 backdrop-blur-sm" />
         </div>
       )}
     </header>
