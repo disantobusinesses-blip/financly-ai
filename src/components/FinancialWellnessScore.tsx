@@ -54,6 +54,7 @@ export default function FinancialWellnessScore({
     score,
     topSpendingCategory,
     topSpendingAmount,
+    topDebtAccount,
   } = useMemo(() => {
     const toNumber = (value: unknown) => {
       if (typeof value === "number") {
@@ -72,11 +73,18 @@ export default function FinancialWellnessScore({
         if (balance >= 0) {
           acc.assets += balance;
         } else {
-          acc.liabilities += Math.abs(balance);
+          const liability = Math.abs(balance);
+          acc.liabilities += liability;
+          if (liability > acc.heaviest.amount) {
+            acc.heaviest = {
+              name: account.name || "Largest liability",
+              amount: liability,
+            };
+          }
         }
         return acc;
       },
-      { assets: 0, liabilities: 0 }
+      { assets: 0, liabilities: 0, heaviest: { name: "", amount: 0 } }
     );
 
     const netWorthValue = totals.assets - totals.liabilities;
@@ -144,6 +152,8 @@ export default function FinancialWellnessScore({
       score: compositeScore,
       topSpendingCategory: topCategory,
       topSpendingAmount: topAmount,
+      topDebtAccount:
+        totals.heaviest.amount > 0 ? totals.heaviest : { name: "", amount: 0 },
     };
   }, [accounts, transactions]);
 
@@ -165,38 +175,71 @@ export default function FinancialWellnessScore({
   const debtIncomeRatio =
     debtToIncome > 0 && Number.isFinite(debtToIncome) ? debtToIncome : 0;
   const formattedDebtRatio = debtIncomeRatio > 0 ? `${debtIncomeRatio.toFixed(2)} : 1` : "0 : 1";
-  const debtGuidance =
-    debtToIncomePercent > 50
+  const largestDebtName =
+    topDebtAccount && topDebtAccount.amount > 0
+      ? topDebtAccount.name || "your largest liability"
+      : null;
+  const largestDebtAmount =
+    topDebtAccount && topDebtAccount.amount > 0
+      ? topDebtAccount.amount
+      : 0;
+  const driverMessage =
+    largestDebtAmount > 0
+      ? `${largestDebtName} is driving ${formatCurrency(
+          -Math.abs(largestDebtAmount),
+          region
+        )} of your liabilities.`
+      : "Liabilities are light right now—keep repayments consistent to preserve the advantage.";
+  const debtStatus =
+    debtToIncomePercent <= 25
       ? {
-          title: "Stabilise your debt load",
-          message:
-            "Your debt-to-income ratio is leaning high. Focus on breaking even by prioritising high-interest repayments and pausing new debt commitments until the ratio retreats below 50%.",
+          label: "Excellent debt-to-income",
+          action:
+            "Keep autopaying principal and divert surplus cash toward savings goals to stay well below 25%.",
+        }
+      : debtToIncomePercent <= 35
+      ? {
+          label: "Good shape — push toward excellent",
+          action:
+            "Redirect bonuses or windfalls to the largest balance and avoid new financing until you glide under 25%.",
+        }
+      : debtToIncomePercent <= 50
+      ? {
+          label: "Caution: debt load rising",
+          action:
+            "Target high-interest balances first and pause new discretionary commitments until you're back under 36%.",
         }
       : {
-          title: "Keep your momentum",
-          message:
-            "Great job keeping debt in check. Set a stretch goal to push the ratio even lower by accelerating repayments or redirecting surplus cash into savings goals.",
+          label: "High risk debt load",
+          action:
+            "Freeze new debt, schedule aggressive repayments on the most expensive accounts, and review spending weekly.",
         };
+  const ratioGoalMessage =
+    debtToIncomePercent > 36
+      ? "Aim to fall below 36% to satisfy most lenders, then keep pushing toward 25% for a standout profile."
+      : debtToIncomePercent > 25
+      ? "You're inside lender comfort zones—drift below 25% to reach the excellent range."
+      : "Maintain the excellence and experiment with nudging the ratio toward 20% for extra resilience.";
   const monthlyIncomeForRule = Math.max(0, monthlyIncome);
   const ruleAllocations = useMemo(
     () =>
       [
         {
-          label: "Essentials",
+          label: "Spend 50% on Essentials",
           percent: 50,
           amount: monthlyIncomeForRule * 0.5,
           color: "bg-emerald-300/80",
           dotColor: "bg-emerald-200",
         },
         {
-          label: "Lifestyle",
+          label: "Spend 30% on Lifestyle",
           percent: 30,
           amount: monthlyIncomeForRule * 0.3,
           color: "bg-indigo-300/80",
           dotColor: "bg-indigo-200",
         },
         {
-          label: "Savings",
+          label: "Put 20% into savings account",
           percent: 20,
           amount: monthlyIncomeForRule * 0.2,
           color: "bg-sky-300/80",
@@ -319,8 +362,18 @@ export default function FinancialWellnessScore({
         <div className="grid grid-cols-1 gap-4 text-sm text-white/80 md:grid-cols-2">
           <div className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
             <p className="text-xs uppercase tracking-wide text-white/70">Debt-to-income focus</p>
-            <p className="mt-2 text-base font-semibold text-white">{debtGuidance.title}</p>
-            <p className="mt-2 leading-relaxed text-white/80">{debtGuidance.message}</p>
+            <p className="mt-2 text-base font-semibold text-white">{debtStatus.label}</p>
+            <p className="mt-2 text-sm text-white/80">{driverMessage}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
+              <span className="rounded-full bg-white/10 px-3 py-1">
+                Current: {debtToIncomePercent.toFixed(1)}% · ≈ {formattedDebtRatio}
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1">
+                Excellent ≤25% • Good 25-35% • Lenders prefer ≤36%
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-white/80">{ratioGoalMessage}</p>
+            <p className="mt-2 text-sm text-white/80">{debtStatus.action}</p>
           </div>
           <div
             className="rounded-xl bg-white/10 p-4 backdrop-blur-sm"

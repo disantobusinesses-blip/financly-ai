@@ -1,71 +1,120 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { SparklesIcon } from './icon/Icon';
+import React, { useMemo } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { SparklesIcon } from "./icon/Icon";
 
-const Checkmark: React.FC = () => (
-  <svg className="h-5 w-5 text-secondary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-  </svg>
-);
+const formatDaysRemaining = (expiresAt?: string) => {
+  if (!expiresAt) return null;
+  const parsed = new Date(expiresAt);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const diffMs = parsed.getTime() - Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = Math.ceil(diffMs / dayMs);
+  return { days, expired: diffMs <= 0 };
+};
 
-const Feature: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <li className="flex items-center gap-3">
-    <Checkmark />
-    <span className="text-text-primary">{children}</span>
-  </li>
+const FeatureList: React.FC<{ title: string; items: string[]; highlight?: boolean }> = ({
+  title,
+  items,
+  highlight = false,
+}) => (
+  <div
+    className={`rounded-2xl border border-slate-200 p-6 ${
+      highlight ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
+    }`}
+  >
+    <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+    <ul className="mt-4 space-y-2 text-sm text-slate-600">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2">
+          <span className="mt-1 inline-block h-2 w-2 rounded-full bg-primary" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
 );
 
 const UpgradeModal: React.FC = () => {
-  const { isUpgradeModalOpen, setIsUpgradeModalOpen } = useAuth();
+  const { isUpgradeModalOpen, setIsUpgradeModalOpen, user, upgradeUser } = useAuth();
+
+  const countdown = useMemo(() => formatDaysRemaining(user?.basicTrialEndsAt), [user?.basicTrialEndsAt]);
 
   if (!isUpgradeModalOpen) return null;
 
+  const handleUpgrade = () => {
+    if (!user) return;
+    upgradeUser(user.id);
+    setIsUpgradeModalOpen(false);
+  };
+
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex justify-center items-center z-50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
       onClick={() => setIsUpgradeModalOpen(false)}
     >
       <div
-        className="bg-content-bg p-8 rounded-xl border border-border-color w-full max-w-2xl transform transition-all"
-        onClick={e => e.stopPropagation()}
+        className="max-w-3xl w-full overflow-hidden rounded-3xl bg-white p-8 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="text-center">
-          <SparklesIcon className="h-10 w-10 text-primary mx-auto mb-2" />
-          <h2 className="text-3xl font-bold text-text-primary">You're Already All Access</h2>
-          <p className="text-text-secondary mt-2">
-            Financly AI insights, automations, and guidance are now available to every member without an upgrade.
+          <SparklesIcon className="mx-auto h-10 w-10 text-primary" />
+          <h2 className="mt-3 text-3xl font-bold text-slate-900">Unlock My Finances Pro</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Reveal the full dashboard, AI forecasts, and subscription details instantly. We keep every suggestion neutral—this is
+            not Financial advice.
           </p>
+          {countdown && (
+            <p
+              className={`mt-3 text-sm font-semibold ${
+                countdown.expired ? "text-rose-500" : "text-indigo-600"
+              }`}
+            >
+              {countdown.expired
+                ? "Your basic showcase has ended."
+                : `${countdown.days} day${countdown.days === 1 ? "" : "s"} left in your basic showcase.`}
+            </p>
+          )}
         </div>
 
-        <div className="mt-8 grid md:grid-cols-2 gap-8">
-          <div className="border border-border-color rounded-lg p-6 bg-background">
-            <h3 className="text-xl font-semibold text-text-primary mb-4">Included Tools</h3>
-            <ul className="space-y-3 text-sm">
-              <Feature>AI Spending Insights</Feature>
-              <Feature>Financial Watchdog Alerts</Feature>
-              <Feature>Smart Subscription Hunter</Feature>
-              <Feature>Borrowing Power Guidance</Feature>
-              <Feature>Goal-Based Savings Plans</Feature>
-              <Feature>Forecasting & Cashflow Tracking</Feature>
-            </ul>
-          </div>
-          <div className="border border-border-color rounded-lg p-6 bg-background">
-            <h3 className="text-xl font-semibold text-text-primary mb-4">What to Do Next</h3>
-            <ul className="space-y-3 text-sm text-text-secondary">
-              <li>1. Connect your bank accounts with Basiq to sync live data.</li>
-              <li>2. Visit the dashboard to explore insights across every widget.</li>
-              <li>3. Set goals and let Financly highlight personalized actions.</li>
-            </ul>
-          </div>
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <FeatureList
+            title="Basic Showcase"
+            items={[
+              "Financial Wellness Score & insights",
+              "Balance summary with net worth snapshot",
+              "Goal planner with AI celebration toasts",
+              "Blurred previews of advanced tools",
+            ]}
+          />
+          <FeatureList
+            title="My Finances Pro"
+            highlight
+            items={[
+              "Full Subscription Hunter with merchants and savings",
+              "AI cashflow forecasts and spending analysis",
+              "Real-time alerts, bills, and transaction history",
+              "Unlimited goal tracking with live bank data",
+              "Gemini-powered insights and category breakdowns",
+            ]}
+          />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6 space-y-3">
+          <button
+            onClick={handleUpgrade}
+            className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow transition hover:bg-primary/90"
+          >
+            Upgrade to My Finances Pro
+          </button>
           <button
             onClick={() => setIsUpgradeModalOpen(false)}
-            className="w-full bg-primary text-primary-text font-semibold py-3 rounded-lg hover:bg-primary-hover transition-colors text-lg"
+            className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-600 transition hover:border-primary hover:text-primary"
           >
-            Start Exploring
+            Maybe later
           </button>
+          <p className="text-center text-xs text-slate-400">
+            Pro access removes every blur so you can see where to save, how to budget, and which subscriptions to cancel today.
+          </p>
         </div>
       </div>
     </div>

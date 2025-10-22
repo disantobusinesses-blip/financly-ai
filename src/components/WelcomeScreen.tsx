@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
+import { SparklesIcon, GaugeIcon, ChartIcon } from "./icon/Icon";
 import { useBrevoNewsletter } from "../hooks/useBrevoNewsletter";
 
 const SpotifyBadge = () => (
@@ -222,10 +222,10 @@ const WelcomeScreen: React.FC = () => {
 
             <div className="space-y-6">
               <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                Explore Financly AI’s toolkit with a curated welcome tour.
+                Confused about your finances? Let our AI co-pilot cut budgeting time by 60%.
               </h1>
               <p className="mx-auto max-w-xl text-lg text-white/70 lg:mx-0">
-                Dive into your wellness score, cashflow forecast, and subscription intelligence through a guided tour tuned for every screen size.
+                Preview the dashboard tour, see how much you could save, and learn exactly where to focus first—without the overwhelm.
               </p>
             </div>
 
@@ -234,13 +234,13 @@ const WelcomeScreen: React.FC = () => {
                 onClick={openSignupModal}
                 className="rounded-full bg-primary px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-primary/40 transition hover:bg-primary/90"
               >
-                Start the showcase
+                Begin Financial Awareness
               </button>
               <button
                 onClick={openLoginModal}
                 className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:border-white"
               >
-                I already have access
+                Already Financially Aware
               </button>
             </div>
 
@@ -280,13 +280,13 @@ const WelcomeScreen: React.FC = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<GaugeIcon />} title="Wellness score">
-                Your finances graded with actionable next steps.
+                Get a clear score out of 100 with guidance on ratios, savings, and next steps tailored to you.
               </FeatureCard>
-              <FeatureCard icon={<LoanIcon />} title="Borrowing power">
-                Understand what you can safely borrow before you apply.
+              <FeatureCard icon={<SparklesIcon />} title="Subscription Hunter">
+                Forgot what you subscribed to? Find them with our subscription hunter and spot instant savings.
               </FeatureCard>
               <FeatureCard icon={<ChartIcon />} title="Smart cashflow">
-                Predict spend, spot trends, and reset budgets instantly.
+                Our AI forecasts your spend, highlights risks, and recommends adjustments before payday.
               </FeatureCard>
             </div>
 

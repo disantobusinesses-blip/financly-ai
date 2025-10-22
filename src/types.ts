@@ -76,10 +76,16 @@ export interface BalanceForecastResult {
 }
 
 /** User */
-export type UserMembershipType = "Free" | "Pro";
+export type UserMembershipType = "Basic" | "Pro";
 export interface User {
   id: string;
   email: string;
   membershipType: UserMembershipType;
   region: "AU" | "US";
+  name?: string;
+  gender?: string;
+  avatar?: string;
+  basicTrialEndsAt?: string;
+  basicTrialStartedAt?: string;
+  createdAt?: string;
 }
