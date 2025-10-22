@@ -14,10 +14,21 @@ const AppContent: React.FC = () => {
   const [activeView, setActiveView] = useState<"dashboard" | "what-we-do">("dashboard");
 
   if (!user) {
+    if (activeView === "what-we-do") {
+      return (
+        <div className="min-h-screen bg-slate-100 text-slate-900">
+          <Header activeView={activeView} onNavigate={setActiveView} />
+          <main className="px-4 pb-16 pt-24 md:px-8">
+            <WhatWeDo />
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-slate-950 text-white">
         <Header activeView={activeView} onNavigate={setActiveView} />
-        {activeView === "what-we-do" ? <WhatWeDo /> : <WelcomeScreen />}
+        <WelcomeScreen />
       </div>
     );
   }
@@ -25,7 +36,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">
       <Header activeView={activeView} onNavigate={setActiveView} />
-      <main className="px-4 pb-16 pt-6 md:px-8">
+      <main className={`px-4 pb-16 pt-6 md:px-8 ${activeView === "what-we-do" ? "pt-24" : ""}`}>
         {activeView === "what-we-do" ? <WhatWeDo /> : <Dashboard />}
       </main>
     </div>

@@ -60,8 +60,21 @@ const normaliseUser = (raw: StoredUser): User => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getStoredCurrentUser = (): StoredUser | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(CURRENT_USER_KEY);
+    return stored ? (JSON.parse(stored) as StoredUser) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = getStoredCurrentUser();
+    return stored ? normaliseUser(stored) : null;
+  });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -79,14 +92,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem(CURRENT_USER_KEY);
+    const stored = getStoredCurrentUser();
     if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as StoredUser;
-        setUser(normaliseUser(parsed));
-      } catch {
-        localStorage.removeItem(CURRENT_USER_KEY);
-      }
+      setUser(normaliseUser(stored));
+    } else {
+      localStorage.removeItem(CURRENT_USER_KEY);
     }
 
     // Seed demo pro account for testing

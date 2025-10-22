@@ -2,7 +2,8 @@ import React from "react";
 
 const WhatWeDo: React.FC = () => {
   return (
-    <article className="mx-auto max-w-4xl space-y-10 py-10 text-slate-800 dark:text-slate-100">
+    <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200/70 dark:bg-slate-900 dark:ring-white/10 md:p-12">
+      <article className="space-y-10 text-slate-800 dark:text-slate-100">
       <header className="space-y-4">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Our mission</p>
         <h1 className="text-4xl font-black text-slate-900 dark:text-white">How AI can help you save on your bills</h1>
@@ -13,7 +14,10 @@ const WhatWeDo: React.FC = () => {
         </p>
       </header>
 
-      <section className="grid gap-6 rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10 md:grid-cols-2" id="financial-wellness">
+      <section
+        className="grid gap-6 rounded-3xl bg-slate-50 p-6 shadow-inner ring-1 ring-slate-200/80 dark:bg-slate-950/60 dark:ring-white/10 md:grid-cols-2"
+        id="financial-wellness"
+      >
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">1. Read your money story instantly</h2>
           <p>
@@ -127,7 +131,8 @@ const WhatWeDo: React.FC = () => {
           save you time and money while keeping you fully in control.
         </p>
       </section>
-    </article>
+      </article>
+    </div>
   );
 };
 
