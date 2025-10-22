@@ -152,12 +152,14 @@ const normaliseTransaction = (raw: RawTransaction): Transaction | null => {
   };
 };
 
+type DataMode = "live" | "demo";
+
 interface BasiqData {
   accounts: Account[];
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  mode: "live";
+  mode: DataMode;
   lastUpdated: string | null;
 }
 
@@ -167,6 +169,7 @@ export function useBasiqData(userId?: string): BasiqData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [mode, setMode] = useState<DataMode>("live");
 
   useEffect(() => {
     const storedId = localStorage.getItem("basiqUserId") || "";
@@ -181,6 +184,11 @@ export function useBasiqData(userId?: string): BasiqData {
       setLoading(false);
       setError("No connected bank account yet.");
       return;
+    }
+
+    const cachedMode = localStorage.getItem("basiqMode") as DataMode | null;
+    if (cachedMode) {
+      setMode(cachedMode);
     }
 
     // 🔹 Try cached data immediately
@@ -224,15 +232,19 @@ export function useBasiqData(userId?: string): BasiqData {
           .map((raw: unknown): Transaction | null => normaliseTransaction(raw as RawTransaction))
           .filter((transaction: Transaction | null): transaction is Transaction => Boolean(transaction));
 
+        const resolvedMode = data.mode === "demo" ? "demo" : "live";
+
         setAccounts(acc);
         setTransactions(tx);
         setError(null);
         setLastUpdated(new Date().toISOString());
+        setMode(resolvedMode);
 
         // 🔹 Save to cache for next load
         localStorage.setItem("accountsCache", JSON.stringify(acc));
         localStorage.setItem("transactionsCache", JSON.stringify(tx));
         localStorage.setItem("basiqCacheTime", new Date().toISOString());
+        localStorage.setItem("basiqMode", resolvedMode);
       } catch (err: any) {
         console.error("❌ Failed to load Basiq data:", err);
         setError(err.message || "Failed to load data");
@@ -249,5 +261,5 @@ export function useBasiqData(userId?: string): BasiqData {
     return () => clearInterval(id);
   }, [userId]);
 
-  return { accounts, transactions, loading, error, mode: "live", lastUpdated };
+  return { accounts, transactions, loading, error, mode, lastUpdated };
 }
