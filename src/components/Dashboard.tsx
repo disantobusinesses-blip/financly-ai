@@ -22,7 +22,7 @@ import { formatCurrency } from "../utils/currency";
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
-  const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.email);
+  const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
   const aiData = useGeminiAI(transactions, totalBalance, region);
 

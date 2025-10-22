@@ -11,7 +11,7 @@ interface BasiqData {
   lastUpdated: string | null;
 }
 
-export function useBasiqData(userId?: string): BasiqData {
+export function useBasiqData(identityKey?: string): BasiqData {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +20,9 @@ export function useBasiqData(userId?: string): BasiqData {
   const hasDataRef = useRef(false);
 
   useEffect(() => {
-    const storedId = localStorage.getItem("basiqUserId") || "";
-    const basiqUserId = userId || storedId;
+    const storedId =
+      localStorage.getItem("basiqUserId") || localStorage.getItem("basiqPendingUserId") || "";
+    const basiqUserId = storedId;
     const params = new URLSearchParams(window.location.search);
     const jobIdParam = params.get("jobId") || params.get("jobIds");
     let jobId = jobIdParam ? jobIdParam.trim() : "";
@@ -135,7 +136,7 @@ export function useBasiqData(userId?: string): BasiqData {
     // 🔁 Optional periodic refresh (every 5 min)
     const id = setInterval(fetchData, 300_000);
     return () => clearInterval(id);
-  }, [userId]);
+  }, [identityKey]);
 
   return { accounts, transactions, loading, error, mode: "live", lastUpdated };
 }
