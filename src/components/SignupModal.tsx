@@ -103,9 +103,9 @@ const SignupModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4">
-      <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="grid gap-6 bg-slate-50/60 px-8 py-6 md:grid-cols-[1.1fr_0.9fr]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 px-4 py-8">
+      <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="grid gap-6 bg-slate-50/60 px-6 py-6 md:grid-cols-[1.1fr_0.9fr]">
           <div>
             <h2 className="text-2xl font-semibold text-slate-900">
               Create your Financly profile
