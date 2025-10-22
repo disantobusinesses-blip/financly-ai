@@ -1,120 +1,134 @@
-import React, { useMemo } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { SparklesIcon } from "./icon/Icon";
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { SparklesIcon } from './icon/Icon';
+import { createCheckoutSession } from '../services/StripeService';
 
-const formatDaysRemaining = (expiresAt?: string) => {
-  if (!expiresAt) return null;
-  const parsed = new Date(expiresAt);
-  if (Number.isNaN(parsed.getTime())) return null;
-  const diffMs = parsed.getTime() - Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const days = Math.ceil(diffMs / dayMs);
-  return { days, expired: diffMs <= 0 };
-};
+const Checkmark: React.FC = () => (
+  <svg className="h-5 w-5 text-secondary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+  </svg>
+);
 
-const FeatureList: React.FC<{ title: string; items: string[]; highlight?: boolean }> = ({
-  title,
-  items,
-  highlight = false,
-}) => (
-  <div
-    className={`rounded-2xl border border-slate-200 p-6 ${
-      highlight ? "bg-primary/5 ring-1 ring-primary/20" : "bg-white"
-    }`}
-  >
-    <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-    <ul className="mt-4 space-y-2 text-sm text-slate-600">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2">
-          <span className="mt-1 inline-block h-2 w-2 rounded-full bg-primary" />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  </div>
+const Xmark: React.FC = () => (
+  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+  </svg>
+);
+
+const Feature: React.FC<{ children: React.ReactNode; included: boolean }> = ({ children, included }) => (
+  <li className="flex items-center gap-3">
+    {included ? <Checkmark /> : <Xmark />}
+    <span className={included ? 'text-text-primary' : 'text-text-tertiary'}>{children}</span>
+  </li>
 );
 
 const UpgradeModal: React.FC = () => {
-  const { isUpgradeModalOpen, setIsUpgradeModalOpen, user, upgradeUser } = useAuth();
+  const { user, isUpgradeModalOpen, setIsUpgradeModalOpen, upgradeUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const countdown = useMemo(() => formatDaysRemaining(user?.basicTrialEndsAt), [user?.basicTrialEndsAt]);
+  const priceString = user?.region === 'US' ? "$9.99 USD" : "A$14.99 AUD";
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get('payment') === 'success' && user) {
+      console.log("Payment successful! Upgrading user.");
+      upgradeUser(user.id);
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [user, upgradeUser]);
 
   if (!isUpgradeModalOpen) return null;
 
-  const handleUpgrade = () => {
-    if (!user) return;
-    upgradeUser(user.id);
-    setIsUpgradeModalOpen(false);
+  const handleUpgrade = async () => {
+    if (!user) {
+      setError("You must be logged in to upgrade.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { url } = await createCheckoutSession(user);
+
+      // ✅ Replace new-tab open with direct redirect
+      window.location.href = url;
+
+    } catch (err: any) {
+      console.error("Stripe checkout error:", err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsUpgradeModalOpen(false);
+    }
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50"
       onClick={() => setIsUpgradeModalOpen(false)}
     >
       <div
-        className="max-w-3xl w-full overflow-hidden rounded-3xl bg-white p-8 shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
+        className="bg-content-bg p-8 rounded-xl border border-border-color w-full max-w-2xl transform transition-all"
+        onClick={e => e.stopPropagation()}
       >
         <div className="text-center">
-          <SparklesIcon className="mx-auto h-10 w-10 text-primary" />
-          <h2 className="mt-3 text-3xl font-bold text-slate-900">Unlock My Finances Pro</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Reveal the full dashboard, AI forecasts, and subscription details instantly. We keep every suggestion neutral—this is
-            not Financial advice.
-          </p>
-          {countdown && (
-            <p
-              className={`mt-3 text-sm font-semibold ${
-                countdown.expired ? "text-rose-500" : "text-indigo-600"
-              }`}
-            >
-              {countdown.expired
-                ? "Your basic showcase has ended."
-                : `${countdown.days} day${countdown.days === 1 ? "" : "s"} left in your basic showcase.`}
-            </p>
-          )}
+          <SparklesIcon className="h-10 w-10 text-primary mx-auto mb-2" />
+          <h2 className="text-3xl font-bold text-text-primary">Upgrade to FinanclyPro</h2>
+          <p className="text-text-secondary mt-2">Unlock the full power of AI to supercharge your finances.</p>
         </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <FeatureList
-            title="Basic Showcase"
-            items={[
-              "Financial Wellness Score & insights",
-              "Balance summary with net worth snapshot",
-              "Goal planner with AI celebration toasts",
-              "Blurred previews of advanced tools",
-            ]}
-          />
-          <FeatureList
-            title="My Finances Pro"
-            highlight
-            items={[
-              "Full Subscription Hunter with merchants and savings",
-              "AI cashflow forecasts and spending analysis",
-              "Real-time alerts, bills, and transaction history",
-              "Unlimited goal tracking with live bank data",
-              "Gemini-powered insights and category breakdowns",
-            ]}
-          />
+        <div className="grid grid-cols-2 gap-8 mt-8">
+          {/* Free Plan */}
+          <div className="border border-border-color rounded-lg p-6">
+            <h3 className="text-xl font-bold text-text-primary">Free</h3>
+            <p className="text-text-secondary">Basic financial overview.</p>
+            <p className="text-3xl font-bold my-4 text-text-primary">$0 <span className="text-lg font-medium text-text-secondary">/ month</span></p>
+            <ul className="space-y-3 text-sm">
+              <Feature included={true}>Account & Transaction Sync</Feature>
+              <Feature included={true}>Credit Score Monitoring</Feature>
+              <Feature included={true}>Manual Goal Setting</Feature>
+              <Feature included={false}>AI Spending Insights</Feature>
+              <Feature included={false}>AI Financial Watchdog</Feature>
+              <Feature included={false}>AI Savings Planner</Feature>
+              <Feature included={false}>AI Borrowing Power</Feature>
+            </ul>
+          </div>
+
+          {/* Pro Plan */}
+          <div className="border-2 border-primary rounded-lg p-6 relative bg-primary-light">
+            <span className="absolute -top-3 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</span>
+            <h3 className="text-xl font-bold text-primary">FinanclyPro</h3>
+            <p className="text-primary/80 dark:text-primary">All features, powered by AI.</p>
+            <p className="text-3xl font-bold my-4 text-primary">{priceString} <span className="text-lg font-medium text-text-secondary">/ month</span></p>
+            <ul className="space-y-3 text-sm">
+              <Feature included={true}>Account & Transaction Sync</Feature>
+              <Feature included={true}>Credit Score Monitoring</Feature>
+              <Feature included={true}>Manual Goal Setting</Feature>
+              <Feature included={true}>AI Spending Insights</Feature>
+              <Feature included={true}>AI Financial Watchdog</Feature>
+              <Feature included={true}>AI Savings Planner</Feature>
+              <Feature included={true}>AI Borrowing Power</Feature>
+            </ul>
+          </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-8">
+          {error && <p className="text-red-500 text-center mb-4">{error}</p>}
           <button
             onClick={handleUpgrade}
-            className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow transition hover:bg-primary/90"
+            disabled={isLoading}
+            className="w-full bg-primary text-primary-text font-semibold py-3 rounded-lg hover:bg-primary-hover transition-colors text-lg disabled:bg-gray-400 disabled:cursor-wait"
           >
-            Upgrade to My Finances Pro
+            {isLoading ? 'Redirecting to payment...' : 'Upgrade Now & Unlock All Features'}
           </button>
           <button
             onClick={() => setIsUpgradeModalOpen(false)}
-            className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-600 transition hover:border-primary hover:text-primary"
+            className="w-full text-text-secondary font-medium py-2 mt-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            Maybe later
+            Maybe Later
           </button>
-          <p className="text-center text-xs text-slate-400">
-            Pro access removes every blur so you can see where to save, how to budget, and which subscriptions to cancel today.
-          </p>
         </div>
       </div>
     </div>

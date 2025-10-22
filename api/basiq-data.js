@@ -4,86 +4,6 @@
 const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
 const BASIQ_API_URL = "https://au-api.basiq.io";
 
-const DEMO_ACCOUNTS = [
-  {
-    id: "demo-checking",
-    name: "Everyday Spending Account",
-    class: "transaction",
-    balance: 3264.52,
-    availableBalance: 3124.52,
-    currency: "AUD",
-  },
-  {
-    id: "demo-savings",
-    name: "High Interest Saver",
-    class: "saver",
-    balance: 12840.33,
-    currency: "AUD",
-  },
-  {
-    id: "demo-mortgage",
-    name: "Home Loan",
-    class: "mortgage",
-    balance: -412350.23,
-    currency: "AUD",
-  },
-];
-
-const DEMO_TRANSACTIONS = [
-  {
-    id: "demo-tx-1",
-    accountId: "demo-checking",
-    description: "Coles Supermarket",
-    amount: -84.32,
-    date: new Date().toISOString(),
-    category: "groceries",
-  },
-  {
-    id: "demo-tx-2",
-    accountId: "demo-checking",
-    description: "Opal Transport",
-    amount: -46.6,
-    date: new Date(Date.now() - 86400000).toISOString(),
-    category: "transport",
-  },
-  {
-    id: "demo-tx-3",
-    accountId: "demo-checking",
-    description: "Salary - Acme Pty Ltd",
-    amount: 4200,
-    date: new Date(Date.now() - 2 * 86400000).toISOString(),
-    category: "income",
-  },
-  {
-    id: "demo-tx-4",
-    accountId: "demo-savings",
-    description: "Automatic Transfer",
-    amount: 500,
-    date: new Date(Date.now() - 3 * 86400000).toISOString(),
-    category: "transfer",
-  },
-  {
-    id: "demo-tx-5",
-    accountId: "demo-mortgage",
-    description: "Mortgage Repayment",
-    amount: -2450,
-    date: new Date(Date.now() - 5 * 86400000).toISOString(),
-    category: "mortgage",
-  },
-];
-
-function respondWithDemo(res, reason) {
-  if (reason) {
-    console.warn("ℹ️ Falling back to demo Basiq payload:", reason);
-  }
-
-  return res.status(200).json({
-    mode: "demo",
-    accounts: DEMO_ACCOUNTS,
-    transactions: DEMO_TRANSACTIONS,
-  });
-}
-
 let CACHED_SERVER_TOKEN = null;
 let SERVER_TOKEN_EXPIRY = 0;
 
@@ -148,10 +68,6 @@ async function pollJobUntilDone(jobId, serverToken, maxAttempts = 12, delayMs = 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
 
-  if (!BASIQ_API_KEY) {
-    return respondWithDemo(res, "Missing BASIQ_API_KEY env var");
-  }
-
   try {
     const userId = String(req.query?.userId || "").trim();
     const jobId = req.query?.jobId ? String(req.query.jobId) : null;
@@ -188,6 +104,9 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("❌ /api/basiq-data error:", err);
-    return respondWithDemo(res, err?.message || err);
+    return res.status(500).json({
+      error: "Failed to fetch banking data",
+      details: String(err?.message || err),
+    });
   }
 }

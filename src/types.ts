@@ -54,7 +54,6 @@ export interface FinancialAlert {
   type: FinancialAlertType;
   title: string;
   description: string;
-  disclaimer?: string;
 }
 
 /** Forecast outputs */
@@ -76,16 +75,10 @@ export interface BalanceForecastResult {
 }
 
 /** User */
-export type UserMembershipType = "Basic" | "Pro";
+export type UserMembershipType = "Free" | "Pro";
 export interface User {
   id: string;
   email: string;
   membershipType: UserMembershipType;
   region: "AU" | "US";
-  name?: string;
-  gender?: string;
-  avatar?: string;
-  basicTrialEndsAt?: string;
-  basicTrialStartedAt?: string;
-  createdAt?: string;
 }

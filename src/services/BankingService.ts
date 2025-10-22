@@ -54,7 +54,15 @@ export async function initiateBankConnection(email: string): Promise<{ consentUr
     throw new Error("Invalid consent response");
   }
 
-  // Store userId so we can fetch data after redirect
+  // Store identifiers so callback or polling can finalise the connection
+  try {
+    localStorage.setItem("basiqPendingUserId", data.userId);
+    localStorage.setItem("basiqConnectionStatus", "pending");
+  } catch (err) {
+    console.warn("Unable to persist pending Basiq user id", err);
+  }
+
+  // Store userId so we can fetch data immediately after redirect
   BankingService.setStoredUserId(data.userId);
 
   return data; // caller will set window.location.href = consentUrl

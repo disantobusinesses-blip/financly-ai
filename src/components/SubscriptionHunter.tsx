@@ -1,11 +1,9 @@
 // src/components/SubscriptionHunter.tsx
 import React, { useMemo } from "react";
-import { CreditCardIcon } from "@heroicons/react/24/outline";
-
 import { Transaction } from "../types";
+import ProFeatureBlocker from "./ProFeatureBlocker";
 import { useAuth } from "../contexts/AuthContext";
-import { formatCurrency } from "../utils/currency";
-import Card from "./Card";
+import { CreditCardIcon } from "@heroicons/react/24/outline";
 
 interface Props {
   transactions: Transaction[];
@@ -14,115 +12,62 @@ interface Props {
 const SubscriptionHunter: React.FC<Props> = ({ transactions }) => {
   const { user } = useAuth();
 
-  const region = user?.region;
+  // Naive recurring detection: any transaction with category "Subscriptions"
+  const subscriptions = useMemo(
+    () => transactions.filter((t) => t.category === "Subscriptions"),
+    [transactions]
+  );
 
-  const groupedSubscriptions = useMemo(() => {
-    const recurring = transactions.filter((t) => t.category === "Subscriptions");
+  const totalSpent = subscriptions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const map = new Map<
-      string,
-      {
-        name: string;
-        total: number;
-        count: number;
-        average: number;
-        lastDate: string | null;
-      }
-    >();
-
-    recurring.forEach((txn) => {
-      const descriptor = txn.description?.trim() || txn.id;
-      const key = descriptor.toLowerCase();
-      const displayName = descriptor.replace(/\b[a-z]/g, (char) => char.toUpperCase());
-      const entry = map.get(key);
-      const amount = Math.abs(txn.amount);
-      const txnDate = new Date(txn.date);
-      const formattedDate = Number.isNaN(txnDate.getTime())
-        ? null
-        : txnDate.toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          });
-
-      if (entry) {
-        const updatedCount = entry.count + 1;
-        const updatedTotal = entry.total + amount;
-        map.set(key, {
-          ...entry,
-          total: updatedTotal,
-          count: updatedCount,
-          average: updatedTotal / updatedCount,
-          lastDate: formattedDate ?? entry.lastDate,
-        });
-      } else {
-        map.set(key, {
-          name: displayName || "Subscription",
-          total: amount,
-          count: 1,
-          average: amount,
-          lastDate: formattedDate,
-        });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [transactions]);
-
-  const totalSpent = groupedSubscriptions.reduce((sum, sub) => sum + sub.total, 0);
-  const activeCount = groupedSubscriptions.length;
+  const content = (
+    <div className="space-y-4">
+      {subscriptions.length > 0 ? (
+        <>
+          <p className="text-text-secondary">
+            We found <span className="font-bold">{subscriptions.length}</span>{" "}
+            active subscriptions.  
+            You’re spending{" "}
+            <span className="font-bold">${totalSpent.toFixed(2)}/mo</span>.
+          </p>
+          <ul className="space-y-2">
+            {subscriptions.map((sub) => (
+              <li
+                key={sub.id}
+                className="flex justify-between items-center bg-gray-50 dark:bg-neutral-800 rounded-md px-3 py-2"
+              >
+                <span className="text-text-primary">{sub.description}</span>
+                <span className="text-text-secondary">
+                  ${Math.abs(sub.amount).toFixed(2)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="text-text-secondary">No subscriptions detected.</p>
+      )}
+    </div>
+  );
 
   return (
-    <Card
-      title="Subscription hunter"
-      subtitle="Track recurring charges, spot price hikes and cancel the ones you don’t need."
-      icon={<CreditCardIcon className="h-6 w-6" />}
-      insights={[
-        { label: "Unique", value: String(activeCount) },
-        {
-          label: "Monthly spend",
-          value: formatCurrency(totalSpent, region),
-          tone: totalSpent > 0 ? "negative" : "neutral",
-        },
-        {
-          label: "Region",
-          value: region ?? "AU",
-        },
-      ]}
-    >
-      {groupedSubscriptions.length > 0 ? (
-        <ul className="space-y-3 text-sm text-slate-600">
-          {groupedSubscriptions.map((sub) => (
-            <li
-              key={sub.name}
-              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <p className="font-semibold text-slate-900">{sub.name}</p>
-                <p className="text-xs uppercase tracking-wide text-slate-400">
-                  {formatCurrency(sub.average, region)} avg · {sub.count} charge
-                  {sub.count === 1 ? "" : "s"}
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-right">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {formatCurrency(sub.total, region)}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    Last billed {sub.lastDate ?? "recently"}
-                  </p>
-                </div>
-                <button className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-100">
-                  Cancel
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+    <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <CreditCardIcon className="h-6 w-6 text-primary" />
+        <h2 className="text-xl font-bold text-text-primary">Subscription Hunter</h2>
+      </div>
+
+      {user?.membershipType === "Pro" ? (
+        content
       ) : (
-        <p className="text-sm text-slate-500">No subscriptions detected.</p>
+        <ProFeatureBlocker
+          featureTitle="Subscription Hunter"
+          teaserText="We found hidden subscriptions! Upgrade to see the full list and cancel unused ones."
+        >
+          {content}
+        </ProFeatureBlocker>
       )}
-    </Card>
+    </div>
   );
 };
 

@@ -2,7 +2,7 @@ import React from 'react';
 
 const SyncingOverlay: React.FC = () => {
     return (
-        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-[100]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[100]">
             <div className="bg-content-bg p-8 rounded-xl border border-border-color text-center shadow-2xl">
                 <svg className="animate-spin h-10 w-10 text-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
