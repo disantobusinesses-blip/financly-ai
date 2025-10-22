@@ -34,7 +34,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({ onClose, onAddGoal }) => {
 
     return (
         <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"
+            className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
             onClick={onClose}
         >
             <div 

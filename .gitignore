@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Prevent large binary assets from being tracked
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.pdf

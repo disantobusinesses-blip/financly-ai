@@ -15,8 +15,9 @@ interface GeminiAIData {
   alerts: any[]; // FinancialAlert[]
   insights: {
     insights: { emoji: string; text: string }[];
-    subscriptions: { name: string; amount: number; cancellationUrl: string }[];
-    disclaimer?: string;
+    summary: string;
+    stats: { label: string; value: string; tone?: "positive" | "negative" | "neutral" }[];
+    disclaimer: string;
   } | null;
   loading: boolean;
   error: string | null;

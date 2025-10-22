@@ -1,55 +1,104 @@
+import { useMemo } from "react";
 import { Transaction } from "../types";
 import Card from "./Card";
 import { formatCurrency } from "../utils/currency";
+import { formatTransactionDate } from "../utils/transactions";
 import { useAuth } from "../contexts/AuthContext";
 
-// Simple category mapping helper
-function mapCategory(txn: Transaction): string {
-  const desc = txn.description?.toLowerCase() || "";
-  if (desc.includes("salary")) return "Income";
-  if (desc.includes("coles") || desc.includes("woolworth")) return "Groceries";
-  if (desc.includes("afterpay")) return "Debt";
-  if (desc.includes("spotify") || desc.includes("netflix")) return "Entertainment";
-  if (desc.includes("rent") || desc.includes("mortgage")) return "Housing";
-  if (desc.includes("uber") || desc.includes("fuel") || desc.includes("petrol")) return "Transport";
-  return "Other";
-}
+const CATEGORY_ACCENTS: Record<string, string> = {
+  Income: "bg-emerald-100 text-emerald-700",
+  Groceries: "bg-lime-100 text-lime-700",
+  "Dining Out": "bg-orange-100 text-orange-700",
+  Shopping: "bg-sky-100 text-sky-700",
+  Transport: "bg-purple-100 text-purple-700",
+  Utilities: "bg-cyan-100 text-cyan-700",
+  Housing: "bg-amber-100 text-amber-700",
+  "Health & Fitness": "bg-rose-100 text-rose-700",
+  "Debt Repayments": "bg-red-100 text-red-700",
+  "Fees & Charges": "bg-slate-100 text-slate-600",
+  Subscriptions: "bg-indigo-100 text-indigo-700",
+  Travel: "bg-fuchsia-100 text-fuchsia-700",
+  Insurance: "bg-teal-100 text-teal-700",
+  Education: "bg-yellow-100 text-yellow-700",
+  Savings: "bg-emerald-100 text-emerald-700",
+  Transfers: "bg-slate-100 text-slate-600",
+};
+
+const getCategoryAccent = (category: string) =>
+  CATEGORY_ACCENTS[category] ?? "bg-slate-100 text-slate-600";
 
 export default function TransactionsList({ transactions }: { transactions: Transaction[] }) {
   const { user } = useAuth();
   const region = user?.region || "AU";
+  const locale = region === "US" ? "en-US" : "en-AU";
 
-  // Sort directly — no useMemo needed
-  const sortedTxns = [...transactions].sort(
-    (a: Transaction, b: Transaction) => Date.parse(b.date) - Date.parse(a.date)
+  const sortedTxns = useMemo(
+    () =>
+      [...transactions].sort(
+        (a: Transaction, b: Transaction) => Date.parse(b.date) - Date.parse(a.date)
+      ),
+    [transactions]
   );
 
+  const totals = useMemo(() => {
+    const income = sortedTxns
+      .filter((txn) => txn.amount > 0)
+      .reduce((sum, txn) => sum + txn.amount, 0);
+    const expenses = sortedTxns
+      .filter((txn) => txn.amount < 0)
+      .reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
+    return { income, expenses };
+  }, [sortedTxns]);
+
   return (
-    <Card title="Recent Transactions">
-      <div className="overflow-y-auto max-h-96 divide-y divide-gray-800">
+    <Card
+      title="Recent transactions"
+      subtitle="A live feed of everything hitting your accounts."
+      insights={[
+        { label: "Entries", value: String(sortedTxns.length) },
+        {
+          label: "Income",
+          value: formatCurrency(totals.income, region),
+          tone: "positive",
+        },
+        {
+          label: "Outgoings",
+          value: formatCurrency(totals.expenses, region),
+          tone: "negative",
+        },
+      ]}
+    >
+      <div className="max-h-96 space-y-2 overflow-y-auto pr-2">
         {sortedTxns.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-10">
-            No transactions yet.
-          </p>
+          <p className="py-10 text-center text-sm text-slate-500">No transactions yet.</p>
         ) : (
           sortedTxns.map((txn: Transaction) => {
-            const category = mapCategory(txn);
-            const amountColor = txn.amount < 0 ? "text-red-400" : "text-green-400";
+            const category = txn.category || "General Spending";
+            const badgeClass = getCategoryAccent(category);
+            const dateLabel = formatTransactionDate(txn.date, locale);
+            const amountValue =
+              typeof txn.amount === "number"
+                ? txn.amount
+                : Number.parseFloat(String(txn.amount || 0));
+            const amountColor = amountValue < 0 ? "text-rose-600" : "text-emerald-600";
             return (
               <div
                 key={txn.id}
-                className="flex justify-between items-center py-2 px-1 hover:bg-white/5 transition rounded-md"
+                className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-3 py-3"
               >
-                <div>
-                  <p className="text-white text-sm font-medium">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">
                     {txn.description || "Unnamed"}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(txn.date).toLocaleDateString()} · {category}
-                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-slate-400">{dateLabel}</span>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${badgeClass}`}>
+                      {category}
+                    </span>
+                  </div>
                 </div>
-                <p className={`font-semibold ${amountColor}`}>
-                  {formatCurrency(txn.amount, region)}
+                <p className={`shrink-0 text-sm font-semibold ${amountColor}`}>
+                  {formatCurrency(amountValue, region)}
                 </p>
               </div>
             );

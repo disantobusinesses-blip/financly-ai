@@ -54,6 +54,7 @@ export interface FinancialAlert {
   type: FinancialAlertType;
   title: string;
   description: string;
+  disclaimer?: string;
 }
 
 /** Forecast outputs */
