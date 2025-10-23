@@ -26,6 +26,7 @@ const essentialKeywords = [
 ];
 
 const debtKeywords = ["mortgage", "loan", "credit", "repayment", "debt", "card"];
+const incomeKeywords = ["salary", "payroll", "wage", "pay", "income", "deposit", "credit", "refund"];
 
 const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts, transactions, region }) => {
   const { user } = useAuth();
@@ -40,22 +41,45 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       return !Number.isNaN(txDate.getTime()) && txDate >= start;
     });
 
-    const monthlyIncome = recentTransactions
-      .filter((tx) => tx.amount > 0)
-      .reduce((sum, tx) => sum + tx.amount, 0);
-
-    const expenses = Math.abs(
-      recentTransactions.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0)
+    const debtAccountIds = new Set(
+      accounts
+        .filter((acc) => acc.type === AccountType.LOAN || acc.type === AccountType.CREDIT_CARD || acc.balance < 0)
+        .map((acc) => acc.id)
     );
 
-    const essentialSpend = recentTransactions
-      .filter((tx) => tx.amount < 0)
-      .filter((tx) =>
-        essentialKeywords.some((keyword) =>
-          `${tx.description} ${tx.category}`.toLowerCase().includes(keyword)
-        )
-      )
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const aggregates = recentTransactions.reduce(
+      (acc, tx) => {
+        const descriptor = `${tx.description} ${tx.category}`.toLowerCase();
+        const amount = tx.amount;
+        if (amount >= 0) {
+          acc.income += amount;
+        } else {
+          const value = Math.abs(amount);
+          if (incomeKeywords.some((keyword) => descriptor.includes(keyword))) {
+            acc.income += value;
+            return acc;
+          }
+
+          acc.expenses += value;
+
+          if (essentialKeywords.some((keyword) => descriptor.includes(keyword))) {
+            acc.essentials += value;
+          }
+
+          if (debtAccountIds.has(tx.accountId) || debtKeywords.some((keyword) => descriptor.includes(keyword))) {
+            acc.debt += value;
+          }
+        }
+
+        return acc;
+      },
+      { income: 0, expenses: 0, essentials: 0, debt: 0 }
+    );
+
+    const monthlyIncome = aggregates.income;
+    const expenses = aggregates.expenses;
+    const essentialSpend = aggregates.essentials;
+    const monthlyDebtPayments = aggregates.debt;
 
     const lifestyleSpend = Math.max(0, expenses - essentialSpend);
     const savingsAllocated = Math.max(0, monthlyIncome - expenses);
@@ -68,16 +92,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
     const assets = accounts.filter((acc) => acc.balance > 0).reduce((sum, acc) => sum + acc.balance, 0);
     const netWorth = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
-    const debtTransactions = recentTransactions.filter((tx) => {
-      if (tx.amount >= 0) return false;
-      const descriptor = `${tx.description} ${tx.category}`.toLowerCase();
-      return debtKeywords.some((keyword) => descriptor.includes(keyword));
-    });
-    const monthlyDebtPayments = debtTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-    const fallbackDebtPayments = Math.min(expenses * 0.25, expenses);
-    const debtPayments = monthlyDebtPayments || fallbackDebtPayments;
-
-    const dti = monthlyIncome > 0 ? debtPayments / monthlyIncome : 1;
+    const dti = monthlyIncome > 0 ? monthlyDebtPayments / monthlyIncome : 1;
 
     const liabilitiesByAccount = accounts
       .filter((acc) => acc.balance < 0 || acc.type === AccountType.LOAN)
@@ -119,7 +134,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       dtiLabel,
       focusMessage,
       liabilitiesByAccount,
-      monthlyDebtPayments: debtPayments,
+      monthlyDebtPayments,
     };
   }, [accounts, transactions, region]);
 
