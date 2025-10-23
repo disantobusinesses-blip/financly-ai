@@ -122,7 +122,10 @@ const Dashboard: React.FC = () => {
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} services costing ${formatCurrency(subscriptionTotal, region)} per month.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
+        subscriptionTotal,
+        region
+      )} you can save on.`
     : "Connect a bank to discover recurring services.";
   const cashflowTeaser = monthlyStats.income
     ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
@@ -134,6 +137,84 @@ const Dashboard: React.FC = () => {
     ? `${aiData.insights.insights.length} AI notes waiting inside transaction analysis.`
     : "Upgrade to unlock AI commentary on every transaction.";
 
+  const toolCards = [
+    <GoalPlanner key="goal-planner" accounts={accounts} transactions={transactions} />,
+    <BalanceSummary key="balance-summary" accounts={accounts} />,
+    <PlanGate
+      key="subscription-hunter"
+      feature="Subscription Hunter"
+      teaser={subscriptionTeaser}
+      dataTourId="subscription-hunter"
+    >
+      <SubscriptionHunter transactions={transactions} region={region} />
+    </PlanGate>,
+    <PlanGate key="cashflow" feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <CashflowMini transactions={transactions} />
+      </div>
+    </PlanGate>,
+    <PlanGate
+      key="spending-category"
+      feature="Spending by category"
+      teaser="Unlock AI to reveal your highest spending categories."
+      dataTourId="spending-category"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <SpendingByCategory transactions={transactions} />
+      </div>
+    </PlanGate>,
+    <PlanGate
+      key="spending-forecast"
+      feature="Spending forecast"
+      teaser="Upgrade to view AI cashflow scenarios."
+      dataTourId="forecast"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <SpendingForecast transactions={transactions} totalBalance={totalBalance} savingsPlan={null} />
+      </div>
+    </PlanGate>,
+    <PlanGate
+      key="spending-trends"
+      feature="Category trends"
+      teaser="Unlock visual trends with AI commentary."
+      dataTourId="category-trends"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <SpendingChart transactions={transactions} />
+      </div>
+    </PlanGate>,
+    <PlanGate key="alerts" feature="AI alerts" teaser={alertsTeaser} dataTourId="alerts">
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <FinancialAlerts transactions={transactions} />
+      </div>
+    </PlanGate>,
+    <PlanGate
+      key="upcoming-bills"
+      feature="Upcoming bills"
+      teaser="Upgrade to predict upcoming bills and due dates."
+      dataTourId="upcoming-bills"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <UpcomingBills accounts={accounts} />
+      </div>
+    </PlanGate>,
+    <PlanGate key="transactions" feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <TransactionsList transactions={transactions} />
+      </div>
+    </PlanGate>,
+    <PlanGate
+      key="transaction-analysis"
+      feature="Transaction analysis"
+      teaser={analysisTeaser}
+      dataTourId="transaction-analysis"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+        <TransactionAnalysis transactions={transactions} />
+      </div>
+    </PlanGate>,
+  ];
+
   return (
     <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-10 lg:gap-14">
       {error && accounts.length > 0 && (
@@ -142,69 +223,9 @@ const Dashboard: React.FC = () => {
         </div>
       )}
       <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
-      <GoalPlanner accounts={accounts} transactions={transactions} />
 
-      <div className="tool-carousel" data-tour-id="hero-cards">
-        <BalanceSummary accounts={accounts} />
-        <PlanGate feature="Subscription Hunter" teaser={subscriptionTeaser}>
-          <SubscriptionHunter transactions={transactions} region={region} />
-        </PlanGate>
-      </div>
-
-      <div className="tool-carousel" data-tour-id="cashflow">
-        <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser}>
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10" data-tour-id="cashflow">
-            <CashflowMini transactions={transactions} />
-          </div>
-        </PlanGate>
-        <PlanGate feature="Spending by category" teaser="Unlock AI to reveal your highest spending categories." dataTourId="spending-category">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingByCategory transactions={transactions} />
-          </div>
-        </PlanGate>
-      </div>
-
-      <div className="tool-carousel">
-        <PlanGate feature="Spending forecast" teaser="Upgrade to view AI cashflow scenarios.">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingForecast
-              transactions={transactions}
-              totalBalance={totalBalance}
-              savingsPlan={null}
-            />
-          </div>
-        </PlanGate>
-        <PlanGate feature="Category trends" teaser="Unlock visual trends with AI commentary.">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingChart transactions={transactions} />
-          </div>
-        </PlanGate>
-      </div>
-
-      <div className="tool-carousel" data-tour-id="alerts">
-        <PlanGate feature="AI alerts" teaser={alertsTeaser}>
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <FinancialAlerts transactions={transactions} />
-          </div>
-        </PlanGate>
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates.">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <UpcomingBills accounts={accounts} />
-          </div>
-        </PlanGate>
-      </div>
-
-      <div className="tool-carousel" data-tour-id="transactions">
-        <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters.">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <TransactionsList transactions={transactions} />
-          </div>
-        </PlanGate>
-        <PlanGate feature="Transaction analysis" teaser={analysisTeaser}>
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <TransactionAnalysis transactions={transactions} />
-          </div>
-        </PlanGate>
+      <div className="tool-carousel lg:grid lg:grid-cols-2 lg:gap-10" data-tour-id="tool-carousel">
+        {toolCards}
       </div>
 
       {lastUpdated && (

@@ -17,17 +17,19 @@ const PlanGate: React.FC<PlanGateProps> = ({ allowBasic = false, feature, teaser
     <div className="relative h-full" data-tour-id={dataTourId}>
       <div className={shouldGate ? "pointer-events-none select-none opacity-40" : ""}>{children}</div>
       {shouldGate && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="mx-4 flex max-w-sm flex-col items-center gap-3 rounded-3xl bg-slate-950/85 p-6 text-center text-white shadow-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">Preview locked</p>
-            <h3 className="text-xl font-bold">Unlock {feature}</h3>
-            {teaser && <p className="text-sm text-white/80">{teaser}</p>}
-            <button
-              onClick={() => setIsUpgradeModalOpen(true)}
-              className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
-            >
-              Upgrade to Pro
-            </button>
+        <div className="absolute inset-0">
+          <div className="absolute inset-3 flex items-center justify-center sm:inset-4">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 rounded-3xl bg-slate-950/90 p-6 text-center text-white shadow-2xl ring-1 ring-white/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">Preview unlocked</p>
+              <h3 className="text-2xl font-bold leading-tight">See {feature} insights</h3>
+              {teaser && <p className="text-sm text-white/80">{teaser}</p>}
+              <button
+                onClick={() => setIsUpgradeModalOpen(true)}
+                className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
+              >
+                Upgrade to Pro
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -26,12 +26,26 @@
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .tool-carousel {
-    gap: 2.75rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2.5rem;
+    overflow: visible;
+    padding: 0;
   }
   .tool-carousel > * {
-    flex-basis: 440px;
+    flex: initial;
+    scroll-snap-align: initial;
+  }
+}
+
+@media (min-width: 1280px) {
+  .tool-carousel {
+    gap: 3rem;
+  }
+  .tool-carousel > * {
+    flex: initial;
   }
 }
 

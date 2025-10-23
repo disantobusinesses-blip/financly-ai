@@ -40,7 +40,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       return !Number.isNaN(txDate.getTime()) && txDate >= start;
     });
 
-    const income = recentTransactions
+    const monthlyIncome = recentTransactions
       .filter((tx) => tx.amount > 0)
       .reduce((sum, tx) => sum + tx.amount, 0);
 
@@ -58,24 +58,26 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
     const lifestyleSpend = Math.max(0, expenses - essentialSpend);
-    const savingsAllocated = Math.max(0, income - expenses);
+    const savingsAllocated = Math.max(0, monthlyIncome - expenses);
 
-    const savingsRatePct = income > 0 ? clamp((savingsAllocated / income) * 100) : 0;
+    const savingsRatePct = monthlyIncome > 0 ? clamp((savingsAllocated / monthlyIncome) * 100) : 0;
 
-    const essentialsPct = income > 0 ? clamp((essentialSpend / income) * 100) : 0;
-    const lifestylePct = income > 0 ? clamp((lifestyleSpend / income) * 100) : 0;
+    const essentialsPct = monthlyIncome > 0 ? clamp((essentialSpend / monthlyIncome) * 100) : 0;
+    const lifestylePct = monthlyIncome > 0 ? clamp((lifestyleSpend / monthlyIncome) * 100) : 0;
 
     const assets = accounts.filter((acc) => acc.balance > 0).reduce((sum, acc) => sum + acc.balance, 0);
     const netWorth = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
-    const debtTransactions = recentTransactions.filter((tx) =>
-      debtKeywords.some((keyword) => `${tx.description} ${tx.category}`.toLowerCase().includes(keyword))
-    );
-    const monthlyDebtPayments = debtTransactions.reduce((sum, tx) => sum + Math.abs(Math.min(0, tx.amount)), 0);
-    const fallbackDebtPayments = expenses * 0.25;
+    const debtTransactions = recentTransactions.filter((tx) => {
+      if (tx.amount >= 0) return false;
+      const descriptor = `${tx.description} ${tx.category}`.toLowerCase();
+      return debtKeywords.some((keyword) => descriptor.includes(keyword));
+    });
+    const monthlyDebtPayments = debtTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const fallbackDebtPayments = Math.min(expenses * 0.25, expenses);
     const debtPayments = monthlyDebtPayments || fallbackDebtPayments;
 
-    const dti = income > 0 ? debtPayments / income : 1;
+    const dti = monthlyIncome > 0 ? debtPayments / monthlyIncome : 1;
 
     const liabilitiesByAccount = accounts
       .filter((acc) => acc.balance < 0 || acc.type === AccountType.LOAN)
@@ -88,7 +90,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
 
     const dtiScore = clamp(100 - dti * 120, 0, 100);
     const netWorthScore = assets > 0 ? clamp(((netWorth + assets) / (assets * 2)) * 100, 0, 100) : 50;
-    const cashflowScore = income > 0 ? clamp(((income - expenses) / income) * 100 + 50, 0, 100) : 40;
+    const cashflowScore = monthlyIncome > 0 ? clamp(((monthlyIncome - expenses) / monthlyIncome) * 100 + 50, 0, 100) : 40;
 
     const score = Math.round(dtiScore * 0.5 + netWorthScore * 0.3 + cashflowScore * 0.2);
 
@@ -105,7 +107,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
         : "Aim to reach 50% break-even by trimming lifestyle spend and paying down the highest-interest debt.";
 
     return {
-      income,
+      income: monthlyIncome,
       expenses,
       savingsAllocated,
       essentialsPct,
@@ -117,6 +119,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       dtiLabel,
       focusMessage,
       liabilitiesByAccount,
+      monthlyDebtPayments: debtPayments,
     };
   }, [accounts, transactions, region]);
 
@@ -146,6 +149,9 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
           <p className="mt-2 text-3xl font-bold text-white">
             {(metrics.dti * 100).toFixed(1)}%
             <span className="ml-2 text-sm font-semibold text-white/60">({metrics.dtiLabel})</span>
+          </p>
+          <p className="mt-1 text-xs text-white/70">
+            Monthly debt {formatCurrency(metrics.monthlyDebtPayments, region)} vs income {formatCurrency(metrics.income, region)}.
           </p>
           <p className="mt-2 text-xs text-white/70">
             Ratio target: 36% or below. Excellent if under 25%. We detected {metrics.liabilitiesByAccount.length || "no"} major
