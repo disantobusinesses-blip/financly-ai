@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Account, AccountType, Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
+import { summariseMonthlyBudget } from "../utils/spending";
 
 interface FinancialWellnessCardProps {
   accounts: Account[];
@@ -11,22 +12,7 @@ interface FinancialWellnessCardProps {
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
-const essentialKeywords = [
-  "rent",
-  "mortgage",
-  "utility",
-  "electric",
-  "gas",
-  "water",
-  "insurance",
-  "grocer",
-  "fuel",
-  "petrol",
-  "transport",
-];
-
 const debtKeywords = ["mortgage", "loan", "credit", "repayment", "debt", "card"];
-const incomeKeywords = ["salary", "payroll", "wage", "pay", "income", "deposit", "credit", "refund"];
 
 const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts, transactions, region }) => {
   const { user } = useAuth();
@@ -41,48 +27,29 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
       return !Number.isNaN(txDate.getTime()) && txDate >= start;
     });
 
+    const budgetSummary = summariseMonthlyBudget(recentTransactions);
+
     const debtAccountIds = new Set(
       accounts
         .filter((acc) => acc.type === AccountType.LOAN || acc.type === AccountType.CREDIT_CARD || acc.balance < 0)
         .map((acc) => acc.id)
     );
 
-    const aggregates = recentTransactions.reduce(
-      (acc, tx) => {
-        const descriptor = `${tx.description} ${tx.category}`.toLowerCase();
-        const amount = tx.amount;
-        if (amount >= 0) {
-          acc.income += amount;
-        } else {
-          const value = Math.abs(amount);
-          if (incomeKeywords.some((keyword) => descriptor.includes(keyword))) {
-            acc.income += value;
-            return acc;
-          }
+    const monthlyIncome = budgetSummary.income;
+    const expenses = budgetSummary.expenses;
+    const essentialSpend = budgetSummary.totals.Essentials;
 
-          acc.expenses += value;
+    const monthlyDebtPayments = recentTransactions.reduce((sum, tx) => {
+      if (tx.amount >= 0) return sum;
+      const descriptor = `${tx.description} ${tx.category}`.toLowerCase();
+      if (debtAccountIds.has(tx.accountId) || debtKeywords.some((keyword) => descriptor.includes(keyword))) {
+        return sum + Math.abs(tx.amount);
+      }
+      return sum;
+    }, 0);
 
-          if (essentialKeywords.some((keyword) => descriptor.includes(keyword))) {
-            acc.essentials += value;
-          }
-
-          if (debtAccountIds.has(tx.accountId) || debtKeywords.some((keyword) => descriptor.includes(keyword))) {
-            acc.debt += value;
-          }
-        }
-
-        return acc;
-      },
-      { income: 0, expenses: 0, essentials: 0, debt: 0 }
-    );
-
-    const monthlyIncome = aggregates.income;
-    const expenses = aggregates.expenses;
-    const essentialSpend = aggregates.essentials;
-    const monthlyDebtPayments = aggregates.debt;
-
-    const lifestyleSpend = Math.max(0, expenses - essentialSpend);
-    const savingsAllocated = Math.max(0, monthlyIncome - expenses);
+    const lifestyleSpend = budgetSummary.totals.Lifestyle;
+    const savingsAllocated = budgetSummary.savingsAllocated;
 
     const savingsRatePct = monthlyIncome > 0 ? clamp((savingsAllocated / monthlyIncome) * 100) : 0;
 

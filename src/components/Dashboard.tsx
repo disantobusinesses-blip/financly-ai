@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FinancialWellnessCard from "./FinancialWellnessCard";
+import SpendingGuidance from "./SpendingGuidance";
 import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
 import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
@@ -90,6 +91,11 @@ const Dashboard: React.FC = () => {
       id: "financial-wellness",
       title: "Wellness score",
       description: "See your debt-to-income ratio, savings split, and monthly snapshot updated in real time.",
+    },
+    {
+      id: "spending-guidance",
+      title: "Budget guidance",
+      description: "Understand how Essentials, Lifestyle, and Savings compare to the 50/30/20 rule.",
     },
     {
       id: "goal-planner",
@@ -283,13 +289,14 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-10 lg:gap-14">
+    <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
       {error && accounts.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
         </div>
       )}
       <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
+      <SpendingGuidance transactions={transactions} region={region} />
 
       <div className="lg:hidden" data-tour-id="tool-carousel">
         <div className="tool-carousel">
