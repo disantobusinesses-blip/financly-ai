@@ -2,6 +2,8 @@ import { Transaction } from "../types";
 
 export type BudgetCategory = "Essentials" | "Lifestyle" | "Savings";
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 const ESSENTIAL_KEYWORDS = [
   "rent",
   "mortgage",
@@ -169,6 +171,7 @@ export interface BudgetSummary {
   savingsAllocated: number;
   expenses: number;
   totalOutflow: number;
+  windowTransactions: Transaction[];
 }
 
 export const classifyTransaction = (transaction: Transaction): BudgetCategory | null => {
@@ -202,9 +205,7 @@ export const classifyTransaction = (transaction: Transaction): BudgetCategory | 
 };
 
 export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSummary => {
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(start.getDate() - 30);
+  const startTime = Date.now() - THIRTY_DAYS_MS;
 
   let income = 0;
   const totals: Record<BudgetCategory, number> = {
@@ -212,22 +213,26 @@ export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSumma
     Lifestyle: 0,
     Savings: 0,
   };
+  const windowTransactions: Transaction[] = [];
 
   transactions.forEach((transaction) => {
-    const txDate = new Date(transaction.date);
-    if (Number.isNaN(txDate.getTime()) || txDate < start) {
+    const txTime = new Date(transaction.date).getTime();
+    if (Number.isNaN(txTime) || txTime < startTime) {
       return;
     }
 
-    if (transaction.amount > 0) {
-      income += transaction.amount;
+    windowTransactions.push(transaction);
+    const amount = Number(transaction.amount) || 0;
+
+    if (amount > 0) {
+      income += amount;
       return;
     }
 
-    if (transaction.amount < 0) {
+    if (amount < 0) {
       const classification = classifyTransaction(transaction);
       if (classification) {
-        totals[classification] += Math.abs(transaction.amount);
+        totals[classification] += Math.abs(amount);
       }
     }
   });
@@ -263,6 +268,7 @@ export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSumma
     savingsAllocated,
     expenses,
     totalOutflow,
+    windowTransactions,
   };
 };
 

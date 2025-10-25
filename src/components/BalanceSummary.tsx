@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
-import { Account, AccountType } from "../types";
+import { Account } from "../types";
 import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
+import { computeAccountOverview } from "../utils/metrics";
 
 interface BalanceSummaryProps {
   accounts: Account[];
@@ -11,37 +12,8 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
   const { user } = useAuth();
   const region = user?.region;
 
-  const computeBalance = (account: Account) => {
-    if ([AccountType.CREDIT_CARD, AccountType.LOAN].includes(account.type)) {
-      return account.balance > 0 ? -Math.abs(account.balance) : account.balance;
-    }
-    return account.balance;
-  };
-
   const summary = useMemo(() => {
-    const enhanced = accounts.map((acc) => ({ ...acc, computedBalance: computeBalance(acc) }));
-    const spendingAccounts = enhanced.filter((acc) =>
-      [AccountType.CHECKING, AccountType.SAVINGS].includes(acc.type)
-    );
-    const liabilities = enhanced.filter((acc) => acc.computedBalance < 0);
-    const assets = enhanced.filter((acc) => acc.computedBalance >= 0);
-    const mortgageAccounts = liabilities.filter((acc) =>
-      /mortgage/i.test(acc.name) || acc.type === AccountType.LOAN
-    );
-
-    const spendingAvailable = spendingAccounts.reduce((sum, acc) => sum + acc.computedBalance, 0);
-    const totalAssets = assets.reduce((sum, acc) => sum + acc.computedBalance, 0);
-    const totalLiabilities = liabilities.reduce((sum, acc) => sum + Math.abs(acc.computedBalance), 0);
-    const netWorth = totalAssets - totalLiabilities;
-
-    return {
-      spendingAvailable,
-      netWorth,
-      totalLiabilities,
-      totalAssets,
-      mortgageAccounts,
-      enhancedAccounts: enhanced,
-    };
+    return computeAccountOverview(accounts);
   }, [accounts]);
 
   return (
@@ -93,7 +65,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
               {summary.mortgageAccounts.map((acc) => (
                 <li key={acc.id} className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2 dark:bg-slate-700/70">
                   <span>{acc.name}</span>
-                  <span>-{formatCurrency(Math.abs(acc.computedBalance ?? acc.balance), region)}</span>
+                  <span>-{formatCurrency(Math.abs(acc.computedBalance), region)}</span>
                 </li>
               ))}
             </ul>
@@ -104,14 +76,14 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
       </div>
 
       <div className="mt-6 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
-        {summary.enhancedAccounts.map((acc) => (
+        {summary.accounts.map((acc) => (
           <div
             key={acc.id}
             className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800"
           >
             <span className="font-semibold text-slate-700 dark:text-white">{acc.name}</span>
-            <span className={(acc.computedBalance ?? acc.balance) < 0 ? "text-red-500" : "text-emerald-500"}>
-              {formatCurrency(acc.computedBalance ?? acc.balance, region)}
+            <span className={acc.computedBalance < 0 ? "text-red-500" : "text-emerald-500"}>
+              {formatCurrency(acc.computedBalance, region)}
             </span>
           </div>
         ))}

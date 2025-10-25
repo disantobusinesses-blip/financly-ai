@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { subscribeEmailToNewsletter } from "../hooks/useNewsletterSignup";
 import { UserMembershipType } from "../types";
 
 const avatarOptions = ["🪙", "🚀", "🌱", "🎯", "🛟", "💡", "🧠", "💼"];
@@ -39,6 +40,7 @@ const SignupModal: React.FC = () => {
   const [avatar, setAvatar] = useState(avatarOptions[0]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [joinNewsletter, setJoinNewsletter] = useState(false);
 
   const basicCountdown = useMemo(() => {
     if (remainingBasicDays == null) return "7 days included";
@@ -60,15 +62,25 @@ const SignupModal: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const ok = signup({ email, password, region, plan, displayName, avatar });
-    setIsSubmitting(false);
+    const trimmedEmail = email.trim();
+    const ok = signup({ email: trimmedEmail, password, region, plan, displayName, avatar });
     if (!ok) {
+      setIsSubmitting(false);
       setError("That email is already registered.");
       return;
     }
+    if (joinNewsletter) {
+      try {
+        await subscribeEmailToNewsletter(trimmedEmail);
+      } catch (newsletterError) {
+        console.error("Unable to subscribe to newsletter from signup", newsletterError);
+      }
+    }
+    setIsSubmitting(false);
     setEmail("");
     setPassword("");
     setDisplayName("");
+    setJoinNewsletter(false);
     setError(null);
   };
 
@@ -201,6 +213,21 @@ const SignupModal: React.FC = () => {
             </section>
 
             {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-500/10">{error}</p>}
+
+            <label className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-inner dark:bg-slate-800/60 dark:text-slate-200">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                checked={joinNewsletter}
+                onChange={(event) => setJoinNewsletter(event.target.checked)}
+              />
+              <span>
+                <span className="font-semibold text-slate-700 dark:text-white">Receive financial news</span>
+                <span className="block text-xs text-slate-500 dark:text-slate-300">
+                  Stay on top of financial news and budgeting tips — we’ll add you to the Financly AI briefing list.
+                </span>
+              </span>
+            </label>
 
             <button
               type="submit"
