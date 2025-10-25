@@ -18,7 +18,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
 
   return (
     <section
-      className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10"
+      className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10"
       data-tour-id="balance-summary"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -39,8 +39,8 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl bg-slate-50 p-5 dark:bg-slate-800">
+      <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
+        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Spending available</p>
           <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
             {formatCurrency(summary.spendingAvailable, region)}
@@ -49,7 +49,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
             Includes checking and savings accounts you can access immediately.
           </p>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-5 dark:bg-slate-800">
+        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Total net worth</p>
           <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
             {formatCurrency(summary.netWorth, region)}
@@ -58,24 +58,29 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
             Assets minus liabilities. Track progress every time new data syncs.
           </p>
         </div>
-        <div className="rounded-2xl bg-slate-50 p-5 dark:bg-slate-800">
+        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Mortgage & debt</p>
-          {summary.mortgageAccounts.length > 0 ? (
-            <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-200">
-              {summary.mortgageAccounts.map((acc) => (
-                <li key={acc.id} className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2 dark:bg-slate-700/70">
-                  <span>{acc.name}</span>
-                  <span>-{formatCurrency(Math.abs(acc.computedBalance), region)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">No mortgage detected. We’ll flag one if it appears.</p>
-          )}
+          <div className="flex-1">
+            {summary.mortgageAccounts.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-200">
+                {summary.mortgageAccounts.map((acc) => (
+                  <li
+                    key={acc.id}
+                    className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-sm font-medium dark:bg-slate-700/70"
+                  >
+                    <span>{acc.name}</span>
+                    <span>-{formatCurrency(Math.abs(acc.computedBalance), region)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">No mortgage detected. We’ll flag one if it appears.</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+      <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-300">
         {summary.accounts.map((acc) => (
           <div
             key={acc.id}

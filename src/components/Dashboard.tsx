@@ -49,7 +49,15 @@ const Dashboard: React.FC = () => {
     (direction: "left" | "right") => {
       const el = railRef.current;
       if (!el) return;
-      const amount = el.clientWidth * 0.9;
+
+      const slides = el.querySelectorAll<HTMLElement>("[data-tool-slide]");
+      const style = window.getComputedStyle(el);
+      const gapCandidate = style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
+      const parsedGap = gapCandidate ? parseFloat(gapCandidate) : 0;
+      const gap = Number.isNaN(parsedGap) ? 0 : parsedGap;
+      const slideWidth = slides.length > 0 ? slides[0].clientWidth : el.clientWidth;
+      const amount = slideWidth + gap;
+
       el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
       window.setTimeout(updateRailScrollState, 350);
     },
@@ -70,6 +78,13 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     updateRailScrollState();
   }, [updateRailScrollState, accounts.length, transactions.length]);
+
+  useEffect(() => {
+    window.addEventListener("resize", updateRailScrollState);
+    return () => {
+      window.removeEventListener("resize", updateRailScrollState);
+    };
+  }, [updateRailScrollState]);
 
   const subscriptionSummary = useMemo(() => deriveSubscriptionSummary(transactions), [transactions]);
   const subscriptionTotal = subscriptionSummary.reduce((sum, item) => sum + item.total, 0);
@@ -330,10 +345,10 @@ const Dashboard: React.FC = () => {
           <div
             ref={railRef}
             onScroll={updateRailScrollState}
-            className="flex gap-8 overflow-hidden px-12 py-2 scroll-smooth"
+            className="mx-auto flex w-full max-w-4xl snap-x snap-mandatory items-stretch gap-8 overflow-hidden px-10 py-4 scroll-smooth"
           >
             {featureCards.map(({ key, element }) => (
-              <div key={key} className="w-[380px] max-w-full flex-shrink-0">
+              <div key={key} data-tool-slide className="w-full flex-shrink-0 snap-center">
                 {element}
               </div>
             ))}

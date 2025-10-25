@@ -1,5 +1,27 @@
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="28" fill="#1B1652"/>
-  <path d="M56 56H82.5L99.5 97.5L116 56H142V144H119V103.5L99.5 144H90L70.5 103.5V144H56V56Z" fill="white"/>
-  <path d="M126 56H158.5C174.2 56 186 67.6 186 83.6C186 95.9 179.3 105.2 168.4 109.2C179.2 113.5 186 123.3 186 135.6C186 153 172.2 164 152.2 164H126V56ZM149 74.8V96.8H157.6C164 96.8 168.4 92.7 168.4 85.8C168.4 79.4 163.9 74.8 157.6 74.8H149ZM149 113.2V143.2H154.6C163.8 143.2 170.6 138 170.6 129.6C170.6 120.8 163.6 113.2 154 113.2H149Z" fill="white"/>
+  <defs>
+    <linearGradient id="mabGradient" x1="20" y1="20" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6C3EF0" />
+      <stop offset="1" stop-color="#A855F7" />
+    </linearGradient>
+    <linearGradient id="mabGlow" x1="40" y1="160" x2="160" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.25" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="28" fill="url(#mabGradient)" />
+  <rect width="200" height="200" rx="28" fill="url(#mabGlow)" />
+  <path
+    d="M35 140V60H54.2L71 92.8L87.8 60H107V140H91.2V95.8L71 133.2L50.8 95.8V140H35Z"
+    fill="#F8F7FF"
+  />
+  <path
+    d="M99 140L117.8 60H140.6L159.4 140H143L138.6 119.6H119.8L115.4 140H99Z"
+    fill="#F8F7FF"
+  />
+  <path d="M123.2 106.2H135.4L127.6 70.4L123.2 106.2Z" fill="#DAD2FF" />
+  <path
+    d="M148 60H172.4C189.2 60 199 71 199 88C199 99 194.1 107.4 184.8 111.9C194.6 116.1 199.8 124.6 199.8 136.4C199.8 154.2 187.5 166.8 166.4 166.8H148V60ZM166 75.8V95H176.2C182.4 95 186.4 91.3 186.4 85.2C186.4 79.1 182.1 75.8 175.8 75.8H166ZM166 111.2V135.2H177.6C185.6 135.2 190.8 130.6 190.8 123C190.8 115.2 184.8 111.2 176.8 111.2H166Z"
+    fill="#F8F7FF"
+  />
 </svg>
