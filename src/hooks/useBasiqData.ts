@@ -1,6 +1,159 @@
 // 🚀 Optimized useBasiqData.ts — fast + cached + parallel Gemini ready
 import { useEffect, useRef, useState } from "react";
-import { Account, Transaction } from "../types";
+import { Account, AccountType, Transaction } from "../types";
+
+const ACCOUNT_TYPE_VALUES = new Set(Object.values(AccountType));
+
+const parseAmount = (value: any): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/,/g, " ");
+    const matches = cleaned.match(/-?\d+(?:\.\d+)?/g);
+    if (matches && matches.length > 0) {
+      const parsed = parseFloat(matches[0]);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+  }
+  if (value && typeof value === "object") {
+    if (value.current !== undefined) return parseAmount(value.current);
+    if (value.available !== undefined) return parseAmount(value.available);
+    if (value.amount !== undefined) return parseAmount(value.amount);
+    if (value.value !== undefined) return parseAmount(value.value);
+    if (value.balance !== undefined) return parseAmount(value.balance);
+  }
+  return 0;
+};
+
+const mapAccountType = (rawType: any, name: string): AccountType => {
+  if (ACCOUNT_TYPE_VALUES.has(rawType as AccountType)) {
+    return rawType as AccountType;
+  }
+  const source = `${rawType || name}`.toLowerCase();
+  if (source.includes("savings")) return AccountType.SAVINGS;
+  if (source.includes("credit")) return AccountType.CREDIT_CARD;
+  if (source.includes("loan") || source.includes("mortgage")) return AccountType.LOAN;
+  return AccountType.CHECKING;
+};
+
+const normalizeAccount = (raw: any): Account => {
+  if (!raw || typeof raw !== "object") {
+    return {
+      id: `acc-${Math.random().toString(36).slice(2)}`,
+      name: "Account",
+      type: AccountType.CHECKING,
+      balance: 0,
+      currency: "AUD",
+    };
+  }
+
+  const name = (raw.name || raw.accountName || raw.displayName || raw.productName || "Account").toString().trim();
+  const type = mapAccountType(raw.type?.text || raw.type?.code || raw.type || raw.accountType || raw.productType, name);
+  const balanceSource =
+    raw.balance?.current ??
+    raw.balance?.available ??
+    raw.balance ??
+    raw.currentBalance ??
+    raw.availableBalance ??
+    raw.amount ??
+    raw.openingBalance ??
+    0;
+  let balance = parseAmount(balanceSource);
+  if ((type === AccountType.CREDIT_CARD || type === AccountType.LOAN) && balance > 0) {
+    balance = -Math.abs(balance);
+  }
+  if (raw.balance?.current < 0 || raw.currentBalance < 0) {
+    balance = parseAmount(raw.balance?.current ?? raw.currentBalance);
+  }
+
+  const currency =
+    raw.balance?.currencyCode ||
+    raw.balance?.currency ||
+    raw.currencyCode ||
+    raw.currency ||
+    "AUD";
+
+  return {
+    id: String(raw.id || raw.accountId || raw.number || `acc-${Math.random().toString(36).slice(2)}`),
+    name: name || "Account",
+    type,
+    balance,
+    currency,
+  };
+};
+
+const parseDateValue = (value: any): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const ms = value > 10 ** 12 ? value : value * 1000;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    if (!Number.isNaN(numeric) && trimmed.replace(/\D/g, "").length >= 8) {
+      const ms = trimmed.length <= 10 ? numeric * 1000 : numeric;
+      const numericDate = new Date(ms);
+      if (!Number.isNaN(numericDate.getTime())) return numericDate;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return null;
+};
+
+const normalizeTransaction = (raw: any): Transaction => {
+  if (!raw || typeof raw !== "object") {
+    const fallbackDate = new Date().toISOString();
+    return {
+      id: `txn-${Math.random().toString(36).slice(2)}`,
+      accountId: "unknown-account",
+      description: "Transaction",
+      amount: 0,
+      date: fallbackDate,
+      category: "Other",
+    };
+  }
+
+  const description = (raw.description || raw.narration || raw.merchant?.name || "Transaction").toString().trim() || "Transaction";
+  const amountSource = raw.amount ?? raw.amount?.value ?? raw.amount?.current ?? raw.amount?.amount ?? raw.transactionAmount;
+  const amount = parseAmount(amountSource);
+  const dateCandidates = [
+    raw.date,
+    raw.postDate,
+    raw.transactionDate,
+    raw.valueDate,
+    raw.postedAt,
+    raw.updatedAt,
+    raw.createdAt,
+  ];
+  let isoDate: string | null = null;
+  for (const candidate of dateCandidates) {
+    const parsed = parseDateValue(candidate);
+    if (parsed) {
+      isoDate = parsed.toISOString();
+      break;
+    }
+  }
+  if (!isoDate) {
+    isoDate = new Date().toISOString();
+  }
+
+  const categorySource = raw.category?.text || raw.category?.name || raw.category || raw.class || raw.subcategory || "Other";
+
+  return {
+    id: String(raw.id || raw.transactionId || `${description}-${isoDate}`),
+    accountId: String(raw.accountId || raw.account?.id || raw.account || "unknown-account"),
+    description,
+    amount,
+    date: isoDate,
+    category: categorySource ? String(categorySource) : "Other",
+  };
+};
 
 interface BasiqData {
   accounts: Account[];
@@ -58,11 +211,19 @@ export function useBasiqData(identityKey?: string): BasiqData {
     const cachedTime = localStorage.getItem("basiqCacheTime");
     if (cachedAccounts && cachedTransactions) {
       try {
-        setAccounts(JSON.parse(cachedAccounts));
-        setTransactions(JSON.parse(cachedTransactions));
+        const parsedAccounts = JSON.parse(cachedAccounts);
+        const parsedTransactions = JSON.parse(cachedTransactions);
+        const normalisedAccounts = Array.isArray(parsedAccounts)
+          ? parsedAccounts.map(normalizeAccount)
+          : [];
+        const normalisedTransactions = Array.isArray(parsedTransactions)
+          ? parsedTransactions.map(normalizeTransaction)
+          : [];
+        setAccounts(normalisedAccounts);
+        setTransactions(normalisedTransactions);
         setLastUpdated(cachedTime || null);
         setLoading(false);
-        hasDataRef.current = true;
+        hasDataRef.current = normalisedAccounts.length > 0 || normalisedTransactions.length > 0;
       } catch {
         console.warn("⚠️ Cache parse failed, fetching fresh data");
       }
@@ -83,16 +244,19 @@ export function useBasiqData(identityKey?: string): BasiqData {
 
         const acc = Array.isArray(data.accounts) ? data.accounts : [];
         const tx = Array.isArray(data.transactions) ? data.transactions : [];
+        const normalisedAccounts = acc.map(normalizeAccount);
+        const normalisedTransactions = tx.map(normalizeTransaction);
 
-        setAccounts(acc);
-        setTransactions(tx);
+        setAccounts(normalisedAccounts);
+        setTransactions(normalisedTransactions);
         setError(null);
         setLastUpdated(new Date().toISOString());
-        hasDataRef.current = acc.length > 0 || tx.length > 0 || hasDataRef.current;
+        hasDataRef.current =
+          normalisedAccounts.length > 0 || normalisedTransactions.length > 0 || hasDataRef.current;
 
         // 🔹 Save to cache for next load
-        localStorage.setItem("accountsCache", JSON.stringify(acc));
-        localStorage.setItem("transactionsCache", JSON.stringify(tx));
+        localStorage.setItem("accountsCache", JSON.stringify(normalisedAccounts));
+        localStorage.setItem("transactionsCache", JSON.stringify(normalisedTransactions));
         localStorage.setItem("basiqCacheTime", new Date().toISOString());
 
         if (jobId) {

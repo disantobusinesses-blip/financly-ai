@@ -35,6 +35,14 @@ export default function TransactionsList({ transactions }: { transactions: Trans
           sortedTxns.map((txn: Transaction) => {
             const category = mapCategory(txn);
             const amountColor = txn.amount < 0 ? "text-red-400" : "text-green-400";
+            const dateObject = new Date(txn.date);
+            const formattedDate = Number.isNaN(dateObject.getTime())
+              ? "Date unavailable"
+              : dateObject.toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "2-digit",
+                });
             return (
               <div
                 key={txn.id}
@@ -45,7 +53,7 @@ export default function TransactionsList({ transactions }: { transactions: Trans
                     {txn.description || "Unnamed"}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {new Date(txn.date).toLocaleDateString()} · {category}
+                    {formattedDate} · {category}
                   </p>
                 </div>
                 <p className={`font-semibold ${amountColor}`}>

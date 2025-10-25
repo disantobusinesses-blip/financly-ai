@@ -40,21 +40,33 @@ const WhatWeDo: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center justify-center">
-          <div className="h-64 w-full max-w-sm rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 p-6 text-sm text-slate-200 shadow-inner">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/70">Preview</p>
-            <h3 className="mt-2 text-xl font-semibold text-white">Financial Wellness</h3>
-            <div className="mt-6 space-y-2">
-              <p className="text-5xl font-black text-white">82<span className="text-lg">/100</span></p>
-              <p className="text-sm text-white/70">Great work! Keep essentials near 50% and send an extra $220 to savings to hit 20%.</p>
-            </div>
-            <div className="mt-6 space-y-3">
-              <div className="rounded-2xl bg-white/10 p-3">
-                <p className="text-xs uppercase tracking-widest text-white/60">Debt-to-income</p>
-                <p className="text-sm text-white">31% · Focus: Mortgage + Visa Rewards</p>
+          <div className="relative w-full max-w-sm">
+            <div
+              className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/25 via-primary/10 to-secondary/20 opacity-70 blur-xl"
+              aria-hidden="true"
+            />
+            <div className="relative h-full rounded-3xl bg-white p-6 text-sm text-slate-600 shadow-2xl ring-1 ring-primary/10">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Preview</p>
+              <h3 className="mt-2 text-xl font-semibold text-slate-900">Financial Wellness</h3>
+              <div className="mt-6 space-y-2">
+                <p className="text-5xl font-black text-slate-900">
+                  82<span className="text-lg text-primary/80">/100</span>
+                </p>
+                <p className="text-sm text-slate-500">
+                  Great work! Keep essentials near 50% and send an extra $220 to savings to hit 20%.
+                </p>
               </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <p className="text-xs uppercase tracking-widest text-white/60">50/30/20 rule</p>
-                <p className="text-sm text-white">Spend 50% on essentials · Enjoy 30% lifestyle · Put 20% into savings</p>
+              <div className="mt-6 space-y-3">
+                <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-primary/10">
+                  <p className="text-xs uppercase tracking-widest text-primary/80">Debt-to-income</p>
+                  <p className="text-sm font-semibold text-slate-700">31% · Focus: Mortgage + Visa Rewards</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-primary/10">
+                  <p className="text-xs uppercase tracking-widest text-primary/80">50/30/20 rule</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    Spend 50% on essentials · Enjoy 30% lifestyle · Put 20% into savings
+                  </p>
+                </div>
               </div>
             </div>
           </div>

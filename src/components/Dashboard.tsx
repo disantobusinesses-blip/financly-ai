@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FinancialWellnessCard from "./FinancialWellnessCard";
 import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
@@ -14,6 +14,7 @@ import SpendingForecast from "./SpendingForecast";
 import PlanGate from "./PlanGate";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
+import { ArrowRightIcon } from "./icon/Icon";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
@@ -28,6 +29,28 @@ const Dashboard: React.FC = () => {
 
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const railRef = useRef<HTMLDivElement>(null);
+  const [railScrollState, setRailScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
+
+  const updateRailScrollState = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    setRailScrollState({
+      canScrollLeft: el.scrollLeft > 8,
+      canScrollRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 8,
+    });
+  }, []);
+
+  const handleRailScroll = useCallback(
+    (direction: "left" | "right") => {
+      const el = railRef.current;
+      if (!el) return;
+      const amount = el.clientWidth * 0.9;
+      el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+      window.setTimeout(updateRailScrollState, 350);
+    },
+    [updateRailScrollState]
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -37,6 +60,10 @@ const Dashboard: React.FC = () => {
       localStorage.setItem("financly_tour_seen", "1");
     }
   }, [accounts.length, user]);
+
+  useEffect(() => {
+    updateRailScrollState();
+  }, [updateRailScrollState, accounts.length, transactions.length]);
 
   const subscriptionSummary = useMemo(() => deriveSubscriptionSummary(transactions), [transactions]);
   const subscriptionTotal = subscriptionSummary.reduce((sum, item) => sum + item.total, 0);
@@ -137,82 +164,122 @@ const Dashboard: React.FC = () => {
     ? `${aiData.insights.insights.length} AI notes waiting inside transaction analysis.`
     : "Upgrade to unlock AI commentary on every transaction.";
 
-  const toolCards = [
-    <GoalPlanner key="goal-planner" accounts={accounts} transactions={transactions} />,
-    <BalanceSummary key="balance-summary" accounts={accounts} />,
-    <PlanGate
-      key="subscription-hunter"
-      feature="Subscription Hunter"
-      teaser={subscriptionTeaser}
-      dataTourId="subscription-hunter"
-    >
-      <SubscriptionHunter transactions={transactions} region={region} />
-    </PlanGate>,
-    <PlanGate key="cashflow" feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <CashflowMini transactions={transactions} />
-      </div>
-    </PlanGate>,
-    <PlanGate
-      key="spending-category"
-      feature="Spending by category"
-      teaser="Unlock AI to reveal your highest spending categories."
-      dataTourId="spending-category"
-    >
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <SpendingByCategory transactions={transactions} />
-      </div>
-    </PlanGate>,
-    <PlanGate
-      key="spending-forecast"
-      feature="Spending forecast"
-      teaser="Upgrade to view AI cashflow scenarios."
-      dataTourId="forecast"
-    >
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <SpendingForecast transactions={transactions} totalBalance={totalBalance} savingsPlan={null} />
-      </div>
-    </PlanGate>,
-    <PlanGate
-      key="spending-trends"
-      feature="Category trends"
-      teaser="Unlock visual trends with AI commentary."
-      dataTourId="category-trends"
-    >
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <SpendingChart transactions={transactions} />
-      </div>
-    </PlanGate>,
-    <PlanGate key="alerts" feature="AI alerts" teaser={alertsTeaser} dataTourId="alerts">
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <FinancialAlerts transactions={transactions} />
-      </div>
-    </PlanGate>,
-    <PlanGate
-      key="upcoming-bills"
-      feature="Upcoming bills"
-      teaser="Upgrade to predict upcoming bills and due dates."
-      dataTourId="upcoming-bills"
-    >
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <UpcomingBills accounts={accounts} />
-      </div>
-    </PlanGate>,
-    <PlanGate key="transactions" feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <TransactionsList transactions={transactions} />
-      </div>
-    </PlanGate>,
-    <PlanGate
-      key="transaction-analysis"
-      feature="Transaction analysis"
-      teaser={analysisTeaser}
-      dataTourId="transaction-analysis"
-    >
-      <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-        <TransactionAnalysis transactions={transactions} />
-      </div>
-    </PlanGate>,
+  const pinnedCards = [
+    {
+      key: "goal-planner",
+      element: <GoalPlanner accounts={accounts} transactions={transactions} />,
+    },
+    {
+      key: "balance-summary",
+      element: <BalanceSummary accounts={accounts} />,
+    },
+  ];
+
+  const featureCards = [
+    {
+      key: "subscription-hunter",
+      element: (
+        <PlanGate feature="Subscription Hunter" teaser={subscriptionTeaser} dataTourId="subscription-hunter">
+          <SubscriptionHunter transactions={transactions} region={region} />
+        </PlanGate>
+      ),
+    },
+    {
+      key: "cashflow",
+      element: (
+        <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <CashflowMini transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "spending-category",
+      element: (
+        <PlanGate
+          feature="Spending by category"
+          teaser="Unlock AI to reveal your highest spending categories."
+          dataTourId="spending-category"
+        >
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <SpendingByCategory transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "spending-forecast",
+      element: (
+        <PlanGate
+          feature="Spending forecast"
+          teaser="Upgrade to view AI cashflow scenarios."
+          dataTourId="forecast"
+        >
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <SpendingForecast transactions={transactions} totalBalance={totalBalance} savingsPlan={null} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "spending-trends",
+      element: (
+        <PlanGate
+          feature="Category trends"
+          teaser="Unlock visual trends with AI commentary."
+          dataTourId="category-trends"
+        >
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <SpendingChart transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "alerts",
+      element: (
+        <PlanGate feature="AI alerts" teaser={alertsTeaser} dataTourId="alerts">
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <FinancialAlerts transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "upcoming-bills",
+      element: (
+        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <UpcomingBills accounts={accounts} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "transactions",
+      element: (
+        <PlanGate
+          feature="Transactions"
+          teaser="Unlock full transaction history with AI filters."
+          dataTourId="transactions"
+        >
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <TransactionsList transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
+    {
+      key: "transaction-analysis",
+      element: (
+        <PlanGate feature="Transaction analysis" teaser={analysisTeaser} dataTourId="transaction-analysis">
+          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
+            <TransactionAnalysis transactions={transactions} />
+          </div>
+        </PlanGate>
+      ),
+    },
   ];
 
   return (
@@ -224,8 +291,51 @@ const Dashboard: React.FC = () => {
       )}
       <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
 
-      <div className="tool-carousel lg:grid lg:grid-cols-2 lg:gap-10" data-tour-id="tool-carousel">
-        {toolCards}
+      <div className="lg:hidden" data-tour-id="tool-carousel">
+        <div className="tool-carousel">
+          {[...pinnedCards, ...featureCards].map(({ key, element }) => (
+            <div key={key}>{element}</div>
+          ))}
+        </div>
+      </div>
+
+      <div className="hidden flex-col gap-10 lg:flex">
+        <div className="grid gap-10 lg:grid-cols-2">
+          {pinnedCards.map(({ key, element }) => (
+            <div key={key}>{element}</div>
+          ))}
+        </div>
+        <div className="relative" data-tour-id="tool-carousel">
+          <button
+            type="button"
+            onClick={() => handleRailScroll("left")}
+            disabled={!railScrollState.canScrollLeft}
+            className="absolute left-0 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/95 p-3 text-slate-600 shadow-lg transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
+            aria-label="Scroll to previous tools"
+          >
+            <ArrowRightIcon className="h-5 w-5 -scale-x-100" />
+          </button>
+          <div
+            ref={railRef}
+            onScroll={updateRailScrollState}
+            className="flex gap-8 overflow-hidden px-12 py-2 scroll-smooth"
+          >
+            {featureCards.map(({ key, element }) => (
+              <div key={key} className="w-[380px] max-w-full flex-shrink-0">
+                {element}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRailScroll("right")}
+            disabled={!railScrollState.canScrollRight}
+            className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/95 p-3 text-slate-600 shadow-lg transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
+            aria-label="Scroll to more tools"
+          >
+            <ArrowRightIcon className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {lastUpdated && (
