@@ -8,7 +8,7 @@ const WhatWeDo: React.FC = () => {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Our mission</p>
         <h1 className="text-4xl font-black text-slate-900 dark:text-white">How AI can help you save on your bills</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300">
-          Financly AI blends secure bank connections, explainable machine intelligence, and behavioural coaching to help you
+          MyAiBank blends secure bank connections, explainable machine intelligence, and behavioural coaching to help you
           cut waste, accelerate savings, and feel confident about every dollar. Below is a behind-the-scenes look at how we
           deliver that promise for members of all plans.
         </p>
@@ -21,7 +21,7 @@ const WhatWeDo: React.FC = () => {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">1. Read your money story instantly</h2>
           <p>
-            We start with your real accounts. Financly connects through Basiq&apos;s regulated open-banking platform so you can
+            We start with your real accounts. MyAiBank connects through Basiq&apos;s regulated open-banking platform so you can
             securely pull balances, mortgages, credit cards, and transaction history into a single canvas. Our
             <a href="#financial-wellness" className="font-semibold text-primary"> Financial Wellness score</a> takes that live
             data and transforms it into a 0-100 health indicator that updates as soon as new activity arrives. We factor your
@@ -123,7 +123,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="onboarding">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">5. Guided onboarding and education</h2>
         <p>
-          New members choose between a seven-day Basic showcase or My Finances Pro. Basic keeps Financial Wellness, Goals, and
+          New members choose between a seven-day Basic showcase or MyAiBank Pro. Basic keeps Financial Wellness, Goals, and
           Balance Summary visible while softly blurring AI-heavy panels to demonstrate the value of upgrading. Our playful
           emoji-filled signup modal helps you pick an avatar, region, and plan while explaining that the email you enter becomes
           your Basiq user ID.
@@ -138,7 +138,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="commitment">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Our commitment</h2>
         <p>
-          Financly AI never sells your financial data. We simply analyse it on your behalf to uncover smarter habits, lower
+          MyAiBank never sells your financial data. We simply analyse it on your behalf to uncover smarter habits, lower
           bills, and reduce stress. Whether you stay on the Basic showcase or upgrade to Pro, our north star remains the same:
           save you time and money while keeping you fully in control.
         </p>

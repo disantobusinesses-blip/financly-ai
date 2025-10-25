@@ -101,7 +101,7 @@ const WelcomeScreen: React.FC = () => {
           <div className="space-y-3">
             <h2 className="text-2xl font-semibold text-white">Tools you&apos;ll preview</h2>
             <p className="text-sm text-slate-200">
-              Begin Financial Awareness to see how Financly AI guides every step — and what you unlock with My Finances Pro.
+              Begin Financial Awareness to see how MyAiBank guides every step — and what you unlock with MyAiBank Pro.
             </p>
           </div>
 

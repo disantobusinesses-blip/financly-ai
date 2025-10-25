@@ -35,7 +35,7 @@ const LoginModal: React.FC = () => {
 
         <header className="mb-6 space-y-2 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Welcome back</p>
-          <h2 className="text-3xl font-bold">Log in to Financly AI</h2>
+          <h2 className="text-3xl font-bold">Log in to MyAiBank</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Enter the credentials you used for your showcase or Pro account.
           </p>

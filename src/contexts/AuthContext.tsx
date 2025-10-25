@@ -41,8 +41,10 @@ interface StoredUser extends Omit<User, "createdAt"> {
   password: string;
 }
 
-const USERS_KEY = "financly_users";
-const CURRENT_USER_KEY = "financly_current_user";
+const USERS_KEY = "myaibank_users";
+const CURRENT_USER_KEY = "myaibank_current_user";
+const LEGACY_USERS_KEY = "financly_users";
+const LEGACY_CURRENT_USER_KEY = "financly_current_user";
 
 const normaliseUser = (raw: StoredUser): User => {
   const createdAt = raw.createdAt || new Date().toISOString();
@@ -63,7 +65,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const getStoredCurrentUser = (): StoredUser | null => {
   if (typeof window === "undefined") return null;
   try {
-    const stored = localStorage.getItem(CURRENT_USER_KEY);
+    const stored =
+      localStorage.getItem(CURRENT_USER_KEY) ??
+      localStorage.getItem(LEGACY_CURRENT_USER_KEY);
     return stored ? (JSON.parse(stored) as StoredUser) : null;
   } catch {
     return null;
@@ -81,7 +85,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const getUsers = (): StoredUser[] => {
     try {
-      return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+      const raw =
+        localStorage.getItem(USERS_KEY) ??
+        localStorage.getItem(LEGACY_USERS_KEY) ??
+        "[]";
+      return JSON.parse(raw);
     } catch {
       return [];
     }
@@ -89,6 +97,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const saveUsers = (users: StoredUser[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    localStorage.removeItem(LEGACY_USERS_KEY);
   };
 
   useEffect(() => {
@@ -101,14 +110,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Seed demo pro account for testing
     const users = getUsers();
-    if (!users.find((u) => u.email === "demo@financly.com")) {
+    if (!users.find((u) => u.email === "demo@myaibank.ai")) {
       users.push({
         id: "user_demo_123",
-        email: "demo@financly.com",
+        email: "demo@myaibank.ai",
         password: "demo123",
         membershipType: "Pro",
         region: "AU",
-        displayName: "Financly Demo",
+        displayName: "MyAiBank Demo",
         avatar: "🧠",
         createdAt: new Date().toISOString(),
       });
@@ -119,8 +128,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const persistCurrentUser = (storedUser: StoredUser | null) => {
     if (storedUser) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(storedUser));
+      localStorage.removeItem(LEGACY_CURRENT_USER_KEY);
     } else {
       localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem(LEGACY_CURRENT_USER_KEY);
     }
   };
 

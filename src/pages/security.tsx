@@ -3,7 +3,7 @@ export default function SecurityPage() {
     <div className="max-w-4xl mx-auto py-12 px-6 space-y-6">
       <h1 className="text-3xl font-bold">Your Security Matters</h1>
       <p>
-        Financly uses <strong>Basiq</strong> for bank connections and{" "}
+        MyAiBank uses <strong>Basiq</strong> for bank connections and{" "}
         <strong>Stripe</strong> for payments. Both are industry leaders in
         security and compliance.
       </p>
@@ -15,8 +15,8 @@ export default function SecurityPage() {
       </ul>
       <p>
         For questions, email us at{" "}
-        <a href="mailto:support@financlyai.com" className="text-indigo-600">
-          support@financlyai.com
+        <a href="mailto:support@myaibank.ai" className="text-indigo-600">
+          support@myaibank.ai
         </a>
         .
       </p>

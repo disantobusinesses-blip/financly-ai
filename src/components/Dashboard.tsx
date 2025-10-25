@@ -21,6 +21,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { useGeminiAI } from "../hooks/useGeminiAI";
 import { formatCurrency } from "../utils/currency";
 
+const TOUR_KEY = "myaibank_tour_seen";
+const LEGACY_TOUR_KEY = "financly_tour_seen";
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
@@ -55,10 +58,12 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    const seenTour = localStorage.getItem("financly_tour_seen");
+    const seenTour =
+      localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
     if (!seenTour && accounts.length > 0) {
       setTourOpen(true);
-      localStorage.setItem("financly_tour_seen", "1");
+      localStorage.setItem(TOUR_KEY, "1");
+      localStorage.removeItem(LEGACY_TOUR_KEY);
     }
   }, [accounts.length, user]);
 

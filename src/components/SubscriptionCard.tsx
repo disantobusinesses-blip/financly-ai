@@ -29,7 +29,7 @@ const SubscriptionCard: React.FC = () => {
     <div className="bg-white/10 rounded-lg p-4">
       <h2 className="text-lg font-semibold">Subscription</h2>
       <p className="text-gray-400 text-sm mb-3">
-        Unlock full Financly insights with Pro.
+        Unlock full MyAiBank insights with Pro.
       </p>
       {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
       <button

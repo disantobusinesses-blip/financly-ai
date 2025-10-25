@@ -50,7 +50,7 @@ export default function Pricing() {
           “I saved $500 in the first 3 months.” – Alex T.
         </blockquote>
         <blockquote className="p-4 border rounded-md italic">
-          “Financly made budgeting effortless.” – Maria K.
+          “MyAiBank made budgeting effortless.” – Maria K.
         </blockquote>
         <blockquote className="p-4 border rounded-md italic">
           “Best alternative to Revolut & WeMoney.” – David R.

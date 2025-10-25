@@ -158,7 +158,7 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Savings milestones</p>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Goal planner</h2>
           <p className="text-sm text-slate-500 dark:text-slate-300">
-            Create your goal with your bank first, then let Financly AI track the progress based on live balances.
+            Create your goal with your bank first, then let MyAiBank track the progress based on live balances.
           </p>
         </div>
         <div className="flex items-center gap-3">

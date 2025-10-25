@@ -32,7 +32,7 @@ const PlanGate: React.FC<PlanGateProps> = ({ allowBasic = false, feature, teaser
                   onClick={() => setIsUpgradeModalOpen(true)}
                   className="rounded-xl bg-primary px-6 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
                 >
-                  Upgrade to Pro
+                  Upgrade to MyAiBank Pro
                 </button>
               </div>
             </div>

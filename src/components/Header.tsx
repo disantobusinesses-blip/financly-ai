@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
+import logoMark from "../assets/myaibank-logo.svg";
 
 interface HeaderProps {
   activeView: "dashboard" | "what-we-do";
@@ -54,10 +55,14 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         )}
         <button
           onClick={() => onNavigate("dashboard")}
-          className="flex h-11 items-center gap-2 rounded-xl bg-white/10 px-4 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
+          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
         >
-          <span className="rounded-lg bg-primary px-2 py-1 text-sm font-semibold text-white">FA</span>
-          Financly AI
+          <img
+            src={logoMark}
+            alt="MyAiBank logo"
+            className="h-8 w-8 rounded-xl bg-white p-1"
+          />
+          MyAiBank
         </button>
       </div>
 
@@ -135,7 +140,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
             </nav>
             <div className="mt-8 space-y-3 text-xs text-white/60">
               <p>Your email becomes your Basiq user ID for secure bank connections.</p>
-              <p>Need support? hello@financly.ai</p>
+              <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>
           <div className="flex-1 bg-black/70 backdrop-blur-sm" />

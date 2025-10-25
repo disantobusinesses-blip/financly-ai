@@ -75,7 +75,7 @@ const UpgradeModal: React.FC = () => {
       >
         <div className="text-center">
           <SparklesIcon className="h-10 w-10 text-primary mx-auto mb-2" />
-          <h2 className="text-3xl font-bold text-text-primary">Upgrade to FinanclyPro</h2>
+          <h2 className="text-3xl font-bold text-text-primary">Upgrade to MyAiBank Pro</h2>
           <p className="text-text-secondary mt-2">Unlock the full power of AI to supercharge your finances.</p>
         </div>
 
@@ -99,7 +99,7 @@ const UpgradeModal: React.FC = () => {
           {/* Pro Plan */}
           <div className="border-2 border-primary rounded-lg p-6 relative bg-primary-light">
             <span className="absolute -top-3 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</span>
-            <h3 className="text-xl font-bold text-primary">FinanclyPro</h3>
+            <h3 className="text-xl font-bold text-primary">MyAiBank Pro</h3>
             <p className="text-primary/80 dark:text-primary">All features, powered by AI.</p>
             <p className="text-3xl font-bold my-4 text-primary">{priceString} <span className="text-lg font-medium text-text-secondary">/ month</span></p>
             <ul className="space-y-3 text-sm">

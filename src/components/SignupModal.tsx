@@ -18,11 +18,11 @@ const planOptions: Array<{
     emoji: "🎁",
     headline: "Unlock a 7-day guided preview",
     copy:
-      "Try Financly AI with one full-featured showcase. We'll highlight the insights you could unlock by upgrading to Pro.",
+      "Try MyAiBank with one full-featured showcase. We'll highlight the insights you could unlock by upgrading to Pro.",
   },
   {
     id: "Pro",
-    title: "My Finances Pro",
+    title: "MyAiBank Pro",
     emoji: "🌟",
     headline: "Always-on AI co-pilot",
     copy:
@@ -101,7 +101,7 @@ const SignupModal: React.FC = () => {
                 Get started
               </p>
               <h2 className="text-2xl font-bold sm:text-3xl md:text-4xl">
-                Create your Financly profile
+                Create your MyAiBank profile
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Your email doubles as your secure Basiq connection ID. We use it to sync your live bank data once you connect.
@@ -224,7 +224,7 @@ const SignupModal: React.FC = () => {
               <span>
                 <span className="font-semibold text-slate-700 dark:text-white">Receive financial news</span>
                 <span className="block text-xs text-slate-500 dark:text-slate-300">
-                  Stay on top of financial news and budgeting tips — we’ll add you to the Financly AI briefing list.
+                  Stay on top of financial news and budgeting tips — we’ll add you to the MyAiBank briefing list.
                 </span>
               </span>
             </label>
@@ -234,11 +234,11 @@ const SignupModal: React.FC = () => {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg font-semibold text-white shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/50"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating your account..." : plan === "Pro" ? "Join My Finances Pro" : "Start my free showcase"}
+              {isSubmitting ? "Creating your account..." : plan === "Pro" ? "Join MyAiBank Pro" : "Start my free showcase"}
             </button>
 
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              By continuing you agree that this preview is educational. Financly AI surfaces opportunities but does not provide financial advice.
+              By continuing you agree that this preview is educational. MyAiBank surfaces opportunities but does not provide financial advice.
             </p>
           </form>
 
@@ -259,7 +259,7 @@ const SignupModal: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-300">
-              Have questions? Email <a href="mailto:hello@financly.ai" className="font-semibold text-primary">hello@financly.ai</a> and our team will help you connect your bank securely.
+              Have questions? Email <a href="mailto:hello@myaibank.ai" className="font-semibold text-primary">hello@myaibank.ai</a> and our team will help you connect your bank securely.
             </p>
           </aside>
         </div>
