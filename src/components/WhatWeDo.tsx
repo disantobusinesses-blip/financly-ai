@@ -8,7 +8,7 @@ const WhatWeDo: React.FC = () => {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Our mission</p>
         <h1 className="text-4xl font-black text-slate-900 dark:text-white">How AI can help you save on your bills</h1>
         <p className="text-lg text-slate-600 dark:text-slate-300">
-          MyAiBank blends secure bank connections, explainable machine intelligence, and behavioural coaching to help you
+          MyAiBank blends secure bank connections, explainable machine intelligence, and behavioral coaching to help you
           cut waste, accelerate savings, and feel confident about every dollar. Below is a behind-the-scenes look at how we
           deliver that promise for members of all plans.
         </p>
@@ -76,7 +76,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="goal-planner">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">2. Turn ambition into progress</h2>
         <p>
-          Inside the Goal Planner (you&apos;ll find it just beneath wellness on the dashboard) you can create personalised savings
+          Inside the Goal Planner (you&apos;ll find it just beneath wellness on the dashboard) you can create personalized savings
           missions like “New Car 🚗” or “Europe Trip ✈️”. Add a target amount, optional date, and we&apos;ll estimate a finish line
           using your current savings rate. Every contribution triggers a cheerful “Great stuff!” toast using your name, and
           milestones at 25%, 50%, and 75% unlock Gemini-powered encouragement. We even suggest tips such as trimming unused
@@ -138,7 +138,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="commitment">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Our commitment</h2>
         <p>
-          MyAiBank never sells your financial data. We simply analyse it on your behalf to uncover smarter habits, lower
+          MyAiBank never sells your financial data. We simply analyze it on your behalf to uncover smarter habits, lower
           bills, and reduce stress. Whether you stay on the Basic showcase or upgrade to Pro, our north star remains the same:
           save you time and money while keeping you fully in control.
         </p>
