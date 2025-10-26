@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import WelcomeScreen from "./components/WelcomeScreen";
@@ -50,6 +51,7 @@ const App: React.FC = () => (
       <LoginModal />
       <SignupModal />
       <UpgradeModal />
+      <SpeedInsights />
     </ThemeProvider>
   </AuthProvider>
 );
