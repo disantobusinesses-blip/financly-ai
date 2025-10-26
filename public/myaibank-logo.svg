@@ -1,25 +1,25 @@
-<svg width="160" height="56" viewBox="0 0 160 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="mabWordmarkGradient" x1="0" y1="0" x2="160" y2="56" gradientUnits="userSpaceOnUse">
+    <linearGradient id="mabBadgeGradient" x1="12" y1="12" x2="84" y2="84" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#5B2EEB" />
       <stop offset="1" stop-color="#8F5BFF" />
     </linearGradient>
-    <linearGradient id="mabWordmarkHighlight" x1="16" y1="48" x2="144" y2="8" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16" />
+    <linearGradient id="mabBadgeHighlight" x1="20" y1="20" x2="76" y2="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18" />
       <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
     </linearGradient>
   </defs>
-  <rect width="160" height="56" rx="16" fill="url(#mabWordmarkGradient)" />
-  <rect width="160" height="56" rx="16" fill="url(#mabWordmarkHighlight)" />
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#mabBadgeGradient)" />
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#mabBadgeHighlight)" />
   <text
     x="50%"
-    y="50%"
+    y="52%"
     dominant-baseline="middle"
     text-anchor="middle"
     font-family="'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-    font-size="32"
+    font-size="34"
     font-weight="700"
-    letter-spacing="0.08em"
+    letter-spacing="0.05em"
     fill="#FFFFFF"
   >MAB</text>
 </svg>
