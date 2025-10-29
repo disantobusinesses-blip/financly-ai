@@ -11,14 +11,24 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const { user, logout, remainingBasicDays } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isBasic = user?.membershipType === "Basic";
-  const basicChip = isBasic
-    ? remainingBasicDays === 0
-      ? "Basic preview ended"
-      : remainingBasicDays
-      ? `${remainingBasicDays} days left`
-      : "Basic showcase"
-    : "Pro member";
+  const statusChip = (() => {
+    if (!user) return "";
+    if (user.membershipType === "Basic") {
+      if (remainingBasicDays === 0) return "Basic preview ended";
+      if (remainingBasicDays) return `${remainingBasicDays} days left`;
+      return "Basic showcase";
+    }
+    if (user.proTrialEnds) {
+      const diff = Math.ceil(
+        (new Date(user.proTrialEnds).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
+      if (diff > 0) {
+        return `Pro trial: ${diff} day${diff === 1 ? "" : "s"} left`;
+      }
+      return "Pro trial completed";
+    }
+    return "Pro member";
+  })();
 
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
@@ -69,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       {user ? (
         <div className="flex items-center gap-3">
           <span className="hidden text-xs font-semibold uppercase tracking-widest text-white/70 sm:inline-flex">
-            {basicChip}
+            {statusChip}
           </span>
           <button
             onClick={handleConnectBankClick}
@@ -111,7 +121,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
               <p className="text-lg font-semibold text-white">{user.displayName} {user.avatar}</p>
               <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
-                {basicChip}
+                {statusChip}
               </span>
             </div>
             <nav className="space-y-4 text-sm font-semibold text-white/80">

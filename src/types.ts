@@ -22,6 +22,29 @@ export interface Transaction {
   category: string;
 }
 
+export type ReferralStatus = "pending" | "converted" | "rewarded";
+
+export interface ReferralRecord {
+  id: string;
+  referrerId: string;
+  referredEmail: string;
+  referredUserId?: string;
+  status: ReferralStatus;
+  rewardCouponId?: string;
+  rewardPromotionCode?: string;
+  rewardedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReferralProfile {
+  userId: string;
+  email: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  updatedAt: string;
+}
+
 /** Simple goal data used in Goal UI */
 export interface Goal {
   id: string;
@@ -84,5 +107,7 @@ export interface User {
   membershipType: UserMembershipType;
   region: "AU" | "US";
   basicTrialEnds?: string; // ISO date when a basic showcase expires
+  proTrialEnds?: string; // ISO date when a pro trial ends
+  referredBy?: string;
   createdAt: string;
 }

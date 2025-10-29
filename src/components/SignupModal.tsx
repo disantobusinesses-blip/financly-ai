@@ -41,6 +41,11 @@ const SignupModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [joinNewsletter, setJoinNewsletter] = useState(false);
+  const [referralCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("ref") ?? "";
+  });
 
   const basicCountdown = useMemo(() => {
     if (remainingBasicDays == null) return "7 days included";
@@ -63,7 +68,15 @@ const SignupModal: React.FC = () => {
 
     setIsSubmitting(true);
     const trimmedEmail = email.trim();
-    const ok = signup({ email: trimmedEmail, password, region, plan, displayName, avatar });
+    const ok = signup({
+      email: trimmedEmail,
+      password,
+      region,
+      plan,
+      displayName,
+      avatar,
+      referredBy: referralCode || null,
+    });
     if (!ok) {
       setIsSubmitting(false);
       setError("That email is already registered.");
@@ -183,6 +196,11 @@ const SignupModal: React.FC = () => {
                 </h3>
                 <span className="text-xs font-semibold text-primary">{basicCountdown}</span>
               </div>
+              {referralCode && (
+                <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+                  A friend invited you — upgrade later to give them a reward.
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 {planOptions.map((option) => {
                   const isActive = plan === option.id;

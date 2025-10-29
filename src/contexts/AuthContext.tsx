@@ -7,6 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 import { User, UserMembershipType } from "../types";
+import { registerReferral, syncReferralProfile } from "../services/ReferralService";
 
 interface SignupPayload {
   email: string;
@@ -15,6 +16,7 @@ interface SignupPayload {
   plan: UserMembershipType;
   displayName: string;
   avatar: string;
+  referredBy?: string | null;
 }
 
 interface AuthContextType {
@@ -39,6 +41,8 @@ interface AuthContextType {
 interface StoredUser extends Omit<User, "createdAt"> {
   createdAt?: string;
   password: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
 }
 
 const USERS_KEY = "myaibank_users";
@@ -56,6 +60,8 @@ const normaliseUser = (raw: StoredUser): User => {
     membershipType: raw.membershipType === "Pro" ? "Pro" : "Basic",
     region: raw.region || "AU",
     basicTrialEnds: raw.basicTrialEnds,
+    proTrialEnds: raw.proTrialEnds,
+    referredBy: raw.referredBy,
     createdAt,
   };
 };
@@ -125,6 +131,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    void syncReferralProfile({ userId: user.id, email: user.email });
+  }, [user]);
+
   const persistCurrentUser = (storedUser: StoredUser | null) => {
     if (storedUser) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(storedUser));
@@ -144,19 +155,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const now = new Date();
+    const membershipType: UserMembershipType = payload.plan === "Pro" ? "Basic" : payload.plan;
     const storedUser: StoredUser = {
       id: `user_${now.getTime()}`,
       email: payload.email,
       password: payload.password,
-      membershipType: payload.plan,
+      membershipType,
       region: payload.region,
       displayName: payload.displayName.trim() || payload.email.split("@")[0],
       avatar: payload.avatar,
       createdAt: now.toISOString(),
       basicTrialEnds:
-        payload.plan === "Basic"
+        membershipType === "Basic"
           ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
           : undefined,
+      proTrialEnds: undefined,
+      referredBy: payload.referredBy ?? undefined,
     };
 
     users.push(storedUser);
@@ -166,6 +180,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(normalised);
     persistCurrentUser(storedUser);
     setIsSignupModalOpen(false);
+
+    void syncReferralProfile({ userId: storedUser.id, email: storedUser.email });
+    if (storedUser.referredBy) {
+      void registerReferral({
+        referrerId: storedUser.referredBy,
+        referredEmail: storedUser.email,
+        referredUserId: storedUser.id,
+      });
+    }
+    if (payload.plan === "Pro") {
+      setIsUpgradeModalOpen(true);
+    }
     return true;
   };
 
@@ -181,6 +207,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(normalised);
     persistCurrentUser(found);
     setIsLoginModalOpen(false);
+    void syncReferralProfile({
+      userId: found.id,
+      email: found.email,
+      stripeCustomerId: found.stripeCustomerId,
+      stripeSubscriptionId: found.stripeSubscriptionId,
+    });
     return true;
   };
 
@@ -199,6 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     users[idx].membershipType = "Pro";
     delete users[idx].basicTrialEnds;
+    users[idx].proTrialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     saveUsers(users);
 
     if (user && user.id === userId) {

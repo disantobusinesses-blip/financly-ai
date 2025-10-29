@@ -148,6 +148,7 @@ export interface WellnessMetrics {
   expenses: number;
   netWorth: number;
   savingsAllocated: number;
+  savingsRate: number;
   essentialsPercent: number;
   lifestylePercent: number;
   savingsPercent: number;
@@ -158,11 +159,20 @@ export interface WellnessMetrics {
   targetAmounts: Record<(typeof BUDGET_CATEGORIES)[number], number>;
   adjustments: Record<(typeof BUDGET_CATEGORIES)[number], number>;
   liabilitiesByAccount: { name: string; value: number }[];
+  emergencyFundMonths: number;
+  liquidAssets: number;
+  stabilityRatio: number;
+  creditUtilisation: number;
+  incomeGrowthRatio: number;
   componentScores: {
-    dti: number;
-    savings: number;
-    budget: number;
+    debtToIncome: number;
+    savingsRate: number;
+    emergencyFund: number;
     netWorth: number;
+    stability: number;
+    creditUtilisation: number;
+    financialBehaviour: number;
+    incomeGrowth: number;
   };
 }
 
@@ -182,20 +192,72 @@ export const calculateWellnessMetrics = (
   const dtiScore = clamp((1 - Math.min(dti, 1.2) / 1.2) * 100);
 
   const savingsRate = monthlyIncome > 0 ? savingsAllocated / monthlyIncome : 0;
-  const savingsScore = clamp((savingsRate / 0.2) * 100);
+  const savingsRateScore = clamp((savingsRate / 0.2) * 100);
 
   const averageDeviation =
     BUDGET_CATEGORIES.reduce((total, category) => total + Math.abs(budget.adjustments[category]), 0) /
     BUDGET_CATEGORIES.length;
-  const budgetScore = clamp(100 - averageDeviation * 2);
+  const financialBehaviourScore = clamp(100 - averageDeviation * 2);
+
+  const liquidAssets = overview.accounts
+    .filter(
+      (account) =>
+        !account.isLiability &&
+        (account.type === AccountType.CHECKING || account.type === AccountType.SAVINGS)
+    )
+    .reduce((total, account) => total + account.computedBalance, 0);
+
+  const emergencyFundMonths = expenses > 0 ? liquidAssets / expenses : 6;
+  const emergencyFundScore = clamp((Math.min(emergencyFundMonths, 6) / 6) * 100);
 
   const netWorthScore = overview.totalAssets > 0
-    ? clamp(((overview.netWorth / overview.totalAssets) + 1) * 50)
+    ? clamp(((overview.netWorth / Math.max(overview.totalAssets, 1)) + 1) * 50)
     : overview.netWorth > 0
     ? 70
     : 40;
 
-  const score = Math.round(0.4 * dtiScore + 0.3 * savingsScore + 0.2 * budgetScore + 0.1 * netWorthScore);
+  const stabilityRatio = monthlyIncome > 0 ? (monthlyIncome - expenses) / monthlyIncome : -1;
+  const stabilityScore = clamp((stabilityRatio + 1) * 50);
+
+  const creditBalances = overview.accounts
+    .filter((account) => account.type === AccountType.CREDIT_CARD)
+    .reduce((total, account) => total + Math.abs(account.computedBalance), 0);
+  const creditUtilisation = monthlyIncome > 0 ? creditBalances / (monthlyIncome * 3) : 0;
+  const creditUtilizationScore = clamp((1 - Math.min(creditUtilisation, 1)) * 100);
+
+  const windowStart = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const midPoint = windowStart + 15 * 24 * 60 * 60 * 1000;
+  let firstHalfIncome = 0;
+  let secondHalfIncome = 0;
+  budget.windowTransactions.forEach((transaction) => {
+    const amount = Number(transaction.amount) || 0;
+    if (amount <= 0) return;
+    const time = new Date(transaction.date).getTime();
+    if (Number.isNaN(time) || time < windowStart) return;
+    if (time < midPoint) {
+      firstHalfIncome += amount;
+    } else {
+      secondHalfIncome += amount;
+    }
+  });
+  let incomeGrowthRatio = 0;
+  if (firstHalfIncome > 0) {
+    incomeGrowthRatio = (secondHalfIncome - firstHalfIncome) / firstHalfIncome;
+  } else if (secondHalfIncome > 0) {
+    incomeGrowthRatio = 1;
+  }
+  const incomeGrowthScore = clamp(((incomeGrowthRatio + 1) / 2) * 100);
+
+  const score = Math.round(
+    dtiScore * 0.2 +
+      savingsRateScore * 0.2 +
+      emergencyFundScore * 0.15 +
+      netWorthScore * 0.15 +
+      stabilityScore * 0.1 +
+      creditUtilizationScore * 0.1 +
+      financialBehaviourScore * 0.05 +
+      incomeGrowthScore * 0.05
+  );
 
   const dtiLabel = deriveDtiLabel(dti);
   const focusMessage = buildFocusMessage(dti);
@@ -210,6 +272,7 @@ export const calculateWellnessMetrics = (
     expenses,
     netWorth: overview.netWorth,
     savingsAllocated,
+    savingsRate,
     essentialsPercent: budget.percentages.Essentials,
     lifestylePercent: budget.percentages.Lifestyle,
     savingsPercent: budget.percentages.Savings,
@@ -220,11 +283,20 @@ export const calculateWellnessMetrics = (
     targetAmounts: budget.targetAmounts,
     adjustments: budget.adjustments,
     liabilitiesByAccount: drivers,
+    emergencyFundMonths,
+    liquidAssets: roundToCents(liquidAssets),
+    stabilityRatio,
+    creditUtilisation,
+    incomeGrowthRatio,
     componentScores: {
-      dti: Math.round(dtiScore),
-      savings: Math.round(savingsScore),
-      budget: Math.round(budgetScore),
+      debtToIncome: Math.round(dtiScore),
+      savingsRate: Math.round(savingsRateScore),
+      emergencyFund: Math.round(emergencyFundScore),
       netWorth: Math.round(netWorthScore),
+      stability: Math.round(stabilityScore),
+      creditUtilisation: Math.round(creditUtilizationScore),
+      financialBehaviour: Math.round(financialBehaviourScore),
+      incomeGrowth: Math.round(incomeGrowthScore),
     },
     overview,
     budget,

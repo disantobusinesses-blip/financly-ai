@@ -34,6 +34,9 @@ const PlanGate: React.FC<PlanGateProps> = ({ allowBasic = false, feature, teaser
                 >
                   Upgrade to MyAiBank Pro
                 </button>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-white/60">
+                  Includes a 7-day free trial • card required
+                </p>
               </div>
             </div>
           </div>

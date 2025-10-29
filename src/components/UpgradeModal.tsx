@@ -77,6 +77,9 @@ const UpgradeModal: React.FC = () => {
           <SparklesIcon className="h-10 w-10 text-primary mx-auto mb-2" />
           <h2 className="text-3xl font-bold text-text-primary">Upgrade to MyAiBank Pro</h2>
           <p className="text-text-secondary mt-2">Unlock the full power of AI to supercharge your finances.</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-primary mt-2">
+            7-day free trial • credit card required • cancel anytime
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-8 mt-8">
@@ -110,6 +113,7 @@ const UpgradeModal: React.FC = () => {
               <Feature included={true}>AI Financial Watchdog</Feature>
               <Feature included={true}>AI Savings Planner</Feature>
               <Feature included={true}>AI Borrowing Power</Feature>
+              <Feature included={true}>7-day free trial before billing</Feature>
             </ul>
           </div>
         </div>
@@ -129,6 +133,10 @@ const UpgradeModal: React.FC = () => {
           >
             Maybe Later
           </button>
+          <p className="mt-4 text-center text-xs text-text-secondary">
+            After your 7-day trial ends, your selected plan renews automatically each month unless you cancel. Trial status is
+            visible on your dashboard header.
+          </p>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import FinancialWellnessCard from "./FinancialWellnessCard";
 import SpendingGuidance from "./SpendingGuidance";
 import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
+import ReferAFriendCard from "./ReferAFriendCard";
 import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
 import CashflowMini from "./CashflowMini";
 import SpendingByCategory from "./SpendingByCategory";
@@ -128,6 +129,11 @@ const Dashboard: React.FC = () => {
       description: "Spending availability vs. net worth and mortgages all in one glance.",
     },
     {
+      id: "refer-a-friend",
+      title: "Refer & save",
+      description: "Share your unique link to earn three months at 50% off once a friend upgrades.",
+    },
+    {
       id: "subscription-hunter",
       title: "Subscription Hunter",
       description: "AI groups repeat merchants and shows how often they bill you.",
@@ -198,6 +204,10 @@ const Dashboard: React.FC = () => {
     {
       key: "balance-summary",
       element: <BalanceSummary accounts={accounts} />,
+    },
+    {
+      key: "refer",
+      element: <ReferAFriendCard />,
     },
   ];
 

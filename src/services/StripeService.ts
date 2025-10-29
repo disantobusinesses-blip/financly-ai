@@ -9,7 +9,12 @@ export const createCheckoutSession = async (user: User): Promise<{ url: string }
   const response = await fetch(`/api/create-checkout-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: user.id, userEmail: user.email, region: user.region }),
+    body: JSON.stringify({
+      userId: user.id,
+      userEmail: user.email,
+      region: user.region,
+      referrerId: user.referredBy,
+    }),
   });
 
   if (!response.ok) {

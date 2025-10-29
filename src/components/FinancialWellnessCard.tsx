@@ -24,6 +24,18 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
   const savingsRatePct = metrics.monthlyIncome > 0 ? (metrics.savingsAllocated / metrics.monthlyIncome) * 100 : 0;
 
   const scoreColor = metrics.score >= 75 ? "text-emerald-400" : metrics.score >= 50 ? "text-amber-400" : "text-red-400";
+  const discretionaryWeekly =
+    metrics.dti < 0.5
+      ? Math.max(
+          0,
+          (metrics.monthlyIncome - metrics.monthlyDebtPayments - metrics.budget.totals.Essentials) / 4
+        )
+      : 0;
+  const extraSavings = Math.max(0, metrics.savingsAmount - metrics.targetAmounts.Savings);
+  const goalAccelerationWeeks =
+    extraSavings > 0 && metrics.savingsAmount > 0
+      ? Math.max(1, Math.round((extraSavings / Math.max(metrics.savingsAmount, 1)) * 4))
+      : 0;
 
   return (
     <section
@@ -56,6 +68,20 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
           <p className="mt-2 text-xs text-white/70">
             Ratio target: 36% or below. Excellent if under 25%. We detected {debtHighlights.length || "no"} major debt drivers.
           </p>
+          {metrics.dti < 0.5 && (
+            <div className="mt-3 space-y-2 rounded-2xl bg-white/5 p-3 text-xs text-white/80">
+              <p>
+                Weekly treat budget: <strong>{formatCurrency(discretionaryWeekly, region)}</strong>. Enjoy it on lifestyle boosts or
+                skill-building experiences.
+              </p>
+              {extraSavings > 0 && (
+                <p>
+                  You saved an additional <strong>{formatCurrency(extraSavings, region)}</strong> this month — move it into a goal
+                  account to finish about {goalAccelerationWeeks} week{goalAccelerationWeeks === 1 ? "" : "s"} faster.
+                </p>
+              )}
+            </div>
+          )}
           <ul className="mt-3 space-y-2 text-sm text-white/80">
             {debtHighlights.length > 0 ? (
               debtHighlights.map((item) => (
