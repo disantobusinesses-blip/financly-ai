@@ -1,34 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeEmailToNewsletter } from "../hooks/useNewsletterSignup";
 import { UserMembershipType } from "../types";
 
 const avatarOptions = ["🪙", "🚀", "🌱", "🎯", "🛟", "💡", "🧠", "💼"];
-
-const planOptions: Array<{
-  id: UserMembershipType;
-  title: string;
-  emoji: string;
-  copy: string;
-  headline: string;
-}> = [
-  {
-    id: "Basic",
-    title: "Free Basic Showcase",
-    emoji: "🎁",
-    headline: "Unlock a 7-day guided preview",
-    copy:
-      "Try MyAiBank with one full-featured showcase. We'll highlight the insights you could unlock by upgrading to Pro.",
-  },
-  {
-    id: "Pro",
-    title: "MyAiBank Pro",
-    emoji: "🌟",
-    headline: "Always-on AI co-pilot",
-    copy:
-      "Instant access to Subscription Hunter, AI alerts, savings coaching, and proactive cashflow forecasting.",
-  },
-];
 
 const SignupModal: React.FC = () => {
   const { isSignupModalOpen, setIsSignupModalOpen, signup, remainingBasicDays } = useAuth();
@@ -36,7 +11,7 @@ const SignupModal: React.FC = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [region, setRegion] = useState<"AU" | "US">("AU");
-  const [plan, setPlan] = useState<UserMembershipType>("Basic");
+  const plan: UserMembershipType = "Basic";
   const [avatar, setAvatar] = useState(avatarOptions[0]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,12 +21,6 @@ const SignupModal: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("ref") ?? "";
   });
-
-  const basicCountdown = useMemo(() => {
-    if (remainingBasicDays == null) return "7 days included";
-    if (remainingBasicDays === 0) return "Trial expired";
-    return `${remainingBasicDays} days left`;
-  }, [remainingBasicDays]);
 
   if (!isSignupModalOpen) return null;
 
@@ -192,41 +161,29 @@ const SignupModal: React.FC = () => {
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
-                  Pick a plan
+                  Your preview
                 </h3>
-                <span className="text-xs font-semibold text-primary">{basicCountdown}</span>
+                <span className="text-xs font-semibold text-primary">
+                  {remainingBasicDays == null
+                    ? "7-day showcase"
+                    : remainingBasicDays === 0
+                    ? "Showcase ended"
+                    : `${remainingBasicDays} days left`}
+                </span>
               </div>
               {referralCode && (
                 <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
                   A friend invited you — upgrade later to give them a reward.
                 </p>
               )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {planOptions.map((option) => {
-                  const isActive = plan === option.id;
-                  return (
-                    <button
-                      type="button"
-                      key={option.id}
-                      onClick={() => setPlan(option.id)}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        isActive
-                          ? "border-primary bg-primary/10 shadow-lg"
-                          : "border-gray-200 bg-white/60 hover:border-primary/40 hover:shadow"
-                      } dark:border-neutral-700 dark:bg-neutral-800`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-2xl">{option.emoji}</span>
-                        {isActive && <span className="rounded-full bg-primary px-2 text-xs font-semibold text-white">Selected</span>}
-                      </div>
-                      <h4 className="mt-3 text-lg font-semibold">{option.title}</h4>
-                      <p className="text-xs font-semibold uppercase tracking-widest text-primary/80">
-                        {option.headline}
-                      </p>
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-300">{option.copy}</p>
-                    </button>
-                  );
-                })}
+              <div className="rounded-2xl border border-gray-200 bg-white/70 p-4 text-sm text-gray-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-gray-200">
+                <p className="text-base font-semibold text-gray-900 dark:text-white">Free Basic Showcase</p>
+                <p className="mt-2">
+                  You&apos;ll preview every tool for 7 days with upgrade teasers. Financial Wellness, goals, and balance summary stay live so you can see how MyAiBank tracks your data.
+                </p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-primary">
+                  Upgrade anytime to unlock full Subscription Hunter, AI coaching, and referral rewards.
+                </p>
               </div>
             </section>
 
@@ -252,7 +209,7 @@ const SignupModal: React.FC = () => {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg font-semibold text-white shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/50"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating your account..." : plan === "Pro" ? "Join MyAiBank Pro" : "Start my free showcase"}
+              {isSubmitting ? "Creating your account..." : "Start my free showcase"}
             </button>
 
             <p className="text-xs text-gray-500 dark:text-gray-400">

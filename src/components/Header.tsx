@@ -4,8 +4,8 @@ import { initiateBankConnection } from "../services/BankingService";
 import logoMark from "../assets/myaibank-logo.svg";
 
 interface HeaderProps {
-  activeView: "dashboard" | "what-we-do";
-  onNavigate: (view: "dashboard" | "what-we-do") => void;
+  activeView: "dashboard" | "what-we-do" | "sandbox";
+  onNavigate: (view: "dashboard" | "what-we-do" | "sandbox") => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
@@ -98,15 +98,27 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate("dashboard")}
-            className={`text-sm font-semibold uppercase tracking-[0.3em] ${activeView === "dashboard" ? "text-white" : "text-white/60"}`}
+            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+              activeView === "dashboard" ? "text-white" : "text-white/60"
+            }`}
           >
             Home
           </button>
           <button
             onClick={() => onNavigate("what-we-do")}
-            className={`text-sm font-semibold uppercase tracking-[0.3em] ${activeView === "what-we-do" ? "text-white" : "text-white/60"}`}
+            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+              activeView === "what-we-do" ? "text-white" : "text-white/60"
+            }`}
           >
             What we do
+          </button>
+          <button
+            onClick={() => onNavigate("sandbox")}
+            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+              activeView === "sandbox" ? "text-white" : "text-white/60"
+            }`}
+          >
+            Sandbox
           </button>
         </div>
       )}
@@ -146,6 +158,17 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
                 }`}
               >
                 What we do
+              </button>
+              <button
+                onClick={() => {
+                  onNavigate("sandbox");
+                  setMenuOpen(false);
+                }}
+                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
+                  activeView === "sandbox" ? "bg-white/10 text-white" : ""
+                }`}
+              >
+                Sandbox preview
               </button>
             </nav>
             <div className="mt-8 space-y-3 text-xs text-white/60">

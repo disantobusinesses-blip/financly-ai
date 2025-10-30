@@ -19,7 +19,7 @@ const WelcomeScreen: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 px-4 text-white">
+    <div className="relative flex min-h-[100dvh] min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 px-4 text-white">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -left-10 top-24 h-64 w-64 rounded-full bg-primary/30 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-purple-500/30 blur-3xl" />
