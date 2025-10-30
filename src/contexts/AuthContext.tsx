@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { User, UserMembershipType } from "../types";
 import { registerReferral, syncReferralProfile } from "../services/ReferralService";
+import { isDevProUnlocked } from "../utils/devFlags";
 
 interface SignupPayload {
   email: string;
@@ -57,7 +58,11 @@ const normaliseUser = (raw: StoredUser): User => {
     email: raw.email,
     displayName: raw.displayName || raw.email.split("@")[0],
     avatar: raw.avatar || "💸",
-    membershipType: raw.membershipType === "Pro" ? "Pro" : "Basic",
+    membershipType: isDevProUnlocked
+      ? "Pro"
+      : raw.membershipType === "Pro"
+      ? "Pro"
+      : "Basic",
     region: raw.region || "AU",
     basicTrialEnds: raw.basicTrialEnds,
     proTrialEnds: raw.proTrialEnds,
@@ -155,7 +160,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const now = new Date();
-    const membershipType: UserMembershipType = payload.plan === "Pro" ? "Basic" : payload.plan;
+    const membershipType: UserMembershipType = isDevProUnlocked
+      ? "Pro"
+      : payload.plan === "Pro"
+      ? "Basic"
+      : payload.plan;
     const storedUser: StoredUser = {
       id: `user_${now.getTime()}`,
       email: payload.email,

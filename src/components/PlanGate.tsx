@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { isDevProUnlocked } from "../utils/devFlags";
 
 interface PlanGateProps {
   allowBasic?: boolean;
@@ -11,7 +12,7 @@ interface PlanGateProps {
 
 const PlanGate: React.FC<PlanGateProps> = ({ allowBasic = false, feature, teaser, children, dataTourId }) => {
   const { user, setIsUpgradeModalOpen } = useAuth();
-  const shouldGate = user?.membershipType === "Basic" && !allowBasic;
+  const shouldGate = user?.membershipType === "Basic" && !allowBasic && !isDevProUnlocked;
 
   return (
     <div className="relative h-full" data-tour-id={dataTourId}>
