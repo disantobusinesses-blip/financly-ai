@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
     {
       id: "alerts",
       title: "AI alerts",
-      description: "GPT-4 Turbo flags anomalies, opportunities, and reminders with built-in disclaimers.",
+      description: "GPT-4o flags anomalies, opportunities, and reminders with built-in disclaimers.",
     },
     {
       id: "transactions",

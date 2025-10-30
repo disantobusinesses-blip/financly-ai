@@ -122,7 +122,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           className="fixed inset-0 z-40 flex"
           onClick={() => setMenuOpen(false)}
         >
-          <div className="h-full w-64 bg-slate-950/95 p-6 shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
+          <div className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
               <p className="text-lg font-semibold text-white">{user.displayName} {user.avatar}</p>

@@ -295,7 +295,7 @@ async function analyzeFinancialData(cleanData) {
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo",
+    model: "gpt-4o",
     temperature: 0,
     top_p: 1,
     response_format: { type: "json_object" },
