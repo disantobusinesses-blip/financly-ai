@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@vercel/speed-insights/next": ["./packages/speed-insights/next"]
     }
   },
   "include": ["src", "vite-env.d.ts"],

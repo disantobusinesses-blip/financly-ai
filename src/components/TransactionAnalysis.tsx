@@ -1,16 +1,17 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Transaction } from '../types';
-import { getTransactionInsights, TransactionAnalysisResult } from '../services/GeminiService';
+import React, { useState, useMemo } from 'react';
+import { Transaction, User } from '../types';
+import { TransactionAnalysisResult } from '../services/AIService';
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
-import { useAuth } from '../contexts/AuthContext';
-import ProFeatureBlocker from './ProFeatureBlocker';
-import { useOnScreen } from '../hooks/useOnScreen';
 import { formatCurrency } from '../utils/currency';
 
 interface TransactionAnalysisProps {
   transactions: Transaction[];
+  analysis: TransactionAnalysisResult | null;
+  loading: boolean;
+  error?: string | null;
+  region: User["region"];
 }
 
 const LoadingSkeleton = () => (
@@ -22,14 +23,7 @@ const LoadingSkeleton = () => (
 );
 
 
-const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions }) => {
-    const { user } = useAuth();
-    const ref = useRef<HTMLDivElement>(null);
-    const isVisible = useOnScreen(ref);
-    const [analysis, setAnalysis] = useState<TransactionAnalysisResult | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [hasFetched, setHasFetched] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions, analysis, loading, error, region }) => {
 
     // State for filters and pagination
     const [searchTerm, setSearchTerm] = useState('');
@@ -80,31 +74,10 @@ const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions 
         setCurrentPage(1);
     };
 
-    useEffect(() => {
-        const fetchAnalysis = async () => {
-            if (isVisible && transactions.length > 0 && !hasFetched && user) {
-                setIsLoading(true);
-                setHasFetched(true);
-                setError(null);
-                try {
-                    const result = await getTransactionInsights(transactions, user.region);
-                    setAnalysis(result);
-                } catch (err) {
-                    console.error(err);
-                    setError("Could not load AI analysis. Please try again later.");
-                } finally {
-                    setIsLoading(false);
-                }
-            }
-        };
-        fetchAnalysis();
-    }, [isVisible, transactions, hasFetched, user]);
-
-
     return (
-        <div className="bg-content-bg p-6 rounded-xl border border-border-color" ref={ref}>
-            <h2 className="text-2xl font-bold text-text-primary mb-6">Transaction History</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="space-y-6">
+            <h2 className="mb-6 text-2xl font-bold text-text-primary">Transaction History</h2>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
                 <div className="lg:col-span-3">
                     {/* Filter controls */}
                     <div className="space-y-4 mb-6 p-4 bg-background rounded-lg border border-border-color">
@@ -184,70 +157,61 @@ const TransactionAnalysis: React.FC<TransactionAnalysisProps> = ({ transactions 
                     <div>
                         <div className="flex items-center mb-4">
                             <LightbulbIcon className="h-6 w-6 text-warning" />
-                            <h3 className="text-xl font-bold text-text-primary ml-3">Spending Insights</h3>
+                            <h3 className="ml-3 text-xl font-bold text-text-primary">Spending Insights</h3>
                         </div>
-                        {user?.membershipType === 'Pro' ? (
-                            <>
-                                {isLoading && <LoadingSkeleton />}
-                                {error && <p className="text-red-500">{error}</p>}
-                                {analysis && (
-                                    <ul className="space-y-3">
-                                        {analysis.insights.map((insight, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className="text-xl mr-3">{insight.emoji}</span>
-                                                <span className="text-text-secondary">{insight.text}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </>
-                        ) : (
-                            <ProFeatureBlocker featureTitle="AI Spending Insights" teaserText="Get AI-powered insights to improve your spending habits.">
-                                <LoadingSkeleton />
-                            </ProFeatureBlocker>
-                        )}
+                        <div className="space-y-3">
+                            {loading && <LoadingSkeleton />}
+                            {error && <p className="text-red-500">{error}</p>}
+                            {!loading && !error && analysis && analysis.insights.length > 0 && (
+                                <ul className="space-y-3">
+                                    {analysis.insights.map((insight, index) => (
+                                        <li key={index} className="flex items-start">
+                                            <span className="mr-3 text-xl">{insight.emoji}</span>
+                                            <span className="text-text-secondary">{insight.text}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {!loading && !error && analysis && analysis.insights.length === 0 && (
+                                <p className="text-sm text-text-secondary">No AI insights generated yet. Check back after new transactions sync.</p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Subscription Hunter Card */}
                     <div>
                         <div className="flex items-center mb-4">
                             <ScissorsIcon className="h-6 w-6 text-red-500" />
-                            <h3 className="text-xl font-bold text-text-primary ml-3">Subscription Hunter</h3>
+                            <h3 className="ml-3 text-xl font-bold text-text-primary">Subscription Hunter</h3>
                         </div>
-                        {user?.membershipType === 'Pro' ? (
-                             <>
-                                {isLoading && <LoadingSkeleton />}
-                                {analysis && analysis.subscriptions.length > 0 && (
-                                    <ul className="space-y-3">
-                                        {analysis.subscriptions.map((sub, index) => (
-                                            <li key={index} className="flex items-center justify-between p-3 bg-background rounded-md border border-border-color">
-                                                <div>
-                                                    <span className="text-text-secondary font-medium">{sub.name}</span>
-                                                    <span className="text-text-primary font-bold ml-4">{formatCurrency(Math.abs(sub.amount), user?.region)}</span>
-                                                </div>
-                                                <a
-                                                    href={sub.cancellationUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:text-red-700 transition-colors"
-                                                    aria-label={`Find out how to cancel ${sub.name}`}
-                                                >
-                                                    <TrashIcon className="h-4 w-4" />
-                                                    <span>Cancel</span>
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                                {analysis && analysis.subscriptions.length === 0 && !isLoading && (
-                                    <p className="text-text-secondary">No recurring subscriptions found in your recent transactions.</p>
-                                )}
-                            </>
-                        ) : (
-                             <ProFeatureBlocker featureTitle="Subscription Hunter" teaserText={!analysis && isLoading ? "Finding your recurring subscriptions..." : `AI found ${analysis?.subscriptions?.length || 0} recurring subscription${analysis?.subscriptions?.length !== 1 ? 's' : ''}.`}>
-                                <div className="space-y-3"><div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div><div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div></div>
-                             </ProFeatureBlocker>
-                        )}
+                        <div className="space-y-3">
+                            {loading && <LoadingSkeleton />}
+                            {!loading && analysis && analysis.subscriptions.length > 0 && (
+                                <ul className="space-y-3">
+                                    {analysis.subscriptions.map((sub, index) => (
+                                        <li key={index} className="flex items-center justify-between rounded-md border border-border-color bg-background p-3">
+                                            <div>
+                                                <span className="font-medium text-text-secondary">{sub.name}</span>
+                                                <span className="ml-4 font-bold text-text-primary">{formatCurrency(Math.abs(sub.amount), region)}</span>
+                                            </div>
+                                            <a
+                                                href={sub.cancellationUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-sm font-semibold text-red-500 transition-colors hover:text-red-700"
+                                                aria-label={`Find out how to cancel ${sub.name}`}
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                                <span>Cancel</span>
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {!loading && analysis && analysis.subscriptions.length === 0 && (
+                                <p className="text-text-secondary">No recurring subscriptions found in your recent transactions.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

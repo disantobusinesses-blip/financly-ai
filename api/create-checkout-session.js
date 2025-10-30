@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, userEmail, region } = req.body || {};
-    console.log("🔍 Request body:", { userId, userEmail, region });
+    const { userId, userEmail, region, referrerId } = req.body || {};
+    console.log("🔍 Request body:", { userId, userEmail, region, referrerId });
 
     console.log("🔍 ENV CHECK:", {
       STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY
@@ -46,6 +46,18 @@ export default async function handler(req, res) {
       mode: "subscription",
       client_reference_id: userId,
       customer_email: userEmail,
+      payment_method_collection: "always",
+      subscription_data: {
+        trial_period_days: 7,
+        metadata: {
+          userId,
+          referrerId: referrerId || "",
+        },
+      },
+      metadata: {
+        userId,
+        referrerId: referrerId || "",
+      },
       success_url: `${process.env.FRONTEND_URL}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}?payment=cancelled`,
     });

@@ -6,7 +6,7 @@ export default function Footer() {
         <span>⚡ Powered by Basiq</span>
         <span>💳 Secure payments with Stripe</span>
       </div>
-      <p className="mt-4">&copy; {new Date().getFullYear()} Financly</p>
+      <p className="mt-4">&copy; {new Date().getFullYear()} MyAiBank</p>
     </footer>
   );
 }

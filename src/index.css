@@ -1,3 +1,68 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background-color: #020617;
+}
+
+.tool-carousel {
+  display: flex;
+  gap: 1.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0 1.5rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 1rem;
+}
+
+.tool-carousel > * {
+  flex: 0 0 min(100%, 360px);
+  scroll-snap-align: center;
+  min-height: 100%;
+}
+
+@media (min-width: 768px) {
+  .tool-carousel {
+    gap: 2rem;
+  }
+  .tool-carousel > * {
+    flex-basis: 400px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tool-carousel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2.5rem;
+    overflow: visible;
+    padding: 0;
+  }
+  .tool-carousel > * {
+    flex: initial;
+    scroll-snap-align: initial;
+  }
+}
+
+@media (min-width: 1280px) {
+  .tool-carousel {
+    gap: 3rem;
+  }
+  .tool-carousel > * {
+    flex: initial;
+  }
+}
+
+.tour-highlight {
+  position: relative;
+  outline: 3px solid rgba(79, 70, 229, 0.6);
+  box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.15);
+  border-radius: 1.5rem;
+  transition: outline-offset 0.3s ease, box-shadow 0.3s ease;
+}

@@ -75,16 +75,19 @@ const UpgradeModal: React.FC = () => {
       >
         <div className="text-center">
           <SparklesIcon className="h-10 w-10 text-primary mx-auto mb-2" />
-          <h2 className="text-3xl font-bold text-text-primary">Upgrade to FinanclyPro</h2>
+          <h2 className="text-3xl font-bold text-text-primary">Upgrade to MyAiBank Pro</h2>
           <p className="text-text-secondary mt-2">Unlock the full power of AI to supercharge your finances.</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-primary mt-2">
+            7-day free trial • credit card required • cancel anytime
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-8 mt-8">
-          {/* Free Plan */}
+          {/* Basic Plan */}
           <div className="border border-border-color rounded-lg p-6">
-            <h3 className="text-xl font-bold text-text-primary">Free</h3>
-            <p className="text-text-secondary">Basic financial overview.</p>
-            <p className="text-3xl font-bold my-4 text-text-primary">$0 <span className="text-lg font-medium text-text-secondary">/ month</span></p>
+            <h3 className="text-xl font-bold text-text-primary">Basic Showcase</h3>
+            <p className="text-text-secondary">7-day preview with blurred AI insights.</p>
+            <p className="text-3xl font-bold my-4 text-text-primary">$0 <span className="text-lg font-medium text-text-secondary">/ 7 days</span></p>
             <ul className="space-y-3 text-sm">
               <Feature included={true}>Account & Transaction Sync</Feature>
               <Feature included={true}>Credit Score Monitoring</Feature>
@@ -99,7 +102,7 @@ const UpgradeModal: React.FC = () => {
           {/* Pro Plan */}
           <div className="border-2 border-primary rounded-lg p-6 relative bg-primary-light">
             <span className="absolute -top-3 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</span>
-            <h3 className="text-xl font-bold text-primary">FinanclyPro</h3>
+            <h3 className="text-xl font-bold text-primary">MyAiBank Pro</h3>
             <p className="text-primary/80 dark:text-primary">All features, powered by AI.</p>
             <p className="text-3xl font-bold my-4 text-primary">{priceString} <span className="text-lg font-medium text-text-secondary">/ month</span></p>
             <ul className="space-y-3 text-sm">
@@ -110,6 +113,7 @@ const UpgradeModal: React.FC = () => {
               <Feature included={true}>AI Financial Watchdog</Feature>
               <Feature included={true}>AI Savings Planner</Feature>
               <Feature included={true}>AI Borrowing Power</Feature>
+              <Feature included={true}>7-day free trial before billing</Feature>
             </ul>
           </div>
         </div>
@@ -129,6 +133,10 @@ const UpgradeModal: React.FC = () => {
           >
             Maybe Later
           </button>
+          <p className="mt-4 text-center text-xs text-text-secondary">
+            After your 7-day trial ends, your selected plan renews automatically each month unless you cancel. Trial status is
+            visible on your dashboard header.
+          </p>
         </div>
       </div>
     </div>

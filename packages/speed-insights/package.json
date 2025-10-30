@@ -1,0 +1,11 @@
+{
+  "name": "@vercel/speed-insights",
+  "version": "0.0.0-local",
+  "type": "module",
+  "exports": {
+    "./next": {
+      "import": "./next.js",
+      "types": "./next.d.ts"
+    }
+  }
+}
