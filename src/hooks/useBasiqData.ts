@@ -1,4 +1,4 @@
-// 🚀 Optimized useBasiqData.ts — fast + cached + parallel Gemini ready
+// 🚀 Optimized useBasiqData.ts — fast + cached + ready for AI insights
 import { useEffect, useRef, useState } from "react";
 import { Account, AccountType, Transaction } from "../types";
 

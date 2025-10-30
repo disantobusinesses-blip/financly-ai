@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getBorrowingPower, BorrowingPowerResult } from '../services/GeminiService';
+import { getBorrowingPower, BorrowingPowerResult } from '../services/AIService';
 import { LoanIcon, SparklesIcon, ArrowRightIcon } from './icon/Icon';
 import { useOnScreen } from '../hooks/useOnScreen';
 import { useAuth } from '../contexts/AuthContext';

@@ -1,73 +1,70 @@
-// src/hooks/useGeminiAI.ts
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Transaction, BalanceForecastResult, User } from "../types";
 import {
   getBalanceForecast,
   getFinancialAlerts,
   getTransactionInsights,
-} from "../services/GeminiService";
+  TransactionAnalysisResult,
+  FinancialAlertWithDisclaimer,
+} from "../services/AIService";
 
-/**
- * Combined AI data interface
- */
-interface GeminiAIData {
+interface AIInsightsState {
   forecast: BalanceForecastResult | null;
-  alerts: any[]; // FinancialAlert[]
-  insights: {
-    insights: { emoji: string; text: string }[];
-    subscriptions: { name: string; amount: number; cancellationUrl: string }[];
-    disclaimer?: string;
-  } | null;
+  alerts: FinancialAlertWithDisclaimer[];
+  insights: TransactionAnalysisResult | null;
   loading: boolean;
   error: string | null;
 }
 
-/**
- * Hook to fetch all Gemini AI data in parallel.
- * @param transactions User's transaction list.
- * @param totalBalance Current total balance across accounts
- * @param region 'AU' | 'US'
- */
-export function useGeminiAI(
+export function useAIInsights(
   transactions: Transaction[],
   totalBalance: number,
   region: User["region"]
-): GeminiAIData {
+): AIInsightsState {
   const [forecast, setForecast] = useState<BalanceForecastResult | null>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [insights, setInsights] = useState<any | null>(null);
+  const [alerts, setAlerts] = useState<FinancialAlertWithDisclaimer[]>([]);
+  const [insights, setInsights] = useState<TransactionAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!transactions || transactions.length === 0) return;
 
+    let cancelled = false;
+
     const fetchAIData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const potentialMonthlySavings = 0; // Adjust later when savings plan is implemented
+        const potentialMonthlySavings = 0;
 
-        // ⚡ Run all AI calls in parallel
         const [forecastRes, alertsRes, insightsRes] = await Promise.all([
           getBalanceForecast(transactions, totalBalance, potentialMonthlySavings, region),
           getFinancialAlerts(transactions, region),
           getTransactionInsights(transactions, region),
         ]);
 
+        if (cancelled) return;
+
         setForecast(forecastRes);
         setAlerts(alertsRes);
         setInsights(insightsRes);
       } catch (err: any) {
-        console.error("❌ Gemini parallel fetch error:", err);
-        setError(err.message || "Failed to load AI data");
+        if (cancelled) return;
+        console.error("❌ AI parallel fetch error:", err);
+        setError(err?.message || "Failed to load AI insights");
       } finally {
+        if (cancelled) return;
         setLoading(false);
       }
     };
 
     fetchAIData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [transactions, totalBalance, region]);
 
   return { forecast, alerts, insights, loading, error };

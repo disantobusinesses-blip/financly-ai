@@ -4,7 +4,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line
 import { Transaction, BalanceForecastResult, SavingsOptimizationPlan } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
-import { getBalanceForecast } from "../services/GeminiService";
+import { getBalanceForecast } from "../services/AIService";
 import { useOnScreen } from "../hooks/useOnScreen";
 import { formatCurrency } from "../utils/currency";
 import { SparklesIcon, TrendingUpIcon } from "./icon/Icon";

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Transaction } from '../types';
-import { getTransactionInsights, TransactionAnalysisResult } from '../services/GeminiService';
+import { getTransactionInsights, TransactionAnalysisResult } from '../services/AIService';
 import TransactionsList from './TransactionsList';
 import { LightbulbIcon, ScissorsIcon, TrashIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';

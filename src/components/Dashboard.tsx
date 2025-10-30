@@ -19,7 +19,7 @@ import TutorialButton from "./TutorialButton";
 import { ArrowRightIcon } from "./icon/Icon";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
-import { useGeminiAI } from "../hooks/useGeminiAI";
+import { useAIInsights } from "../hooks/useAIInsights";
 import { formatCurrency } from "../utils/currency";
 
 const TOUR_KEY = "myaibank_tour_seen";
@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
   const region = user?.region ?? "AU";
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
   const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
-  const aiData = useGeminiAI(transactions, totalBalance, region);
+  const aiData = useAIInsights(transactions, totalBalance, region);
 
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -147,7 +147,7 @@ const Dashboard: React.FC = () => {
     {
       id: "alerts",
       title: "AI alerts",
-      description: "Gemini flags anomalies, opportunities, and reminders. Always includes a disclaimer.",
+      description: "GPT-4 Turbo flags anomalies, opportunities, and reminders with built-in disclaimers.",
     },
     {
       id: "transactions",

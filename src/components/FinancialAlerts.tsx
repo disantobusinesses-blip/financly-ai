@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, FinancialAlert, FinancialAlertType } from '../types';
-import { getFinancialAlerts } from '../services/GeminiService';
+import { getFinancialAlerts } from '../services/AIService';
 import { WarningIcon, HandshakeIcon, TrophyIcon, SparklesIcon } from './icon/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnScreen } from '../hooks/useOnScreen';
@@ -63,7 +63,25 @@ const FinancialAlerts: React.FC<FinancialAlertsProps> = ({ transactions }) => {
         setHasFetched(true);
         try {
           const result = await getFinancialAlerts(transactions, user.region);
-          setAlerts(result);
+          const sanitised = result.map((alert) => {
+            const rawType = typeof alert.type === "string" ? alert.type : "Anomaly";
+            const validType: FinancialAlertType = [
+              "Anomaly",
+              "Opportunity",
+              "Milestone",
+            ].includes(rawType as FinancialAlertType)
+              ? (rawType as FinancialAlertType)
+              : "Anomaly";
+            return {
+              type: validType,
+              title: alert.title || "Check your activity",
+              description:
+                alert.description ||
+                "We couldn't generate extra detail for this alert.",
+              disclaimer: alert.disclaimer,
+            };
+          });
+          setAlerts(sanitised);
         } catch (err) {
           console.error(err);
         } finally {
