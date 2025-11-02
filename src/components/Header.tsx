@@ -89,10 +89,10 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col items-stretch gap-2 text-right sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <button
             onClick={() => onNavigate("dashboard")}
-            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "dashboard" ? "text-white" : "text-white/60"
             }`}
           >
@@ -100,7 +100,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </button>
           <button
             onClick={() => onNavigate("what-we-do")}
-            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "what-we-do" ? "text-white" : "text-white/60"
             }`}
           >
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </button>
           <button
             onClick={() => onNavigate("sandbox")}
-            className={`text-sm font-semibold uppercase tracking-[0.3em] ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "sandbox" ? "text-white" : "text-white/60"
             }`}
           >
@@ -118,10 +118,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       )}
 
       {menuOpen && user && (
-        <div
-          className="fixed inset-0 z-40 flex"
-          onClick={() => setMenuOpen(false)}
-        >
+        <div className="fixed inset-0 z-40 flex bg-black" onClick={() => setMenuOpen(false)}>
           <div className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
@@ -176,7 +173,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>
-          <div className="flex-1 bg-black/80" />
+          <div className="flex-1" />
         </div>
       )}
     </header>

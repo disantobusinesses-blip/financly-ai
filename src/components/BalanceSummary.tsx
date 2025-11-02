@@ -18,81 +18,49 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ accounts }) => {
 
   return (
     <section
-      className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10"
+      className="futuristic-card hover-zoom flex flex-col gap-7 rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-2xl backdrop-blur"
       data-tour-id="balance-summary"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Balance summary</p>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Spending & net worth</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-300">
-            Split view shows cash available today and the bigger picture across savings, mortgages, and debt.
-          </p>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary-light">Balance summary</p>
+        <h2 className="mt-2 text-2xl font-bold">Today&apos;s position</h2>
+        <p className="mt-2 text-sm text-white/70">Quickly scan what&apos;s spend-ready, what you owe, and the wealth you&apos;ve built.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl bg-black/40 px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Spending ready</p>
+          <p className="mt-2 text-3xl font-bold">{formatCurrency(summary.spendingAvailable, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+          <p className="mt-1 text-xs text-white/60">Cash you can access immediately.</p>
         </div>
-        <div className="grid gap-2 text-right text-sm text-slate-500 dark:text-slate-300">
-          <div>
-            <span className="font-semibold text-slate-700 dark:text-white">Assets:</span> {formatCurrency(summary.totalAssets, region)}
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700 dark:text-white">Liabilities:</span> -{formatCurrency(summary.totalLiabilities, region)}
-          </div>
+        <div className="rounded-2xl bg-black/40 px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Total net worth</p>
+          <p className="mt-2 text-3xl font-bold">{formatCurrency(summary.netWorth, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+          <p className="mt-1 text-xs text-white/60">Assets minus liabilities right now.</p>
+        </div>
+        <div className="rounded-2xl bg-black/40 px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Liabilities</p>
+          <p className="mt-2 text-3xl font-bold">{formatCurrency(summary.totalLiabilities, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+          <p className="mt-1 text-xs text-white/60">Credit, loans, and mortgages combined.</p>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
-        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Spending available</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-            {formatCurrency(summary.spendingAvailable, region)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-            Includes checking and savings accounts you can access immediately.
-          </p>
-        </div>
-        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Total net worth</p>
-          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-            {formatCurrency(summary.netWorth, region)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
-            Assets minus liabilities. Track progress every time new data syncs.
-          </p>
-        </div>
-        <div className="flex h-full flex-col gap-3 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Mortgage & debt</p>
-          <div className="flex-1">
-            {summary.mortgageAccounts.length > 0 ? (
-              <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-200">
-                {summary.mortgageAccounts.map((acc) => (
-                  <li
-                    key={acc.id}
-                    className="flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-sm font-medium dark:bg-slate-700/70"
-                  >
-                    <span>{acc.name}</span>
-                    <span>-{formatCurrency(Math.abs(acc.computedBalance), region)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500 dark:text-slate-300">No mortgage detected. We’ll flag one if it appears.</p>
+      {summary.mortgageAccounts.length > 0 && (
+        <div className="rounded-2xl bg-black/30 px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Mortgage focus</p>
+          <div className="mt-3 space-y-2 text-sm text-white/80">
+            {summary.mortgageAccounts.slice(0, 2).map((account) => (
+              <div key={account.id} className="flex items-center justify-between rounded-xl bg-white/10 px-3 py-2">
+                <span>{account.name}</span>
+                <span>-{formatCurrency(Math.abs(account.computedBalance), region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              </div>
+            ))}
+            {summary.mortgageAccounts.length > 2 && (
+              <p className="text-xs text-white/50">+{summary.mortgageAccounts.length - 2} more mortgages or loans</p>
             )}
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-300">
-        {summary.accounts.map((acc) => (
-          <div
-            key={acc.id}
-            className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800"
-          >
-            <span className="font-semibold text-slate-700 dark:text-white">{acc.name}</span>
-            <span className={acc.computedBalance < 0 ? "text-red-500" : "text-emerald-500"}>
-              {formatCurrency(acc.computedBalance, region)}
-            </span>
-          </div>
-        ))}
-      </div>
+      )}
     </section>
   );
 };

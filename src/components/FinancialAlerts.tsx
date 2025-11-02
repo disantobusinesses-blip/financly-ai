@@ -53,7 +53,7 @@ const FinancialAlerts: React.FC<FinancialAlertsProps> = ({ alerts, loading, erro
     <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
       <div className="mb-6 flex items-center">
         <SparklesIcon className="h-7 w-7 text-primary" />
-        <h2 className="ml-3 text-2xl font-bold text-slate-900 dark:text-white">AI Financial Watchdog</h2>
+        <h2 className="ml-3 text-2xl font-bold text-slate-900 dark:text-white">AI alerts</h2>
       </div>
 
       <div className="space-y-4">

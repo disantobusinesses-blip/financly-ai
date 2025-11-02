@@ -93,7 +93,7 @@ const UpgradeModal: React.FC = () => {
               <Feature included={true}>Credit Score Monitoring</Feature>
               <Feature included={true}>Manual Goal Setting</Feature>
               <Feature included={false}>AI Spending Insights</Feature>
-              <Feature included={false}>AI Financial Watchdog</Feature>
+              <Feature included={false}>AI alerts</Feature>
               <Feature included={false}>AI Savings Planner</Feature>
               <Feature included={false}>AI Borrowing Power</Feature>
             </ul>
@@ -110,7 +110,7 @@ const UpgradeModal: React.FC = () => {
               <Feature included={true}>Credit Score Monitoring</Feature>
               <Feature included={true}>Manual Goal Setting</Feature>
               <Feature included={true}>AI Spending Insights</Feature>
-              <Feature included={true}>AI Financial Watchdog</Feature>
+              <Feature included={true}>AI alerts</Feature>
               <Feature included={true}>AI Savings Planner</Feature>
               <Feature included={true}>AI Borrowing Power</Feature>
               <Feature included={true}>7-day free trial before billing</Feature>
