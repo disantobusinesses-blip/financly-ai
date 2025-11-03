@@ -231,7 +231,7 @@ const Dashboard: React.FC = () => {
       element: (
         <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
           <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <CashflowMini transactions={transactions} />
+            <CashflowMini transactions={transactions} region={region} />
           </div>
         </PlanGate>
       ),
@@ -259,12 +259,7 @@ const Dashboard: React.FC = () => {
           dataTourId="forecast"
         >
           <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingForecast
-              forecast={aiData.forecast}
-              loading={aiData.loading}
-              error={aiData.error}
-              region={region}
-            />
+            <SpendingForecast transactions={transactions} region={region} />
           </div>
         </PlanGate>
       ),
