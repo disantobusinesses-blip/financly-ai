@@ -6,8 +6,8 @@ export default function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border shadow-sm p-3">
-      <h2 className="text-sm font-medium text-gray-700 mb-2">{title}</h2>
+    <div className="futuristic-card rounded-2xl border border-white/10 p-5 text-white">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-primary-light">{title}</h2>
       {children}
     </div>
   );

@@ -4,13 +4,13 @@ import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import { calculateWellnessMetrics } from "../utils/metrics";
 
-interface FinancialWellnessCardProps {
+interface FinancialHealthCardProps {
   accounts: Account[];
   transactions: Transaction[];
   region: User["region"];
 }
 
-const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts, transactions, region }) => {
+const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, transactions, region }) => {
   const { user } = useAuth();
 
   const metrics = useMemo(() => calculateWellnessMetrics(accounts, transactions), [accounts, transactions]);
@@ -39,13 +39,13 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
 
   return (
     <section
-      className="rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-2xl"
-      data-tour-id="financial-wellness"
+      className="futuristic-card hover-zoom rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-2xl backdrop-blur"
+      data-tour-id="financial-health"
     >
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Financial Wellness</p>
-          <h2 className="text-3xl font-bold">{user?.displayName || "Your"} wellness score</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Financial Health</p>
+          <h2 className="text-3xl font-bold">{user?.displayName || "Your"} health score</h2>
           <p className="text-sm text-white/70">Score updates automatically whenever new transactions sync.</p>
         </div>
         <div className="text-right">
@@ -57,7 +57,7 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="rounded-2xl bg-white/10 p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-white/70">Debt-to-income</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-white/70">Debt-to-income focus</h3>
           <p className="mt-2 text-3xl font-bold text-white">
             {(metrics.dti * 100).toFixed(1)}%
             <span className="ml-2 text-sm font-semibold text-white/60">({metrics.dtiLabel})</span>
@@ -185,4 +185,4 @@ const FinancialWellnessCard: React.FC<FinancialWellnessCardProps> = ({ accounts,
   );
 };
 
-export default FinancialWellnessCard;
+export default FinancialHealthCard;

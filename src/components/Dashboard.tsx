@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import FinancialWellnessCard from "./FinancialWellnessCard";
+import FinancialHealthCard from "./FinancialHealthCard";
 import SpendingGuidance from "./SpendingGuidance";
 import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
 import ReferAFriendCard from "./ReferAFriendCard";
 import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
 import CashflowMini from "./CashflowMini";
-import SpendingByCategory from "./SpendingByCategory";
-import SpendingChart from "./SpendingChart";
 import UpcomingBills from "./UpcomingBills";
 import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
-import TransactionAnalysis from "./TransactionAnalysis";
 import SpendingForecast from "./SpendingForecast";
 import PlanGate from "./PlanGate";
 import DashboardTour, { TourStep } from "./DashboardTour";
@@ -115,13 +112,13 @@ const Dashboard: React.FC = () => {
 
   const tourSteps: TourStep[] = [
     {
-      id: "financial-wellness",
-      title: "Wellness score",
-      description: "See your debt-to-income ratio, savings split, and monthly snapshot updated in real time.",
+      id: "financial-health",
+      title: "Financial health",
+      description: "See your health score, debt-to-income guidance, and savings split updated in real time.",
     },
     {
       id: "spending-guidance",
-      title: "Budget guidance",
+      title: "How you should spend",
       description: "Understand how Essentials, Lifestyle, and Savings compare to the 50/30/20 rule.",
     },
     {
@@ -147,8 +144,8 @@ const Dashboard: React.FC = () => {
     },
     {
       id: "cashflow",
-      title: "Cashflow & categories",
-      description: "Monitor break-even trends and where your dollars go each month.",
+      title: "Cashflow",
+      description: "Monitor break-even trends and monthly savings projections.",
     },
     {
       id: "alerts",
@@ -157,8 +154,8 @@ const Dashboard: React.FC = () => {
     },
     {
       id: "transactions",
-      title: "Transaction analyst",
-      description: "Filter, search, and let AI summarise your history with upgrade-only extras.",
+      title: "Transactions",
+      description: "Filter and search your latest activity without leaving the dashboard.",
     },
   ];
 
@@ -198,10 +195,6 @@ const Dashboard: React.FC = () => {
   const alertsTeaser = aiData.alerts.length
     ? `${aiData.alerts.length} alerts queued. Upgrade to read them.`
     : "AI alerts ready once your bank sync completes.";
-  const analysisTeaser = aiData.insights?.insights.length
-    ? `${aiData.insights.insights.length} AI notes waiting inside transaction analysis.`
-    : "Upgrade to unlock AI commentary on every transaction.";
-
   const pinnedCards = [
     {
       key: "goal-planner",
@@ -230,23 +223,7 @@ const Dashboard: React.FC = () => {
       key: "cashflow",
       element: (
         <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <CashflowMini transactions={transactions} region={region} />
-          </div>
-        </PlanGate>
-      ),
-    },
-    {
-      key: "spending-category",
-      element: (
-        <PlanGate
-          feature="Spending by category"
-          teaser="Unlock AI to reveal your highest spending categories."
-          dataTourId="spending-category"
-        >
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingByCategory transactions={transactions} />
-          </div>
+          <CashflowMini transactions={transactions} region={region} />
         </PlanGate>
       ),
     },
@@ -258,23 +235,7 @@ const Dashboard: React.FC = () => {
           teaser="Upgrade to view AI cashflow scenarios."
           dataTourId="forecast"
         >
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingForecast transactions={transactions} region={region} />
-          </div>
-        </PlanGate>
-      ),
-    },
-    {
-      key: "spending-trends",
-      element: (
-        <PlanGate
-          feature="Category trends"
-          teaser="Unlock visual trends with AI commentary."
-          dataTourId="category-trends"
-        >
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <SpendingChart transactions={transactions} />
-          </div>
+          <SpendingForecast transactions={transactions} region={region} />
         </PlanGate>
       ),
     },
@@ -282,14 +243,12 @@ const Dashboard: React.FC = () => {
       key: "alerts",
       element: (
         <PlanGate feature="AI alerts" teaser={alertsTeaser} dataTourId="alerts">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <FinancialAlerts
-              alerts={aiData.alerts}
-              loading={aiData.loading}
-              error={aiData.error}
-              disclaimer={aiData.disclaimer}
-            />
-          </div>
+          <FinancialAlerts
+            alerts={aiData.alerts}
+            loading={aiData.loading}
+            error={aiData.error}
+            disclaimer={aiData.disclaimer}
+          />
         </PlanGate>
       ),
     },
@@ -297,9 +256,7 @@ const Dashboard: React.FC = () => {
       key: "upcoming-bills",
       element: (
         <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <UpcomingBills accounts={accounts} />
-          </div>
+          <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
     },
@@ -311,25 +268,7 @@ const Dashboard: React.FC = () => {
           teaser="Unlock full transaction history with AI filters."
           dataTourId="transactions"
         >
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <TransactionsList transactions={transactions} />
-          </div>
-        </PlanGate>
-      ),
-    },
-    {
-      key: "transaction-analysis",
-      element: (
-        <PlanGate feature="Transaction analysis" teaser={analysisTeaser} dataTourId="transaction-analysis">
-          <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10">
-            <TransactionAnalysis
-              transactions={transactions}
-              analysis={aiData.insights}
-              loading={aiData.loading}
-              error={aiData.error}
-              region={region}
-            />
-          </div>
+          <TransactionsList transactions={transactions} />
         </PlanGate>
       ),
     },
@@ -342,7 +281,7 @@ const Dashboard: React.FC = () => {
           {error}
         </div>
       )}
-      <FinancialWellnessCard accounts={accounts} transactions={transactions} region={region} />
+      <FinancialHealthCard accounts={accounts} transactions={transactions} region={region} />
       <SpendingGuidance transactions={transactions} region={region} />
 
       <div className="lg:hidden" data-tour-id="tool-carousel">
@@ -411,6 +350,30 @@ const Dashboard: React.FC = () => {
         onBack={() => setTourStep((s) => Math.max(s - 1, 0))}
         onClose={() => setTourOpen(false)}
       />
+
+      <div className="mt-16 space-y-4 text-center text-xs text-white/70">
+        <p className="text-sm text-white/80">
+          MyAiBank provides general financial insights using formulas only, and is not a licensed financial adviser.
+        </p>
+        <p>
+          Privacy Policy: We do not sell information or permanently hold your data—connections stay encrypted and tokenised.
+        </p>
+        <p>Terms of Use: Access is for educational budgeting guidance powered by deterministic formulas and AI summaries.</p>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-white">
+          <a href="/privacy" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
+            Privacy Policy
+          </a>
+          <span className="text-white/50">|</span>
+          <a href="/terms" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
+            Terms of Use
+          </a>
+          <span className="text-white/50">|</span>
+          <a href="mailto:info@myaibank.ai" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
+            Contact
+          </a>
+        </div>
+        <p className="text-sm text-white/60">© 2025 MyAiBank Pty Ltd – All rights reserved</p>
+      </div>
     </div>
   );
 };

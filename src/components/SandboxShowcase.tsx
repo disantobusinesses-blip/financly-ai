@@ -15,7 +15,7 @@ const SandboxShowcase: React.FC = () => {
               See how MyAiBank analyses your finances before you connect a bank.
             </h1>
             <p className="max-w-2xl text-base text-slate-200 md:text-lg">
-              This sandbox view mirrors the real dashboard layout. Explore how the Financial Wellness score, goals, subscription tracking, and AI insights appear once your transactions sync.
+              This sandbox view mirrors the real dashboard layout. Explore how the Financial Health score, goals, subscription tracking, and AI insights appear once your transactions sync.
             </p>
           </div>
           <div className="grid gap-3 text-sm text-slate-200">
@@ -26,7 +26,7 @@ const SandboxShowcase: React.FC = () => {
               • Upgrade cards tease real savings waiting behind the Basic preview.
             </div>
             <div className="rounded-2xl bg-white/10 px-4 py-3 font-semibold text-white shadow-inner">
-              • Goals, wellness tips, and cashflow adjust with your live data.
+              • Goals, health tips, and cashflow adjust with your live data.
             </div>
           </div>
         </div>
@@ -37,7 +37,7 @@ const SandboxShowcase: React.FC = () => {
           <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">Pinned insights</p>
-              <h2 className="text-2xl font-bold md:text-3xl">Financial Wellness & Goals</h2>
+              <h2 className="text-2xl font-bold md:text-3xl">Financial Health & Goals</h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-200">
                 The sandbox highlights a healthy score of 82/100, a debt-to-income ratio of 32%, and a balanced 50/30/20 split. Goal planner cards sit directly beneath with milestone celebrations.
               </p>
@@ -52,7 +52,7 @@ const SandboxShowcase: React.FC = () => {
             <section className="space-y-6 rounded-3xl bg-white/10 p-6 text-left shadow-lg backdrop-blur">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">Financial Wellness</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/80">Financial Health</p>
                   <h3 className="text-3xl font-black text-white">82 / 100</h3>
                   <p className="text-sm text-slate-200">Debt-to-income at 32%. Weekly surplus of A$460 recommended for goals.</p>
                 </div>

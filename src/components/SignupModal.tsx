@@ -179,7 +179,7 @@ const SignupModal: React.FC = () => {
               <div className="rounded-2xl border border-gray-200 bg-white/70 p-4 text-sm text-gray-600 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-gray-200">
                 <p className="text-base font-semibold text-gray-900 dark:text-white">Free Basic Showcase</p>
                 <p className="mt-2">
-                  You&apos;ll preview every tool for 7 days with upgrade teasers. Financial Wellness, goals, and balance summary stay live so you can see how MyAiBank tracks your data.
+                  You&apos;ll preview every tool for 7 days with upgrade teasers. Financial Health, goals, and balance summary stay live so you can see how MyAiBank tracks your data.
                 </p>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-primary">
                   Upgrade anytime to unlock full Subscription Hunter, AI coaching, and referral rewards.

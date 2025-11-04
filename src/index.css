@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  font-family: "Helovatica", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {
@@ -9,7 +14,86 @@ body,
 }
 
 body {
-  background-color: #020617;
+  margin: 0;
+  background: radial-gradient(circle at top left, rgba(52, 0, 138, 0.35), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.5), transparent 60%),
+    linear-gradient(135deg, #1f0051, #0a0f1c 55%, #000);
+  color: #f8fafc;
+  overflow-x: hidden;
+  position: relative;
+  isolation: isolate;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background: linear-gradient(135deg, rgba(52, 0, 138, 0.45), rgba(10, 8, 25, 0.75), rgba(0, 0, 0, 0.85));
+  animation: hueShift 18s ease-in-out infinite alternate;
+  filter: blur(40px);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120% 140% at 10% 20%, rgba(255, 255, 255, 0.08), transparent 60%),
+    radial-gradient(110% 150% at 90% 80%, rgba(79, 70, 229, 0.15), transparent 65%);
+  pointer-events: none;
+}
+
+.scroll-light {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), transparent 65%);
+  mix-blend-mode: screen;
+  opacity: 0.3;
+  transform: translateY(var(--scroll-offset, 0));
+  transition: transform 0.6s ease;
+}
+
+.floating-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 120px 120px;
+  animation: particleDrift 30s linear infinite;
+  z-index: -1;
+}
+
+.hover-zoom {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-zoom:hover {
+  transform: scale(1.07);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.45);
+}
+
+.futuristic-card {
+  background: linear-gradient(160deg, rgba(31, 0, 81, 0.8), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.45);
+}
+
+.glass-panel {
+  backdrop-filter: blur(18px);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.tool-carousel {
+  display: flex;
+  gap: 1.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0 1.5rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 1rem;
 }
 
 .tool-carousel {
@@ -65,4 +149,22 @@ body {
   box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.15);
   border-radius: 1.5rem;
   transition: outline-offset 0.3s ease, box-shadow 0.3s ease;
+}
+
+@keyframes hueShift {
+  0% {
+    filter: hue-rotate(0deg) blur(40px);
+  }
+  100% {
+    filter: hue-rotate(25deg) blur(40px);
+  }
+}
+
+@keyframes particleDrift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-120px, -120px, 0);
+  }
 }

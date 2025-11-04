@@ -21,25 +21,25 @@ const SpendingGuidance: React.FC<SpendingGuidanceProps> = ({ transactions, regio
 
   return (
     <section
-      className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10"
+      className="futuristic-card hover-zoom rounded-3xl p-6 text-white"
       data-tour-id="spending-guidance"
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">How you should spend</p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Align next month with the 50/30/20 rule</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary-light">How you should spend</p>
+          <h2 className="mt-2 text-2xl font-bold">Align next month with the 50/30/20 rule</h2>
+          <p className="mt-1 text-sm text-white/70">
             We review the last 30 days of transactions, classify each keyword, and compare the ideal budget split to your
             actual habits.
           </p>
         </div>
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600 shadow-inner dark:bg-slate-800 dark:text-slate-200">
+        <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-medium text-white/80 shadow-inner">
           Total monthly income: {formatCurrency(summary.income, region)}
         </div>
       </div>
 
       {!hasIncome ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+        <p className="mt-6 rounded-2xl border border-dashed border-white/20 bg-white/5 px-4 py-6 text-center text-sm text-white/70">
           Connect your income streams to see how your budget lines up with the 50/30/20 recommendation.
         </p>
       ) : (
@@ -55,38 +55,38 @@ const SpendingGuidance: React.FC<SpendingGuidanceProps> = ({ transactions, regio
             const belowTarget = deltaPercent < -0.5;
 
             return (
-              <div key={category} className="flex flex-col gap-4 rounded-2xl bg-slate-50 p-5 shadow-inner dark:bg-slate-800/60">
+              <div key={category} className="flex flex-col gap-4 rounded-2xl bg-white/5 p-5 shadow-inner">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{category}</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
-                      {formatCurrency(actualAmount, region)} <span className="text-sm text-slate-500">({actualPercent.toFixed(1)}%)</span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{category}</p>
+                    <p className="mt-1 text-lg font-semibold">
+                      {formatCurrency(actualAmount, region)} <span className="text-sm text-white/60">({actualPercent.toFixed(1)}%)</span>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{CATEGORY_MESSAGES[category]}</p>
+                    <p className="mt-1 text-xs text-white/60">{CATEGORY_MESSAGES[category]}</p>
                   </div>
-                  <div className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 shadow dark:bg-slate-900">
+                  <div className="rounded-full bg-black/40 px-3 py-1 text-xs font-medium text-white/70 shadow">
                     Target {targetPercent}%
                   </div>
                 </div>
                 <div>
-                  <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className="h-2 rounded-full bg-white/10">
                     <div
                       className={`h-full rounded-full ${
                         category === "Savings"
                           ? "bg-emerald-400"
                           : category === "Lifestyle"
-                          ? "bg-indigo-400"
-                          : "bg-primary"
+                          ? "bg-secondary"
+                          : "bg-primary-light"
                       }`}
                       style={{ width: `${Math.min(100, Math.max(0, actualPercent))}%` }}
                     />
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-300">
+                  <div className="mt-2 flex items-center justify-between text-xs text-white/60">
                     <span>Target {formatCurrency(targetAmount, region)}</span>
                     <span>{deltaPercent >= 0 ? "+" : ""}{deltaPercent.toFixed(1)}%</span>
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
+                <p className="text-sm text-white/70">
                   {aboveTarget &&
                     `Trim about ${formatCurrency(Math.abs(deltaAmount), region)} from ${category.toLowerCase()} to hit the 50/30/20 goal.`}
                   {belowTarget &&

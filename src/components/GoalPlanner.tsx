@@ -150,24 +150,24 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
 
   return (
     <section
-      className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10"
+      className="futuristic-card hover-zoom rounded-3xl p-6 text-white"
       data-tour-id="goal-planner"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Savings milestones</p>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Goal planner</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-300">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary-light">Savings milestones</p>
+          <h2 className="text-2xl font-bold">Goal planner <span className="text-sm font-semibold uppercase tracking-[0.3em] text-primary/70">(Beta)</span></h2>
+          <p className="text-sm text-white/70">
             Create your goal with your bank first, then let MyAiBank track the progress based on live balances.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-200">
+          <label className="flex items-center gap-2 text-sm font-semibold text-white/80">
             Sort by
             <select
               value={sortMode}
               onChange={(event) => setSortMode(event.target.value as "progress" | "time")}
-              className="rounded-xl border border-slate-200 px-3 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+              className="rounded-xl border border-white/30 bg-white/10 px-3 py-1 text-sm text-white focus:border-white focus:outline-none"
             >
               <option value="progress">Progress</option>
               <option value="time">Target date</option>
@@ -183,19 +183,19 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
       </div>
 
       {isAdding && (
-        <form onSubmit={handleAddGoal} className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800">
+        <form onSubmit={handleAddGoal} className="mt-6 grid gap-4 rounded-2xl bg-white/5 p-4 text-sm text-white">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2">
-              <span className="font-semibold">Goal name</span>
+              <span className="font-semibold text-white/80">Goal name</span>
               <input
                 name="name"
                 required
                 placeholder="New Car"
-                className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-white placeholder:text-white/60 focus:border-white focus:outline-none"
               />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="font-semibold">Target amount</span>
+              <span className="font-semibold text-white/80">Target amount</span>
               <input
                 name="target"
                 type="number"
@@ -203,22 +203,22 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
                 min="100"
                 step="50"
                 placeholder="15000"
-                className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-white placeholder:text-white/60 focus:border-white focus:outline-none"
               />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="font-semibold">Target date (optional)</span>
+              <span className="font-semibold text-white/80">Target date (optional)</span>
               <input
                 name="targetDate"
                 type="date"
-                className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-white placeholder:text-white/60 focus:border-white focus:outline-none"
               />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="font-semibold">Goal emoji</span>
+              <span className="font-semibold text-white/80">Goal emoji</span>
               <select
                 name="emoji"
-                className="rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-white placeholder:text-white/60 focus:border-white focus:outline-none"
               >
                 {goalEmojis.map((emoji) => (
                   <option key={emoji} value={emoji}>
@@ -241,7 +241,7 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {sortedGoals.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-slate-500 dark:border-slate-700 dark:text-slate-300">
+          <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center text-white/70">
             Add your first goal to start tracking progress. Every contribution gets a shout-out.
           </div>
         ) : (
@@ -255,37 +255,37 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
               ? new Date(Date.now() + estimatedMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
               : "Set a savings rhythm to estimate";
             return (
-              <div key={goal.id} className="flex flex-col gap-4 rounded-2xl bg-slate-50 p-5 dark:bg-slate-800">
+              <div key={goal.id} className="flex flex-col gap-4 rounded-2xl bg-white/5 p-5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-2xl">{goal.emoji}</p>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{goal.name}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                    <h3 className="text-lg font-semibold text-white">{goal.name}</h3>
+                    <p className="text-sm text-white/70">
                       Target: {formatCurrency(goal.targetAmount, user?.region)}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleDelete(goal.id)}
-                      className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500 hover:bg-red-500/20"
+                      className="rounded-lg bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/30"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="h-3 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className="h-3 rounded-full bg-white/10">
                     <div
                       className="h-full rounded-full bg-primary"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-200">
+                  <div className="flex items-center justify-between text-sm text-white/70">
                     <span>{progress.toFixed(0)}% complete</span>
                     <span>{formatCurrency(goal.currentAmount, user?.region)} saved</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-300">
+                <div className="flex items-center justify-between text-xs text-white/60">
                   <span>Estimated completion</span>
                   <span>{estimatedCompletion}</span>
                 </div>
@@ -307,7 +307,7 @@ const GoalPlanner: React.FC<GoalPlannerProps> = ({ accounts, transactions }) => 
                     min="1"
                     step="1"
                     placeholder="Add contribution"
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                    className="flex-1 rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/60 focus:border-white focus:outline-none"
                   />
                   <button
                     type="submit"

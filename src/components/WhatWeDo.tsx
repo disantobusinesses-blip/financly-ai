@@ -48,14 +48,14 @@ const WhatWeDo: React.FC = () => {
 
       <section
         className="grid gap-6 rounded-3xl bg-slate-50 p-6 shadow-inner ring-1 ring-slate-200/80 dark:bg-slate-950/60 dark:ring-white/10 md:grid-cols-2"
-        id="financial-wellness"
+        id="financial-health"
       >
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">1. Read your money story instantly</h2>
           <p>
             We start with your real accounts. MyAiBank connects through Basiq&apos;s regulated open-banking platform so you can
             securely pull balances, mortgages, credit cards, and transaction history into a single canvas. Our
-            <a href="#financial-wellness" className="font-semibold text-primary"> Financial Wellness score</a> takes that live
+            <a href="#financial-health" className="font-semibold text-primary"> Financial Health score</a> takes that live
             data and transforms it into a 0-100 health indicator that updates as soon as new activity arrives. We factor your
             debt-to-income ratio, spending stability, emergency buffer, and cashflow resilience, highlighting what&apos;s helping
             or hurting your score in plain English.
@@ -79,7 +79,7 @@ const WhatWeDo: React.FC = () => {
             />
             <div className="relative h-full rounded-3xl bg-white p-6 text-sm text-slate-600 shadow-2xl ring-1 ring-primary/10">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">Preview</p>
-              <h3 className="mt-2 text-xl font-semibold text-slate-900">Financial Wellness</h3>
+              <h3 className="mt-2 text-xl font-semibold text-slate-900">Financial Health</h3>
               <div className="mt-6 space-y-2">
                 <p className="text-5xl font-black text-slate-900">
                   82<span className="text-lg text-primary/80">/100</span>
@@ -108,7 +108,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="goal-planner">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">2. Turn ambition into progress</h2>
         <p>
-          Inside the Goal Planner (you&apos;ll find it just beneath wellness on the dashboard) you can create {personalisedWord} savings
+          Inside the Goal Planner (you&apos;ll find it just beneath Financial Health on the dashboard) you can create {personalisedWord} savings
           missions like “New Car 🚗” or “Europe Trip ✈️”. Add a target amount, optional date, and we&apos;ll estimate a finish line
           using your current savings rate. Every contribution triggers a cheerful “Great stuff!” toast using your name, and
         milestones at 25%, 50%, and 75% unlock GPT-4o encouragement. We even suggest tips such as trimming unused
@@ -155,7 +155,7 @@ const WhatWeDo: React.FC = () => {
       <section className="space-y-4" id="onboarding">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">5. Guided onboarding and education</h2>
         <p>
-          New members choose between a seven-day Basic showcase or MyAiBank Pro. Basic keeps Financial Wellness, Goals, and
+          New members choose between a seven-day Basic showcase or MyAiBank Pro. Basic keeps Financial Health, Goals, and
           Balance Summary visible while softly blurring AI-heavy panels to demonstrate the value of upgrading. Our playful
           emoji-filled signup modal helps you pick an avatar, region, and plan while explaining that the email you enter becomes
           your Basiq user ID.
