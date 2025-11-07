@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
 import { BUDGET_CATEGORIES, summariseMonthlyBudget } from "../utils/spending";
+import MonthlyDelta from "./MonthlyDelta";
 
 interface SpendingGuidanceProps {
   transactions: Transaction[];
@@ -34,7 +35,17 @@ const SpendingGuidance: React.FC<SpendingGuidanceProps> = ({ transactions, regio
           </p>
         </div>
         <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-medium text-white/80 shadow-inner">
-          Total monthly income: {formatCurrency(summary.income, region)}
+          <div className="flex items-center justify-between gap-4">
+            <span>Total monthly income</span>
+            <MonthlyDelta
+              currentValue={summary.income}
+              previousValue={summary.previousIncome}
+              formatter={(value) => formatCurrency(value, region)}
+              valueClassName="text-base font-semibold text-white"
+              deltaClassName="text-[0.65rem]"
+              className="items-end text-right"
+            />
+          </div>
         </div>
       </div>
 
@@ -54,14 +65,22 @@ const SpendingGuidance: React.FC<SpendingGuidanceProps> = ({ transactions, regio
             const aboveTarget = deltaPercent > 0.5;
             const belowTarget = deltaPercent < -0.5;
 
+            const previousAmount = summary.previousTotals[category];
+
             return (
               <div key={category} className="flex flex-col gap-4 rounded-2xl bg-white/5 p-5 shadow-inner">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">{category}</p>
-                    <p className="mt-1 text-lg font-semibold">
-                      {formatCurrency(actualAmount, region)} <span className="text-sm text-white/60">({actualPercent.toFixed(1)}%)</span>
-                    </p>
+                    <MonthlyDelta
+                      currentValue={actualAmount}
+                      previousValue={previousAmount}
+                      formatter={(value) => formatCurrency(value, region)}
+                      valueClassName="text-lg font-semibold text-white"
+                      deltaClassName="text-[0.65rem]"
+                      className="mt-1 items-start text-left"
+                    />
+                    <p className="text-xs text-white/60">Actual share {actualPercent.toFixed(1)}% • Last month {formatCurrency(previousAmount, region)}</p>
                     <p className="mt-1 text-xs text-white/60">{CATEGORY_MESSAGES[category]}</p>
                   </div>
                   <div className="rounded-full bg-black/40 px-3 py-1 text-xs font-medium text-white/70 shadow">

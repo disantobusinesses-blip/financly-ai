@@ -3,6 +3,7 @@ import { Account, Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import { calculateWellnessMetrics } from "../utils/metrics";
+import MonthlyDelta from "./MonthlyDelta";
 
 interface FinancialHealthCardProps {
   accounts: Account[];
@@ -101,9 +102,17 @@ const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, tra
           <div className="mt-4 space-y-4 text-sm">
             <div>
               <p className="font-semibold text-white">Spend 50% on essentials</p>
+              <MonthlyDelta
+                currentValue={metrics.essentialsAmount}
+                previousValue={metrics.budget.previousTotals.Essentials}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="mt-2 items-start text-left"
+              />
               <div className="mt-1 flex items-center justify-between text-xs text-white/70">
                 <span>Actual: {metrics.essentialsPercent.toFixed(1)}%</span>
-                <span>{formatCurrency(metrics.essentialsAmount, region)}</span>
+                <span>Target {metrics.targetPercentages.Essentials}%</span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-white/10">
                 <div
@@ -112,15 +121,23 @@ const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, tra
                 />
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-white/60">
-                <span>Target {metrics.targetPercentages.Essentials}%</span>
-                <span>{formatCurrency(metrics.targetAmounts.Essentials, region)}</span>
+                <span>Target {formatCurrency(metrics.targetAmounts.Essentials, region)}</span>
+                <span>Last month {formatCurrency(metrics.budget.previousTotals.Essentials, region)}</span>
               </div>
             </div>
             <div>
               <p className="font-semibold text-white">Enjoy 30% on lifestyle</p>
+              <MonthlyDelta
+                currentValue={metrics.lifestyleAmount}
+                previousValue={metrics.budget.previousTotals.Lifestyle}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="mt-2 items-start text-left"
+              />
               <div className="mt-1 flex items-center justify-between text-xs text-white/70">
                 <span>Actual: {metrics.lifestylePercent.toFixed(1)}%</span>
-                <span>{formatCurrency(metrics.lifestyleAmount, region)}</span>
+                <span>Target {metrics.targetPercentages.Lifestyle}%</span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-white/10">
                 <div
@@ -129,15 +146,23 @@ const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, tra
                 />
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-white/60">
-                <span>Target {metrics.targetPercentages.Lifestyle}%</span>
-                <span>{formatCurrency(metrics.targetAmounts.Lifestyle, region)}</span>
+                <span>Target {formatCurrency(metrics.targetAmounts.Lifestyle, region)}</span>
+                <span>Last month {formatCurrency(metrics.budget.previousTotals.Lifestyle, region)}</span>
               </div>
             </div>
             <div>
               <p className="font-semibold text-white">Put 20% into savings</p>
+              <MonthlyDelta
+                currentValue={metrics.savingsAmount}
+                previousValue={metrics.budget.previousTotals.Savings}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="mt-2 items-start text-left"
+              />
               <div className="mt-1 flex items-center justify-between text-xs text-white/70">
                 <span>Actual: {metrics.savingsPercent.toFixed(1)}%</span>
-                <span>{formatCurrency(metrics.savingsAmount, region)}</span>
+                <span>Target {metrics.targetPercentages.Savings}%</span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-white/10">
                 <div
@@ -146,8 +171,8 @@ const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, tra
                 />
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-white/60">
-                <span>Target {metrics.targetPercentages.Savings}%</span>
-                <span>{formatCurrency(metrics.targetAmounts.Savings, region)}</span>
+                <span>Target {formatCurrency(metrics.targetAmounts.Savings, region)}</span>
+                <span>Last month {formatCurrency(metrics.budget.previousTotals.Savings, region)}</span>
               </div>
             </div>
             <p className="text-xs text-white/60">
@@ -161,19 +186,47 @@ const FinancialHealthCard: React.FC<FinancialHealthCardProps> = ({ accounts, tra
           <ul className="mt-4 space-y-3 text-sm text-white">
             <li className="flex items-center justify-between">
               <span>Income (30 days)</span>
-              <strong>{formatCurrency(metrics.monthlyIncome, region)}</strong>
+              <MonthlyDelta
+                currentValue={metrics.monthlyIncome}
+                previousValue={metrics.budget.previousIncome}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="items-end text-right"
+              />
             </li>
             <li className="flex items-center justify-between text-white/80">
               <span>Spending</span>
-              <span>{formatCurrency(metrics.expenses, region)}</span>
+              <MonthlyDelta
+                currentValue={metrics.expenses}
+                previousValue={metrics.budget.previousExpenses}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="items-end text-right"
+              />
             </li>
             <li className="flex items-center justify-between text-white/80">
               <span>Net worth</span>
-              <span>{formatCurrency(metrics.netWorth, region)}</span>
+              <MonthlyDelta
+                currentValue={metrics.netWorth}
+                previousValue={metrics.previousNetWorth}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="items-end text-right"
+              />
             </li>
             <li className="flex items-center justify-between text-white/80">
               <span>Saved this month</span>
-              <span>{formatCurrency(metrics.savingsAllocated, region)}</span>
+              <MonthlyDelta
+                currentValue={metrics.savingsAllocated}
+                previousValue={metrics.budget.previousSavingsAllocated}
+                formatter={(value) => formatCurrency(value, region)}
+                valueClassName="text-lg font-semibold text-white"
+                deltaClassName="text-[0.65rem]"
+                className="items-end text-right"
+              />
             </li>
           </ul>
           <p className="mt-4 text-xs text-white/60">

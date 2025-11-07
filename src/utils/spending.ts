@@ -2,7 +2,7 @@ import { Transaction } from "../types";
 
 export type BudgetCategory = "Essentials" | "Lifestyle" | "Savings";
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+export const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 const ESSENTIAL_KEYWORDS = [
   "rent",
@@ -161,7 +161,7 @@ const matchKeyword = (descriptor: string, keywords: string[]) =>
 
 export const BUDGET_CATEGORIES: BudgetCategory[] = ["Essentials", "Lifestyle", "Savings"];
 
-export interface BudgetSummary {
+interface BaseBudgetSummary {
   income: number;
   totals: Record<BudgetCategory, number>;
   percentages: Record<BudgetCategory, number>;
@@ -172,6 +172,14 @@ export interface BudgetSummary {
   expenses: number;
   totalOutflow: number;
   windowTransactions: Transaction[];
+}
+
+export interface BudgetSummary extends BaseBudgetSummary {
+  previousIncome: number;
+  previousTotals: Record<BudgetCategory, number>;
+  previousSavingsAllocated: number;
+  previousExpenses: number;
+  previousTotalOutflow: number;
 }
 
 export const classifyTransaction = (transaction: Transaction): BudgetCategory | null => {
@@ -204,9 +212,13 @@ export const classifyTransaction = (transaction: Transaction): BudgetCategory | 
   return "Essentials";
 };
 
-export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSummary => {
-  const startTime = Date.now() - THIRTY_DAYS_MS;
-
+const summariseBudgetRange = (
+  transactions: Transaction[],
+  rangeStart: number,
+  rangeEnd: number
+): BaseBudgetSummary => {
+  const startTime = Math.min(rangeStart, rangeEnd);
+  const endTime = Math.max(rangeStart, rangeEnd);
   let income = 0;
   const totals: Record<BudgetCategory, number> = {
     Essentials: 0,
@@ -217,7 +229,7 @@ export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSumma
 
   transactions.forEach((transaction) => {
     const txTime = new Date(transaction.date).getTime();
-    if (Number.isNaN(txTime) || txTime < startTime) {
+    if (Number.isNaN(txTime) || txTime < startTime || txTime >= endTime) {
       return;
     }
 
@@ -271,4 +283,21 @@ export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSumma
     windowTransactions,
   };
 };
+
+export const summariseMonthlyBudget = (transactions: Transaction[]): BudgetSummary => {
+  const endTime = Date.now();
+  const current = summariseBudgetRange(transactions, endTime - THIRTY_DAYS_MS, endTime);
+  const previous = summariseBudgetRange(transactions, endTime - 2 * THIRTY_DAYS_MS, endTime - THIRTY_DAYS_MS);
+
+  return {
+    ...current,
+    previousIncome: previous.income,
+    previousTotals: previous.totals,
+    previousSavingsAllocated: previous.savingsAllocated,
+    previousExpenses: previous.expenses,
+    previousTotalOutflow: previous.totalOutflow,
+  };
+};
+
+export { summariseBudgetRange };
 

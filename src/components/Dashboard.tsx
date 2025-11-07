@@ -202,7 +202,7 @@ const Dashboard: React.FC = () => {
     },
     {
       key: "balance-summary",
-      element: <BalanceSummary accounts={accounts} />,
+      element: <BalanceSummary accounts={accounts} transactions={transactions} region={region} />,
     },
     {
       key: "refer",

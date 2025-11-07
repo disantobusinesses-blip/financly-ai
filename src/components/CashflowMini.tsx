@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import Card from "./Card";
 import { Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
+import MonthlyDelta from "./MonthlyDelta";
 
 interface CashflowMiniProps {
   transactions: Transaction[];
@@ -44,17 +45,30 @@ export default function CashflowMini({ transactions, region }: CashflowMiniProps
   return (
     <Card title="Cashflow (Monthly)">
       <ul className="space-y-3">
-        {monthlyNet.map(({ label, net }) => (
-          <li
-            key={label}
-            className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm text-white/80 backdrop-blur"
-          >
-            <span className="font-semibold uppercase tracking-[0.2em] text-white/60">{label}</span>
-            <span className={net >= 0 ? "text-emerald-300" : "text-rose-300"}>
-              {formatCurrency(net, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </span>
-          </li>
-        ))}
+        {monthlyNet.map(({ label, net }, index) => {
+          const previous = index > 0 ? monthlyNet[index - 1]?.net ?? null : null;
+          return (
+            <li
+              key={label}
+              className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm text-white/80 backdrop-blur"
+            >
+              <span className="font-semibold uppercase tracking-[0.2em] text-white/60">{label}</span>
+              <MonthlyDelta
+                currentValue={net}
+                previousValue={previous}
+                formatter={(value) =>
+                  formatCurrency(value, region, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })
+                }
+                valueClassName={`text-base font-semibold ${net >= 0 ? "text-emerald-300" : "text-rose-300"}`}
+                deltaClassName="text-[0.65rem]"
+                className="items-end text-right"
+              />
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );

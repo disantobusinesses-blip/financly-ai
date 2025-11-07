@@ -164,6 +164,7 @@ export interface WellnessMetrics {
   stabilityRatio: number;
   creditUtilisation: number;
   incomeGrowthRatio: number;
+  previousNetWorth: number;
   componentScores: {
     debtToIncome: number;
     savingsRate: number;
@@ -209,6 +210,10 @@ export const calculateWellnessMetrics = (
 
   const emergencyFundMonths = expenses > 0 ? liquidAssets / expenses : 6;
   const emergencyFundScore = clamp((Math.min(emergencyFundMonths, 6) / 6) * 100);
+
+  const currentNetChange = monthlyIncome - budget.totalOutflow;
+
+  const previousNetWorth = roundToCents(overview.netWorth - currentNetChange);
 
   const netWorthScore = overview.totalAssets > 0
     ? clamp(((overview.netWorth / Math.max(overview.totalAssets, 1)) + 1) * 50)
@@ -288,6 +293,7 @@ export const calculateWellnessMetrics = (
     stabilityRatio,
     creditUtilisation,
     incomeGrowthRatio,
+    previousNetWorth,
     componentScores: {
       debtToIncome: Math.round(dtiScore),
       savingsRate: Math.round(savingsRateScore),

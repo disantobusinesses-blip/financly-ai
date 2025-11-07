@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
 import Card from "./Card";
+import MonthlyDelta from "./MonthlyDelta";
 
 interface SpendingForecastProps {
   transactions: Transaction[];
@@ -59,6 +60,15 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, regio
     );
   }, [monthlyNet]);
 
+  const { currentNet, previousNet } = useMemo(() => {
+    if (monthlyNet.length === 0) {
+      return { currentNet: 0, previousNet: null as number | null };
+    }
+    const current = monthlyNet[monthlyNet.length - 1]?.net ?? 0;
+    const previous = monthlyNet.length > 1 ? monthlyNet[monthlyNet.length - 2]?.net ?? 0 : null;
+    return { currentNet: current, previousNet: previous };
+  }, [monthlyNet]);
+
   if (projection.length === 0) {
     return (
       <Card title="Spending forecast">
@@ -71,12 +81,30 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, regio
 
   return (
     <Card title="Spending forecast">
-      <p className="text-sm text-white/70">
-        We analyse the last three months of net cashflow. At your current pace you&apos;re saving {formatCurrency(savingsPerMonth, region, {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        })} per month.
-      </p>
+      <div className="space-y-3">
+        <p className="text-sm text-white/70">
+          We analyse the last three months of net cashflow. At your current pace you&apos;re saving {formatCurrency(savingsPerMonth, region, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          })} per month.
+        </p>
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-xs uppercase tracking-[0.2em] text-white/60">Last month&apos;s net</span>
+          <MonthlyDelta
+            currentValue={currentNet}
+            previousValue={previousNet}
+            formatter={(value) =>
+              formatCurrency(value, region, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })
+            }
+            valueClassName="text-lg font-semibold text-white"
+            deltaClassName="text-[0.65rem]"
+            className="items-end text-right"
+          />
+        </div>
+      </div>
       <div className="mt-5 space-y-3">
         {projection.map((point) => (
           <div
