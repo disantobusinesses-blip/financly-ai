@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FinancialHealthCard from "./FinancialHealthCard";
-import SpendingGuidance from "./SpendingGuidance";
 import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
 import ReferAFriendCard from "./ReferAFriendCard";
 import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
 import CashflowMini from "./CashflowMini";
 import UpcomingBills from "./UpcomingBills";
-import FinancialAlerts from "./FinancialAlerts";
 import TransactionsList from "./TransactionsList";
 import SpendingForecast from "./SpendingForecast";
 import PlanGate from "./PlanGate";
@@ -16,7 +14,6 @@ import TutorialButton from "./TutorialButton";
 import { ArrowRightIcon } from "./icon/Icon";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
-import { useAIInsights } from "../hooks/useAIInsights";
 import { formatCurrency } from "../utils/currency";
 
 const TOUR_KEY = "myaibank_tour_seen";
@@ -26,15 +23,6 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
-  const totalBalance = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
-  const aiData = useAIInsights(
-    user?.id,
-    region,
-    accounts,
-    transactions,
-    totalBalance
-  );
-
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
@@ -112,24 +100,19 @@ const Dashboard: React.FC = () => {
 
   const tourSteps: TourStep[] = [
     {
+      id: "balance-summary",
+      title: "Where you stand",
+      description: "Review spending-ready cash, net worth, and liabilities at a glance.",
+    },
+    {
       id: "financial-health",
       title: "Financial health",
       description: "See your health score, debt-to-income guidance, and savings split updated in real time.",
     },
     {
-      id: "spending-guidance",
-      title: "How you should spend",
-      description: "Understand how Essentials, Lifestyle, and Savings compare to the 50/30/20 rule.",
-    },
-    {
       id: "goal-planner",
       title: "Goal planner",
       description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
-    },
-    {
-      id: "balance-summary",
-      title: "Balance summary",
-      description: "Spending availability vs. net worth and mortgages all in one glance.",
     },
     {
       id: "refer-a-friend",
@@ -146,11 +129,6 @@ const Dashboard: React.FC = () => {
       id: "cashflow",
       title: "Cashflow",
       description: "Monitor break-even trends and monthly savings projections.",
-    },
-    {
-      id: "alerts",
-      title: "AI alerts",
-      description: "GPT-4o flags anomalies, opportunities, and reminders with built-in disclaimers.",
     },
     {
       id: "transactions",
@@ -192,17 +170,10 @@ const Dashboard: React.FC = () => {
   const cashflowTeaser = monthlyStats.income
     ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
     : "Link your accounts to calculate monthly cashflow.";
-  const alertsTeaser = aiData.alerts.length
-    ? `${aiData.alerts.length} alerts queued. Upgrade to read them.`
-    : "AI alerts ready once your bank sync completes.";
   const pinnedCards = [
     {
       key: "goal-planner",
       element: <GoalPlanner accounts={accounts} transactions={transactions} />,
-    },
-    {
-      key: "balance-summary",
-      element: <BalanceSummary accounts={accounts} transactions={transactions} region={region} />,
     },
     {
       key: "refer",
@@ -240,19 +211,6 @@ const Dashboard: React.FC = () => {
       ),
     },
     {
-      key: "alerts",
-      element: (
-        <PlanGate feature="AI alerts" teaser={alertsTeaser} dataTourId="alerts">
-          <FinancialAlerts
-            alerts={aiData.alerts}
-            loading={aiData.loading}
-            error={aiData.error}
-            disclaimer={aiData.disclaimer}
-          />
-        </PlanGate>
-      ),
-    },
-    {
       key: "upcoming-bills",
       element: (
         <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
@@ -281,8 +239,8 @@ const Dashboard: React.FC = () => {
           {error}
         </div>
       )}
+      <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
       <FinancialHealthCard accounts={accounts} transactions={transactions} region={region} />
-      <SpendingGuidance transactions={transactions} region={region} />
 
       <div className="lg:hidden" data-tour-id="tool-carousel">
         <div className="tool-carousel">
