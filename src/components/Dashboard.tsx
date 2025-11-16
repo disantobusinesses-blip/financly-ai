@@ -313,10 +313,6 @@ const Dashboard: React.FC = () => {
         <p className="text-sm text-white/80">
           MyAiBank provides general financial insights using formulas only, and is not a licensed financial adviser.
         </p>
-        <p>
-          Privacy Policy: We do not sell information or permanently hold your data—connections stay encrypted and tokenised.
-        </p>
-        <p>Terms of Use: Access is for educational budgeting guidance powered by deterministic formulas and AI summaries.</p>
         <div className="flex flex-wrap items-center justify-center gap-4 text-white">
           <a href="/privacy" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
             Privacy Policy
