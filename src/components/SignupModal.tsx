@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeEmailToNewsletter } from "../hooks/useNewsletterSignup";
 import { UserMembershipType } from "../types";
+import LegalModal from "./LegalModal";
+import { PRIVACY_CONTENT, TERMS_CONTENT } from "../legal/legalContent";
 
 const avatarOptions = ["🪙", "🚀", "🌱", "🎯", "🛟", "💡", "🧠", "💼"];
 
@@ -16,6 +18,8 @@ const SignupModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [joinNewsletter, setJoinNewsletter] = useState(false);
+  const [hasAgreed, setHasAgreed] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<null | "terms" | "privacy">(null);
   const [referralCode] = useState(() => {
     if (typeof window === "undefined") return "";
     const params = new URLSearchParams(window.location.search);
@@ -32,6 +36,10 @@ const SignupModal: React.FC = () => {
     }
     if (!displayName.trim()) {
       setError("Let us know what to call you.");
+      return;
+    }
+    if (!hasAgreed) {
+      setError("Please confirm you have reviewed the Terms and Privacy Policy.");
       return;
     }
 
@@ -63,6 +71,7 @@ const SignupModal: React.FC = () => {
     setPassword("");
     setDisplayName("");
     setJoinNewsletter(false);
+    setHasAgreed(false);
     setError(null);
   };
 
@@ -204,6 +213,37 @@ const SignupModal: React.FC = () => {
               </span>
             </label>
 
+            <label className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-inner dark:bg-slate-800/60 dark:text-slate-100">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                checked={hasAgreed}
+                onChange={(event) => setHasAgreed(event.target.checked)}
+                required
+              />
+              <span>
+                <span className="font-semibold text-slate-900 dark:text-white">I have read and agree to the Terms and Privacy Policy</span>
+                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-300">
+                  Review the documents before continuing:
+                  <button
+                    type="button"
+                    onClick={() => setLegalDoc("terms")}
+                    className="ml-2 font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    Terms
+                  </button>
+                  <span className="mx-1 text-slate-400">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setLegalDoc("privacy")}
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    Privacy Policy
+                  </button>
+                </span>
+              </span>
+            </label>
+
             <button
               type="submit"
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-lg font-semibold text-white shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/50"
@@ -239,6 +279,12 @@ const SignupModal: React.FC = () => {
           </aside>
         </div>
       </div>
+      <LegalModal
+        title={legalDoc === "privacy" ? "Privacy Policy" : "Terms and Conditions"}
+        body={legalDoc === "privacy" ? PRIVACY_CONTENT : TERMS_CONTENT}
+        isOpen={legalDoc !== null}
+        onClose={() => setLegalDoc(null)}
+      />
     </div>
   );
 };

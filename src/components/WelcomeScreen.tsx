@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
+import LegalFooter from "./LegalFooter";
 
 const currencyFormatter = new Intl.NumberFormat("en-AU", {
   style: "currency",
@@ -283,25 +284,7 @@ const WelcomeScreen: React.FC = () => {
         </aside>
       </div>
 
-      <div className="mt-16 space-y-4 text-center text-xs text-white/70">
-        <p className="text-sm text-white/80">
-          MyAiBank provides general financial insights using formulas only, and is not a licensed financial adviser.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-4 text-white">
-          <a href="/privacy" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
-            Privacy Policy
-          </a>
-          <span className="text-white/50">|</span>
-          <a href="/terms" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
-            Terms of Use
-          </a>
-          <span className="text-white/50">|</span>
-          <a href="mailto:info@myaibank.ai" className="text-sm font-semibold uppercase tracking-[0.25em] text-primary-light hover:text-white">
-            Contact
-          </a>
-        </div>
-        <p className="text-sm text-white/60">© 2025 MyAiBank Pty Ltd – All rights reserved</p>
-      </div>
+      <LegalFooter />
     </div>
   );
 };
