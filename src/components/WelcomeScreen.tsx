@@ -3,7 +3,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import LegalFooter from "./LegalFooter";
-import StripePricingTable from "./StripePricingTable";
 
 const currencyFormatter = new Intl.NumberFormat("en-AU", {
   style: "currency",
@@ -117,9 +116,9 @@ const WelcomeScreen: React.FC = () => {
             <div className="flex flex-wrap gap-4">
               <button
                 onClick={openSignupModal}
-                className="hover-zoom rounded-2xl bg-primary px-6 py-3 text-lg font-semibold text-white shadow-lg"
+                className="interactive-primary rounded-2xl bg-primary px-6 py-3 text-lg font-semibold text-white shadow-lg"
               >
-                Get started
+                Get Started
               </button>
               <button
                 onClick={openLoginModal}
@@ -284,9 +283,6 @@ const WelcomeScreen: React.FC = () => {
           </div>
         </aside>
       </div>
-
-      <StripePricingTable />
-
       <LegalFooter />
     </div>
   );

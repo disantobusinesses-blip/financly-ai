@@ -7,7 +7,7 @@ import SandboxShowcase from "./components/SandboxShowcase";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import LoginModal from "./components/LoginModal";
-import SignupModal from "./components/SignupModal";
+import OnboardingWizard from "./components/OnboardingWizard";
 import UpgradeModal from "./components/UpgradeModal";
 import WhatWeDo from "./components/WhatWeDo";
 
@@ -90,7 +90,7 @@ const App: React.FC = () => (
     <ThemeProvider>
       <AppContent />
       <LoginModal />
-      <SignupModal />
+      <OnboardingWizard />
       <UpgradeModal />
       <SpeedInsights />
     </ThemeProvider>

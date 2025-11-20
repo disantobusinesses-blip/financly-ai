@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
-import logoMark from "../assets/myaibank-logo.svg";
 
 interface HeaderProps {
   activeView: "dashboard" | "what-we-do" | "sandbox";
@@ -65,14 +64,9 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         )}
         <button
           onClick={() => onNavigate("dashboard")}
-          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
+          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-black tracking-[0.18em] text-white transition hover:bg-white/20"
         >
-          <img
-            src={logoMark}
-            alt="MyAiBank logo"
-            className="h-8 w-8 rounded-xl bg-white p-1"
-          />
-          MyAiBank
+          <span className="text-xl uppercase">MyAiBank</span>
         </button>
       </div>
 
