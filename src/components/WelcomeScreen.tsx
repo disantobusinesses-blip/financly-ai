@@ -107,7 +107,7 @@ const WelcomeScreen: React.FC = () => {
             </div>
             <div className="space-y-4">
               <h1 className="text-4xl font-black leading-tight md:text-5xl lg:text-6xl">
-                First 500 users get <span className="text-primary-light">25% off for 6 months.</span>
+                Meet MyAiBank: premium, AI-guided finances for Australia.
               </h1>
               <p className="text-lg text-slate-200 md:text-xl">
                 All-in-one cashflow, Financial Health scoring, and smart subscription intelligence designed for both mobile and desktop.

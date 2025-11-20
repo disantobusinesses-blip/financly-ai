@@ -4,6 +4,8 @@ import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import { createUserAccount } from "../services/createUserAccount";
 import { fetchGeoCountry } from "../services/geoClient";
 import { fetchSubscriptionPlans, SubscriptionPlan } from "../services/subscriptionPlans";
+import { createCheckoutSession } from "../services/StripeService";
+import { User } from "../types";
 
 const FORM_STEPS = [
   { key: "firstName", label: "First name", type: "text", placeholder: "Enter your first name" },
@@ -72,6 +74,7 @@ const OnboardingWizard: React.FC = () => {
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectedPlanInterval, setSelectedPlanInterval] = useState<SubscriptionPlan["interval"] | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const saleEndDate = useMemo(buildSaleEndDate, []);
   const [countdown, setCountdown] = useState(() => getTimeRemaining(saleEndDate));
@@ -83,6 +86,7 @@ const OnboardingWizard: React.FC = () => {
     setSubmissionState("idle");
     setSubmissionError(null);
     setSelectedPlanId(null);
+    setSelectedPlanInterval(null);
     setPlanError(null);
     setCountry(null);
     setSelectedRegion(null);
@@ -122,6 +126,9 @@ const OnboardingWizard: React.FC = () => {
 
   const monthlyPlan = plans.find((plan) => plan.interval === "month") || plans[0];
   const annualPlan = plans.find((plan) => plan.interval === "year") || plans[1] || monthlyPlan;
+  const selectedPlan =
+    plans.find((plan) => plan.id === selectedPlanId) ||
+    (selectedPlanInterval ? plans.find((plan) => plan.interval === selectedPlanInterval) || null : null);
 
   const savingsPercent = useMemo(() => {
     if (!monthlyPlan || !annualPlan || monthlyPlan.price <= 0) return 0;
@@ -198,8 +205,6 @@ const OnboardingWizard: React.FC = () => {
       return;
     }
 
-    const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) || monthlyPlan;
-
     setSubmissionState("submitting");
     setSubmissionError(null);
     try {
@@ -211,7 +216,32 @@ const OnboardingWizard: React.FC = () => {
         username: formState.username.trim(),
         password: formState.password,
         selectedPlan: selectedPlan?.name || "Monthly",
+        selectedPlanInterval: selectedPlan?.interval,
+        selectedPriceId: selectedPlan?.id,
       });
+
+      if (selectedPlan?.id && selectedPlan.id.startsWith("price_")) {
+        const provisionalUser: User = {
+          id: `prospect-${formState.username || formState.email || Date.now()}`,
+          email: formState.email.trim(),
+          displayName:
+            `${formState.firstName.trim()} ${formState.lastName.trim()}`.trim() ||
+            formState.username.trim() ||
+            "New User",
+          avatar: "",
+          membershipType: "Basic",
+          region: "AU",
+          createdAt: new Date().toISOString(),
+        } as User;
+
+        const { url } = await createCheckoutSession(provisionalUser, {
+          priceId: selectedPlan.id,
+          regionOverride: "AU",
+        });
+        window.location.href = url;
+        return;
+      }
+
       setSubmissionState("success");
     } catch (error) {
       console.error("Account creation failed", error);
@@ -424,6 +454,7 @@ const OnboardingWizard: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setSelectedPlanId(plan.id);
+                              setSelectedPlanInterval(plan.interval);
                               setPlanError(null);
                             }}
                             className={`interactive-primary relative flex h-full flex-col items-start gap-3 rounded-2xl border px-5 py-5 text-left transition ${

@@ -6,6 +6,8 @@ export interface CreateUserAccountPayload {
   username: string;
   password: string;
   selectedPlan: string;
+  selectedPlanInterval?: "month" | "year";
+  selectedPriceId?: string;
 }
 
 /**
