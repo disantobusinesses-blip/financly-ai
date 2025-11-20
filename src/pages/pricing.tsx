@@ -30,6 +30,19 @@ export default function Pricing() {
           Ready to see it in action? Connect your bank from the dashboard and watch Financly curate insights instantly.
         </p>
       </div>
+
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow p-6">
+        <div className="text-center space-y-2 mb-6">
+          <h2 className="text-2xl font-semibold">Compare plans</h2>
+          <p className="text-gray-600 dark:text-gray-300">Review the latest options directly from Stripe.</p>
+        </div>
+        <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
+        <stripe-pricing-table
+          pricing-table-id="prctbl_1SVO0mIxumNMN5hSfg3DOnrt"
+          publishable-key="pk_live_51S3FDBIxumNMN5hSSbT8T83H5o5FRn1tF6QchCom6AAkafCDVPtDc9oXPhuNn2OMVgyfUVySvOKlE2cP5o2cE7tu00NnC3Oeyc"
+        >
+        </stripe-pricing-table>
+      </div>
     </div>
   );
 }
