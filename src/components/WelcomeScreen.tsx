@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import LegalFooter from "./LegalFooter";
+import StripePricingTable from "./StripePricingTable";
 
 const currencyFormatter = new Intl.NumberFormat("en-AU", {
   style: "currency",
@@ -283,6 +284,8 @@ const WelcomeScreen: React.FC = () => {
           </div>
         </aside>
       </div>
+
+      <StripePricingTable />
 
       <LegalFooter />
     </div>
