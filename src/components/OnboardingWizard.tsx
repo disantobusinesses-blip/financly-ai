@@ -63,6 +63,7 @@ const OnboardingWizard: React.FC = () => {
   const { email, setEmail, status: newsletterStatus, submit: submitNewsletter, reset: resetNewsletter } =
     useNewsletterSignup();
   const [country, setCountry] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "error">("idle");
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -84,6 +85,7 @@ const OnboardingWizard: React.FC = () => {
     setSelectedPlanId(null);
     setPlanError(null);
     setCountry(null);
+    setSelectedRegion(null);
     setGeoStatus("idle");
     resetNewsletter();
   };
@@ -93,7 +95,13 @@ const OnboardingWizard: React.FC = () => {
 
     setGeoStatus("loading");
     fetchGeoCountry()
-      .then((response) => setCountry(response.country?.toUpperCase?.() || "UNKNOWN"))
+      .then((response) => {
+        const detectedCountry = response.country?.toUpperCase?.() || "UNKNOWN";
+        setCountry(detectedCountry);
+        if (detectedCountry === "AU") {
+          setSelectedRegion("AU");
+        }
+      })
       .catch(() => {
         setGeoStatus("error");
         setCountry("UNKNOWN");
@@ -109,7 +117,7 @@ const OnboardingWizard: React.FC = () => {
     return () => clearInterval(timer);
   }, [saleEndDate, isSignupModalOpen]);
 
-  const allowedRegion = country === "AU";
+  const allowedRegion = selectedRegion === "AU" || country === "AU";
   const showPlanSelection = currentStep >= FORM_STEPS.length;
 
   const monthlyPlan = plans.find((plan) => plan.interval === "month") || plans[0];
@@ -223,7 +231,10 @@ const OnboardingWizard: React.FC = () => {
       <div className="flex gap-2">
         <button
           type="button"
-          className="rounded-xl border border-primary/50 bg-primary/20 px-3 py-2 text-sm font-semibold text-white"
+          onClick={() => setSelectedRegion("AU")}
+          className={`rounded-xl border px-3 py-2 text-sm font-semibold text-white transition ${
+            allowedRegion ? "border-primary/50 bg-primary/20" : "border-white/20 bg-white/10 hover:border-primary/40"
+          }`}
         >
           Australia
         </button>
