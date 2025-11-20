@@ -3,9 +3,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import { createUserAccount } from "../services/createUserAccount";
 import { fetchGeoCountry } from "../services/geoClient";
-import { fetchSubscriptionPlans, SubscriptionPlan } from "../services/subscriptionPlans";
-import { createCheckoutSession } from "../services/StripeService";
-import { User } from "../types";
 
 const FORM_STEPS = [
   { key: "firstName", label: "First name", type: "text", placeholder: "Enter your first name" },
@@ -32,13 +29,6 @@ const initialFormState: FormState = {
   confirmPassword: "",
   username: "",
 };
-
-const formatCurrency = (amount: number, currency: string) =>
-  new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 const buildSaleEndDate = () => {
   const now = new Date();
@@ -67,17 +57,14 @@ const OnboardingWizard: React.FC = () => {
   const [country, setCountry] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<StepKey, string>>>({});
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [selectedPlanInterval, setSelectedPlanInterval] = useState<SubscriptionPlan["interval"] | null>(null);
-  const [planError, setPlanError] = useState<string | null>(null);
   const saleEndDate = useMemo(buildSaleEndDate, []);
   const [countdown, setCountdown] = useState(() => getTimeRemaining(saleEndDate));
+  const [hasCreatedAccount, setHasCreatedAccount] = useState(false);
 
   const resetWizard = () => {
     setCurrentStep(0);
@@ -85,13 +72,11 @@ const OnboardingWizard: React.FC = () => {
     setFieldErrors({});
     setSubmissionState("idle");
     setSubmissionError(null);
-    setSelectedPlanId(null);
-    setSelectedPlanInterval(null);
-    setPlanError(null);
     setCountry(null);
     setSelectedRegion(null);
     setGeoStatus("idle");
     resetNewsletter();
+    setHasCreatedAccount(false);
   };
 
   useEffect(() => {
@@ -111,8 +96,6 @@ const OnboardingWizard: React.FC = () => {
         setCountry("UNKNOWN");
       })
       .finally(() => setGeoStatus("idle"));
-
-    fetchSubscriptionPlans().then((loadedPlans) => setPlans(loadedPlans));
   }, [isSignupModalOpen]);
 
   useEffect(() => {
@@ -123,18 +106,6 @@ const OnboardingWizard: React.FC = () => {
 
   const allowedRegion = selectedRegion === "AU" || country === "AU";
   const showPlanSelection = currentStep >= FORM_STEPS.length;
-
-  const monthlyPlan = plans.find((plan) => plan.interval === "month") || plans[0];
-  const annualPlan = plans.find((plan) => plan.interval === "year") || plans[1] || monthlyPlan;
-  const selectedPlan =
-    plans.find((plan) => plan.id === selectedPlanId) ||
-    (selectedPlanInterval ? plans.find((plan) => plan.interval === selectedPlanInterval) || null : null);
-
-  const savingsPercent = useMemo(() => {
-    if (!monthlyPlan || !annualPlan || monthlyPlan.price <= 0) return 0;
-    const savings = (12 * monthlyPlan.price - annualPlan.price) / (12 * monthlyPlan.price);
-    return Math.max(0, Math.round(savings * 100));
-  }, [annualPlan, monthlyPlan]);
 
   const validateField = (key: StepKey, value: string): string | undefined => {
     const trimmed = value.trim();
@@ -176,6 +147,28 @@ const OnboardingWizard: React.FC = () => {
       setFieldErrors((prev) => ({ ...prev, [step.key]: error }));
       return;
     }
+
+    if (currentStep === FORM_STEPS.length - 1 && !hasCreatedAccount) {
+      setSubmissionState("submitting");
+      setSubmissionError(null);
+      createUserAccount({
+        firstName: formState.firstName.trim(),
+        lastName: formState.lastName.trim(),
+        email: formState.email.trim(),
+        phone: formState.phone.trim(),
+        username: formState.username.trim(),
+        password: formState.password,
+        selectedPlan: "Stripe pricing table selection",
+      })
+        .then(() => {
+          setHasCreatedAccount(true);
+          setSubmissionState("success");
+        })
+        .catch(() => {
+          setSubmissionError("We couldn’t save your details just now. You can still pick a plan below.");
+          setSubmissionState("error");
+        });
+    }
     setCurrentStep((prev) => prev + 1);
   };
 
@@ -185,69 +178,6 @@ const OnboardingWizard: React.FC = () => {
       return;
     }
     setCurrentStep((prev) => Math.max(0, prev - 1));
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedPlanId) {
-      setPlanError("Select a plan to continue.");
-      return;
-    }
-
-    const stepErrors: Partial<Record<StepKey, string>> = {};
-    FORM_STEPS.forEach(({ key }) => {
-      const error = validateField(key, formState[key]);
-      if (error) stepErrors[key] = error;
-    });
-
-    if (Object.keys(stepErrors).length > 0) {
-      setFieldErrors(stepErrors);
-      setCurrentStep(0);
-      return;
-    }
-
-    setSubmissionState("submitting");
-    setSubmissionError(null);
-    try {
-      await createUserAccount({
-        firstName: formState.firstName.trim(),
-        lastName: formState.lastName.trim(),
-        email: formState.email.trim(),
-        phone: formState.phone.trim(),
-        username: formState.username.trim(),
-        password: formState.password,
-        selectedPlan: selectedPlan?.name || "Monthly",
-        selectedPlanInterval: selectedPlan?.interval,
-        selectedPriceId: selectedPlan?.id,
-      });
-
-      if (selectedPlan?.id && selectedPlan.id.startsWith("price_")) {
-        const provisionalUser: User = {
-          id: `prospect-${formState.username || formState.email || Date.now()}`,
-          email: formState.email.trim(),
-          displayName:
-            `${formState.firstName.trim()} ${formState.lastName.trim()}`.trim() ||
-            formState.username.trim() ||
-            "New User",
-          avatar: "",
-          membershipType: "Basic",
-          region: "AU",
-          createdAt: new Date().toISOString(),
-        } as User;
-
-        const { url } = await createCheckoutSession(provisionalUser, {
-          priceId: selectedPlan.id,
-          regionOverride: "AU",
-        });
-        window.location.href = url;
-        return;
-      }
-
-      setSubmissionState("success");
-    } catch (error) {
-      console.error("Account creation failed", error);
-      setSubmissionError("Unable to create your account right now. Please try again.");
-      setSubmissionState("error");
-    }
   };
 
   const handleClose = () => {
@@ -351,24 +281,7 @@ const OnboardingWizard: React.FC = () => {
             </div>
           ) : null}
 
-          {allowedRegion && submissionState === "success" && (
-            <div className="space-y-4 rounded-3xl border border-emerald-300/30 bg-emerald-500/10 p-6">
-              <h3 className="text-2xl font-semibold text-emerald-100">You’re all set.</h3>
-              <p className="text-white/80">
-                Thanks for choosing MyAiBank. We’ll finalise your account details and send the next steps to {formState.email ||
-                  "your inbox"}.
-              </p>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white"
-              >
-                Close
-              </button>
-            </div>
-          )}
-
-          {allowedRegion && submissionState !== "success" && country && (
+          {allowedRegion && country && (
             <div className="space-y-8">
               {!showPlanSelection && (
                 <div className="space-y-6">
@@ -441,59 +354,19 @@ const OnboardingWizard: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {[monthlyPlan, annualPlan]
-                      .filter(Boolean)
-                      .map((plan) => {
-                        if (!plan) return null;
-                        const isAnnual = plan.interval === "year";
-                        const isSelected = plan.id === selectedPlanId;
-                        return (
-                          <button
-                            key={plan.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              setSelectedPlanInterval(plan.interval);
-                              setPlanError(null);
-                            }}
-                            className={`interactive-primary relative flex h-full flex-col items-start gap-3 rounded-2xl border px-5 py-5 text-left transition ${
-                              isSelected
-                                ? "border-primary bg-primary/15 shadow-lg shadow-primary/20"
-                                : "border-white/10 bg-white/5 hover:border-primary/40"
-                            } ${isAnnual ? "md:scale-[1.02]" : ""}`}
-                          >
-                            <div className="flex w-full items-center justify-between">
-                              <div>
-                                <p className="text-sm uppercase tracking-[0.2em] text-white/60">{isAnnual ? "Annual plan" : "Monthly plan"}</p>
-                                <p className="text-2xl font-bold text-white">{plan.name}</p>
-                              </div>
-                              {isAnnual ? (
-                                <span className="rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary-light">
-                                  Best value
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="text-3xl font-bold text-white">
-                              {formatCurrency(plan.price, plan.currency)}
-                              <span className="ml-1 text-sm font-semibold text-white/60">/{plan.interval === "month" ? "mo" : "yr"}</span>
-                            </p>
-                            {isAnnual && savingsPercent > 0 && (
-                              <p className="text-sm font-semibold text-emerald-200">Save {savingsPercent}% annually</p>
-                            )}
-                            <p className="text-sm text-white/60">
-                              {isAnnual
-                                ? "Ideal if you want the best yearly rate and concierge upgrades."
-                                : "Flexible month-to-month access with no long-term lock in."}
-                            </p>
-                            {isSelected && <div className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-primary" />}
-                          </button>
-                        );
-                      })}
-                  </div>
-
-                  {planError && <p className="text-sm text-rose-200">{planError}</p>}
+                  {submissionState === "submitting" && (
+                    <p className="text-sm text-white/70">Saving your details…</p>
+                  )}
                   {submissionError && <p className="text-sm text-rose-200">{submissionError}</p>}
+
+                  <div className="flex justify-center">
+                    <div
+                      className="w-full max-w-3xl rounded-2xl border border-white/10 bg-white/5 p-4"
+                      dangerouslySetInnerHTML={{
+                        __html: `\n<script async src="https://js.stripe.com/v3/pricing-table.js"></script>\n<stripe-pricing-table pricing-table-id="prctbl_1SVO0mIxumNMN5hSfg3DOnrt"\npublishable-key="pk_live_51S3FDBIxumNMN5hSSbT8T83H5o5FRn1tF6QchCom6AAkafCDVPtDc9oXPhuNn2OMVgyfUVySvOKlE2cP5o2cE7tu00NnC3Oeyc">\n</stripe-pricing-table>\n`,
+                      }}
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between">
                     <button
@@ -502,14 +375,6 @@ const OnboardingWizard: React.FC = () => {
                       className="text-sm font-semibold text-white/70 transition hover:text-white"
                     >
                       Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      className="interactive-primary rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:bg-primary/40"
-                      disabled={submissionState === "submitting"}
-                    >
-                      {submissionState === "submitting" ? "Creating account..." : "Confirm and continue"}
                     </button>
                   </div>
                 </div>
