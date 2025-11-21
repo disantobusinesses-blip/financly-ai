@@ -12,13 +12,13 @@ import TransactionAnalysis from "./TransactionAnalysis";
 import { useGeminiAI } from "../hooks/useGeminiAI";
 import { useBasiqData } from "../hooks/useBasiqData";
 import { useAuth } from "../contexts/AuthContext";
-import { useGeminiAI } from "../hooks/useGeminiAI";
-
 
 export default function Dashboard() {
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData();
   const { user } = useAuth();
+
   const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
+
   const {
     alerts: aiAlerts,
     insights: aiInsights,
@@ -26,7 +26,7 @@ export default function Dashboard() {
     error: aiError,
   } = useGeminiAI(transactions, totalBalance, user?.region ?? "AU");
 
-  // ✅ Case 1: Cached data is showing while fresh data is loading
+  // Case 1: Cached data is showing while fresh data is loading
   if (loading && accounts.length > 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -40,7 +40,7 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 2: First-time load, no cached data yet
+  // Case 2: First-time load, no cached data yet
   if (loading && accounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -49,8 +49,8 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 3: Error state
-@@ -44,80 +53,95 @@ export default function Dashboard() {
+  // Case 3: Error state
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-red-500">
         <p>Failed to load data: {error}</p>
@@ -58,7 +58,7 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 4: User hasn’t connected a bank yet
+  // Case 4: User hasn’t connected a bank yet
   if (accounts.length === 0 && transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500">
@@ -67,7 +67,7 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Case 5: Normal dashboard view
+  // Case 5: Normal dashboard view
   return (
     <div className="space-y-4 p-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -76,7 +76,6 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-neutral-900 rounded-lg shadow p-4">
             <SpendingForecast
               transactions={transactions}
-              totalBalance={accounts.reduce((sum, a) => sum + a.balance, 0)}
               totalBalance={totalBalance}
               savingsPlan={null} // Live-only
             />
@@ -130,15 +129,14 @@ export default function Dashboard() {
           <span>AI enhancements unavailable: {aiError}</span>
         ) : aiInsights ? (
           <span>
-            AI insights ready with {aiInsights.insights.length} suggestions and {aiAlerts.length} alert
-            {aiAlerts.length === 1 ? "" : "s"}.
+            AI insights ready with {aiInsights.insights.length} suggestions and{" "}
+            {aiAlerts.length} alert{aiAlerts.length === 1 ? "" : "s"}.
           </span>
         ) : (
           <span>AI enhancements ready.</span>
         )}
       </div>
 
-      {/* ✅ Optional footer info */}
       {lastUpdated && (
         <div className="text-center text-xs text-gray-400 mt-4">
           Last updated: {new Date(lastUpdated).toLocaleString()}
@@ -146,5 +144,4 @@ export default function Dashboard() {
       )}
     </div>
   );
-}
 }
