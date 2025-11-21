@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import LegalFooter from "./LegalFooter";
@@ -60,8 +59,12 @@ const AnimatedNumber: React.FC<{ value: number; format?: (value: number) => stri
   return <span>{formatted}</span>;
 };
 
-const WelcomeScreen: React.FC = () => {
-  const { openLoginModal, openSignupModal } = useAuth();
+interface WelcomeScreenProps {
+  onGetStarted: () => void;
+  onLogin: () => void;
+}
+
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) => {
   const { email, setEmail, status, submit, reset } = useNewsletterSignup();
   const [frequency, setFrequency] = useState<Frequency>("monthly");
   const [income, setIncome] = useState(5000);
@@ -115,13 +118,13 @@ const WelcomeScreen: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-4">
               <button
-                onClick={openSignupModal}
+                onClick={onGetStarted}
                 className="interactive-primary rounded-2xl bg-primary px-6 py-3 text-lg font-semibold text-white shadow-lg"
               >
                 Get Started
               </button>
               <button
-                onClick={openLoginModal}
+                onClick={onLogin}
                 className="hover-zoom rounded-2xl border border-white/40 px-6 py-3 text-lg font-semibold text-white"
               >
                 Login
