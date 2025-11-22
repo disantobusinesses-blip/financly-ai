@@ -151,6 +151,35 @@ body::after {
   transition: outline-offset 0.3s ease, box-shadow 0.3s ease;
 }
 
+.interactive-primary {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.interactive-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 20px 40px -20px rgba(255, 255, 255, 0.25);
+}
+
+.interactive-primary:active {
+  transform: scale(0.99);
+}
+
+.interactive-primary::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.interactive-primary:active::after {
+  animation: rotateHighlight 0.55s ease-out;
+}
+
 @keyframes hueShift {
   0% {
     filter: hue-rotate(0deg) blur(40px);
@@ -166,5 +195,23 @@ body::after {
   }
   to {
     transform: translate3d(-120px, -120px, 0);
+  }
+}
+
+@keyframes rotateHighlight {
+  0% {
+    opacity: 0.9;
+    transform: rotate(0deg);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
+  }
+  60% {
+    opacity: 0.4;
+    transform: rotate(160deg);
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.18);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(240deg);
+    box-shadow: 0 0 0 14px rgba(255, 255, 255, 0);
   }
 }

@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { userId, userEmail, region, referrerId } = req.body || {};
-    console.log("🔍 Request body:", { userId, userEmail, region, referrerId });
+    const { userId, userEmail, region, referrerId, priceId } = req.body || {};
+    console.log("🔍 Request body:", { userId, userEmail, region, referrerId, priceId });
 
     console.log("🔍 ENV CHECK:", {
       STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY
@@ -29,12 +29,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const priceId =
-      region === "US"
+    const resolvedPriceId =
+      priceId ||
+      (region === "US"
         ? process.env.STRIPE_PRICE_ID_USD
-        : process.env.STRIPE_PRICE_ID_AUD;
+        : process.env.STRIPE_PRICE_ID_AUD);
 
-    if (!priceId) {
+    if (!resolvedPriceId) {
       return res.status(400).json({
         error: { message: `Pricing not configured for region: ${region}` },
       });
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: resolvedPriceId, quantity: 1 }],
       mode: "subscription",
       client_reference_id: userId,
       customer_email: userEmail,
