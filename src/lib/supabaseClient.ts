@@ -45,6 +45,21 @@ export const supabaseConfig = {
   anonKey: DEFAULT_SUPABASE_ANON_KEY,
 };
 
+type RawSession = SupabaseSession & { provider_token?: string | null; provider_refresh_token?: string | null };
+
+const mapSession = (raw: RawSession | null): SupabaseSession | null => {
+  if (!raw) return null;
+  const user = raw.user || { id: "" };
+  return {
+    access_token: raw.access_token,
+    refresh_token: raw.refresh_token,
+    expires_in: raw.expires_in,
+    expires_at: raw.expires_at,
+    token_type: raw.token_type,
+    user,
+  };
+};
+
 export const persistSession = (session: SupabaseSession | null) => {
   if (!session) {
     localStorage.removeItem(sessionKey);
@@ -64,43 +79,61 @@ export const getStoredSession = (): SupabaseSession | null => {
   }
 };
 
-export const supabaseSignUp = async (payload: {
-  email: string;
-  password: string;
-  data?: Record<string, unknown>;
-}): Promise<{ session: SupabaseSession | null; error?: string }> => {
-  const response = await fetch(`${DEFAULT_SUPABASE_URL}/auth/v1/signup`, {
-    method: "POST",
-    headers: { ...baseHeaders },
-    body: JSON.stringify(payload),
-  });
+export const supabaseAuth = {
+  auth: {
+    signUp: async ({
+      email,
+      password,
+      options,
+    }: {
+      email: string;
+      password: string;
+      options?: { emailRedirectTo?: string; data?: Record<string, unknown> };
+    }): Promise<{ data: { session: SupabaseSession | null; user: RawSession["user"] | null }; error: string | null }> => {
+      const response = await fetch(`${DEFAULT_SUPABASE_URL}/auth/v1/signup`, {
+        method: "POST",
+        headers: { ...baseHeaders },
+        body: JSON.stringify({
+          email,
+          password,
+          email_redirect_to: options?.emailRedirectTo,
+          data: options?.data,
+        }),
+      });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    return { session: null, error: err?.msg || err?.message || "Unable to sign up" };
-  }
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return { data: { session: null, user: null }, error: err?.msg || err?.message || "Unable to sign up" };
+      }
 
-  const data = (await response.json()) as { session: SupabaseSession | null };
-  return { session: data.session, error: undefined };
-};
+      const payload = (await response.json()) as { session: RawSession | null; user: RawSession["user"] | null };
+      return { data: { session: mapSession(payload.session), user: payload.user }, error: null };
+    },
+    signInWithPassword: async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }): Promise<{ data: { session: SupabaseSession | null }; error: string | null }> => {
+      const response = await fetch(`${DEFAULT_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: { ...baseHeaders },
+        body: JSON.stringify({ email, password }),
+      });
 
-export const supabaseSignIn = async (payload: {
-  email: string;
-  password: string;
-}): Promise<{ session: SupabaseSession | null; error?: string }> => {
-  const response = await fetch(`${DEFAULT_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { ...baseHeaders },
-    body: JSON.stringify(payload),
-  });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return { data: { session: null }, error: err?.msg || err?.error_description || "Unable to sign in" };
+      }
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    return { session: null, error: err?.msg || err?.error_description || "Unable to sign in" };
-  }
-
-  const data = (await response.json()) as SupabaseSession;
-  return { session: data, error: undefined };
+      const session = (await response.json()) as RawSession;
+      return { data: { session: mapSession(session) }, error: null };
+    },
+    getSession: async (): Promise<{ data: { session: SupabaseSession | null } }> => {
+      return { data: { session: getStoredSession() } };
+    },
+  },
 };
 
 export const supabaseGetUser = async (

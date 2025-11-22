@@ -11,6 +11,7 @@ import OnboardingPage from "./pages/Onboarding";
 import SubscribePage from "./pages/Subscribe";
 import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
+import AuthCallbackPage from "./pages/AuthCallback";
 
 const usePath = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -79,6 +80,15 @@ const AppContent: React.FC = () => {
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SubscribePage />
+      </div>
+    );
+  }
+
+  if (path === "/auth/callback") {
+    return (
+      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+        {backgroundLayers}
+        <AuthCallbackPage onComplete={() => navigate("/dashboard")} />
       </div>
     );
   }

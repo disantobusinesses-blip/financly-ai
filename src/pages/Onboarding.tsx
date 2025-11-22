@@ -61,6 +61,8 @@ const OnboardingPage: React.FC<{ onComplete: () => void }> = ({ onComplete }) =>
   const saleEndDate = useMemo(buildSaleEndDate, []);
   const [countdown, setCountdown] = useState(() => getTimeRemaining(saleEndDate));
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [requiresEmailConfirmation, setRequiresEmailConfirmation] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string>("");
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown(getTimeRemaining(saleEndDate)), 1000);
@@ -132,6 +134,11 @@ const OnboardingPage: React.FC<{ onComplete: () => void }> = ({ onComplete }) =>
     });
     if (result.error) {
       setSubmissionError(result.error);
+      return;
+    }
+    if (result.requiresEmailConfirmation) {
+      setRequiresEmailConfirmation(true);
+      setConfirmationEmail(form.email.trim());
       return;
     }
     onComplete();
@@ -232,6 +239,25 @@ const OnboardingPage: React.FC<{ onComplete: () => void }> = ({ onComplete }) =>
       </div>
     );
   };
+
+  if (requiresEmailConfirmation) {
+    return (
+      <div className="px-4 pb-16 pt-24">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center text-white">
+          <h1 className="text-3xl font-black uppercase tracking-[0.22em]">MyAiBank</h1>
+          <div className="w-full rounded-3xl border border-white/10 bg-white/5 p-8">
+            <p className="text-lg font-semibold">Check your email to confirm your account</p>
+            <p className="mt-3 text-white/70">
+              {confirmationEmail
+                ? `We sent a confirmation link to ${confirmationEmail}. Click the link to continue.`
+                : "We sent a confirmation link to your email. Click the link to continue."}
+            </p>
+            <p className="mt-6 text-sm text-white/60">Once confirmed, you will be redirected to complete your subscription.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pb-16 pt-24">

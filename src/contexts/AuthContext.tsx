@@ -6,9 +6,8 @@ import {
   persistSession,
   supabaseGetProfile,
   supabaseGetUser,
-  supabaseSignIn,
+  supabaseAuth,
   supabaseSignOut,
-  supabaseSignUp,
   supabaseUpsertProfile,
 } from "../lib/supabaseClient";
 import { User } from "../types";
@@ -28,10 +27,11 @@ interface AuthContextType {
   profile: SupabaseProfile | null;
   session: SupabaseSession | null;
   loading: boolean;
-  signup: (payload: SignupPayload) => Promise<{ error?: string }>;
+  signup: (payload: SignupPayload) => Promise<{ error?: string; requiresEmailConfirmation?: boolean }>;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  syncSession: (session: SupabaseSession | null) => Promise<void>;
   remainingBasicDays: number | null;
   isLoginModalOpen: boolean;
   isSignupModalOpen: boolean;
@@ -76,16 +76,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (profile) setProfile(profile);
   };
 
-  useEffect(() => {
-    const init = async () => {
-      if (!session?.access_token) return;
-      const { user } = await supabaseGetUser(session.access_token);
-      if (!user) {
-        persistSession(null);
-        setSession(null);
+  const syncSession = async (nextSession: SupabaseSession | null): Promise<void> => {
+    persistSession(nextSession);
+    setSession(nextSession);
+    if (nextSession?.access_token && nextSession.user?.id) {
+      const { profile } = await supabaseGetProfile(nextSession.access_token, nextSession.user.id);
+      if (profile) {
+        setProfile(profile);
         return;
       }
-      await refreshProfile();
+
+      const metadata = (nextSession as unknown as { user?: { user_metadata?: Record<string, unknown> } }).user?.user_metadata;
+      if (metadata) {
+        const fallbackProfile = {
+          id: nextSession.user.id,
+          first_name: String(metadata.first_name ?? ""),
+          last_name: String(metadata.last_name ?? ""),
+          phone: String(metadata.phone ?? ""),
+          username: String(metadata.username ?? ""),
+          region: String(metadata.region ?? "AU"),
+          subscription_status: "pending",
+        } as SupabaseProfile;
+        await supabaseUpsertProfile(nextSession.access_token, fallbackProfile);
+        setProfile(fallbackProfile);
+        return;
+      }
+    }
+
+    setProfile(null);
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const existingSession = session ?? getStoredSession();
+      if (!existingSession?.access_token) return;
+      const { user } = await supabaseGetUser(existingSession.access_token);
+      if (!user) {
+        await syncSession(null);
+        return;
+      }
+      await syncSession({ ...existingSession, user });
     };
     void init();
   }, [session?.access_token]);
@@ -95,30 +125,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return buildUserFromProfile(session, profile);
   }, [session, profile]);
 
-  const signup = async (payload: SignupPayload): Promise<{ error?: string }> => {
+  const signup = async (
+    payload: SignupPayload
+  ): Promise<{ error?: string; requiresEmailConfirmation?: boolean }> => {
     setLoading(true);
-    const { session: newSession, error } = await supabaseSignUp({
+    const { data, error } = await supabaseAuth.auth.signUp({
       email: payload.email,
       password: payload.password,
-      data: {
-        first_name: payload.firstName,
-        last_name: payload.lastName,
-        phone: payload.phone,
-        username: payload.username,
-        region: payload.region,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          first_name: payload.firstName,
+          last_name: payload.lastName,
+          phone: payload.phone,
+          username: payload.username,
+          region: payload.region,
+        },
       },
     });
 
-    if (!newSession || error) {
+    if (error) {
       setLoading(false);
-      return { error: error || "Unable to create account" };
+      return { error };
     }
 
-    persistSession(newSession);
-    setSession(newSession);
+    if (!data.session) {
+      setLoading(false);
+      return { requiresEmailConfirmation: true };
+    }
 
-    await supabaseUpsertProfile(newSession.access_token, {
-      id: newSession.user.id,
+    await syncSession(data.session);
+
+    await supabaseUpsertProfile(data.session.access_token, {
+      id: data.session.user.id,
       first_name: payload.firstName,
       last_name: payload.lastName,
       phone: payload.phone,
@@ -134,14 +173,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     setLoading(true);
-    const { session: newSession, error } = await supabaseSignIn({ email, password });
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
+    const newSession = data.session;
     if (!newSession || error) {
       setLoading(false);
       return { error: error || "Unable to login" };
     }
 
-    persistSession(newSession);
-    setSession(newSession);
+    await syncSession(newSession);
     await refreshProfile();
     setLoading(false);
     return {};
@@ -172,6 +211,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoginModalOpen,
     setIsSignupModalOpen,
     setIsUpgradeModalOpen,
+    syncSession,
     openLoginModal: () => setIsLoginModalOpen(true),
     openSignupModal: () => setIsSignupModalOpen(true),
     upgradeUser: () => setIsUpgradeModalOpen(true),
