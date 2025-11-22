@@ -191,6 +191,30 @@ export const supabaseUpsertProfile = async (
   return {};
 };
 
+export const supabaseUpdateUser = async (
+  accessToken: string,
+  data: Record<string, unknown>
+): Promise<{ user?: SupabaseSession["user"] | null; error?: string }> => {
+  const response = await fetch(`${DEFAULT_SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      ...baseHeaders,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ data }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    return { user: null, error: err?.message || "Unable to update user" };
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { user?: SupabaseSession["user"] }
+    | null;
+  return { user: payload?.user ?? null };
+};
+
 export const supabaseUpdateSubscription = async (
   accessToken: string,
   userId: string,

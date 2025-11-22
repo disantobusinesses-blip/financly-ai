@@ -88,7 +88,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <AuthCallbackPage onComplete={() => navigate("/dashboard")} />
+        <AuthCallbackPage />
       </div>
     );
   }

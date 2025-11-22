@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../supabaseClient";
 
 interface Props {
   onComplete: () => void;
@@ -26,6 +27,7 @@ const SubscriptionSuccessPage: React.FC<Props> = ({ onComplete }) => {
         setStatus("error");
         return;
       }
+      await supabase.auth.updateUser({ data: { onboarding_complete: true } });
       await refreshProfile();
       setStatus("success");
       setTimeout(onComplete, 800);

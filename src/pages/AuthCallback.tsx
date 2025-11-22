@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { getStoredSession, SupabaseSession, supabaseGetUser } from "../lib/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
+import { getStoredSession, supabaseGetUser } from "../lib/supabaseClient";
+import { supabase, SupabaseSession } from "../supabaseClient";
 
 const parseSessionFromUrl = (): SupabaseSession | null => {
   const hashParams = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "");
@@ -21,52 +22,66 @@ const parseSessionFromUrl = (): SupabaseSession | null => {
   };
 };
 
-const AuthCallback: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+const navigate = (path: string) => {
+  if (window.location.pathname !== path) {
+    window.history.replaceState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+};
+
+const AuthCallback: React.FC = () => {
   const { syncSession } = useAuth();
   const [status, setStatus] = useState<"checking" | "error">("checking");
 
   useEffect(() => {
     let active = true;
+
     const resolveSession = async () => {
-      const fromUrl = parseSessionFromUrl();
-      if (fromUrl) {
-        const { user } = await supabaseGetUser(fromUrl.access_token);
+      const sessionFromUrl = parseSessionFromUrl();
+      if (sessionFromUrl) {
+        const { user } = await supabaseGetUser(sessionFromUrl.access_token);
         if (!user) {
           if (active) setStatus("error");
           return;
         }
-        const sessionWithUser: SupabaseSession = {
-          ...fromUrl,
-          user,
-        };
-        if (!active) return;
-        await syncSession(sessionWithUser);
-        onComplete();
-        return;
+        const hydratedSession: SupabaseSession = { ...sessionFromUrl, user };
+        await syncSession(hydratedSession);
+        window.history.replaceState({}, "", "/auth/callback");
       }
 
       const stored = getStoredSession();
-      if (stored && active) {
-        await syncSession(stored);
-        onComplete();
+      if (!stored?.access_token) {
+        if (active) setStatus("error");
         return;
       }
 
-      if (active) setStatus("error");
+      const { data, error } = await supabase.auth.getUser();
+      if (!active) return;
+      if (error || !data.user) {
+        setStatus("error");
+        return;
+      }
+
+      const onboardingComplete = Boolean((data.user as { user_metadata?: Record<string, unknown> }).user_metadata?.onboarding_complete);
+      const finalSession = stored.user ? stored : { ...stored, user: data.user };
+      await syncSession(finalSession);
+
+      navigate(onboardingComplete ? "/app" : "/onboarding");
     };
 
     void resolveSession();
+
     return () => {
       active = false;
     };
-  }, [onComplete, syncSession]);
+  }, [syncSession]);
 
   return (
     <div className="px-4 pb-16 pt-24 text-white">
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
         <h1 className="text-3xl font-black uppercase tracking-[0.22em]">MyAiBank</h1>
         {status === "checking" ? (
-          <p className="text-white/70">Finishing sign-in and preparing your workspace…</p>
+          <p className="text-white/70">Confirming your account…</p>
         ) : (
           <div className="space-y-3">
             <p className="text-lg font-semibold">We couldn’t verify your session.</p>
