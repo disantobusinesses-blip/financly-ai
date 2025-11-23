@@ -33,7 +33,7 @@ const UpgradeModal: React.FC = () => {
     const queryParams = new URLSearchParams(window.location.search);
     if (queryParams.get('payment') === 'success' && user) {
       console.log("Payment successful! Upgrading user.");
-      upgradeUser(user.id);
+      upgradeUser();
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
