@@ -1,23 +1,47 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useOnboarding } from "../contexts/OnboardingContext";
+import { OnboardingState } from "../types";
 
 const SignupModal: React.FC = () => {
   const { isSignupModalOpen, setIsSignupModalOpen, signup } = useAuth();
+  const { onboardingState, saveProgress } = useOnboarding();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [region, setRegion] = useState<"AU" | "US">("AU");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const nextSnapshot = useMemo<OnboardingState>(
+    () => ({
+      step: onboardingState.step ? onboardingState.step + 1 : 1,
+      status: "awaiting_verification",
+      region,
+      email,
+      data: {
+        ...onboardingState.data,
+        startedAt: onboardingState.data?.startedAt || new Date().toISOString(),
+      },
+      lastUpdated: new Date().toISOString(),
+    }),
+    [email, onboardingState.data, onboardingState.step, region]
+  );
 
   if (!isSignupModalOpen) return null;
 
-  const handleSignup = () => {
-    const success = signup(email, password, region);
+  const handleSignup = async () => {
+    setSubmitting(true);
+    setError(null);
+
+    await saveProgress(nextSnapshot);
+    const success = await signup(email, password, region, nextSnapshot);
     if (!success) {
-      setError("An account with this email already exists.");
+      setError("An account with this email already exists or cannot be created.");
     } else {
       setError(null);
       setIsSignupModalOpen(false);
     }
+    setSubmitting(false);
   };
 
   return (
@@ -61,9 +85,10 @@ const SignupModal: React.FC = () => {
           </button>
           <button
             onClick={handleSignup}
-            className="px-4 py-2 rounded bg-primary text-white"
+            disabled={submitting}
+            className="px-4 py-2 rounded bg-primary text-white disabled:opacity-50"
           >
-            Sign Up
+            {submitting ? "Sending magic link..." : "Sign Up"}
           </button>
         </div>
       </div>

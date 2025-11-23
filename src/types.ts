@@ -82,3 +82,18 @@ export interface User {
   membershipType: UserMembershipType;
   region: "AU" | "US";
 }
+
+export type OnboardingStatus =
+  | "idle"
+  | "awaiting_verification"
+  | "in_progress"
+  | "completed";
+
+export interface OnboardingState {
+  step: number;
+  status: OnboardingStatus;
+  email?: string;
+  region?: "AU" | "US";
+  lastUpdated?: string;
+  data?: Record<string, any>;
+}
