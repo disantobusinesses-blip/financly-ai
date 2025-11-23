@@ -1,80 +1,44 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { getStoredSession, supabaseGetUser } from "../lib/supabaseClient";
-import { supabase, SupabaseSession } from "../supabaseClient";
-
-const parseSessionFromUrl = (): SupabaseSession | null => {
-  const hashParams = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "");
-  const searchParams = new URLSearchParams(window.location.search);
-  const source = hashParams.get("access_token") ? hashParams : searchParams;
-  const accessToken = source.get("access_token");
-  const refreshToken = source.get("refresh_token");
-  if (!accessToken || !refreshToken) return null;
-
-  const expiresIn = source.get("expires_in");
-  const tokenType = source.get("token_type") || "bearer";
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_in: expiresIn ? Number(expiresIn) : undefined,
-    token_type: tokenType,
-    user: { id: "" },
-  };
-};
-
-const navigate = (path: string) => {
-  if (window.location.pathname !== path) {
-    window.history.replaceState({}, "", path);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  }
-};
+import { supabase } from "../supabaseClient";
 
 const AuthCallback: React.FC = () => {
-  const { syncSession } = useAuth();
   const [status, setStatus] = useState<"checking" | "error">("checking");
 
   useEffect(() => {
-    let active = true;
+    const resolve = async () => {
+      const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
 
-    const resolveSession = async () => {
-      const sessionFromUrl = parseSessionFromUrl();
-      if (sessionFromUrl) {
-        const { user } = await supabaseGetUser(sessionFromUrl.access_token);
-        if (!user) {
-          if (active) setStatus("error");
-          return;
-        }
-        const hydratedSession: SupabaseSession = { ...sessionFromUrl, user };
-        await syncSession(hydratedSession);
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token });
         window.history.replaceState({}, "", "/auth/callback");
       }
 
-      const stored = getStoredSession();
-      if (!stored?.access_token) {
-        if (active) setStatus("error");
-        return;
-      }
-
-      const { data, error } = await supabase.auth.getUser();
-      if (!active) return;
-      if (error || !data.user) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
         setStatus("error");
         return;
       }
 
-      const onboardingComplete = Boolean((data.user as { user_metadata?: Record<string, unknown> }).user_metadata?.onboarding_complete);
-      const finalSession = stored.user ? stored : { ...stored, user: data.user };
-      await syncSession(finalSession);
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error || !userData.user) {
+        setStatus("error");
+        return;
+      }
 
-      navigate(onboardingComplete ? "/app" : "/onboarding");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userData.user.id)
+        .maybeSingle();
+
+      const isOnboarded = Boolean((profile as { is_onboarded?: boolean } | null)?.is_onboarded);
+      window.location.replace(isOnboarded ? "/app/dashboard" : "/onboarding");
     };
 
-    void resolveSession();
-
-    return () => {
-      active = false;
-    };
-  }, [syncSession]);
+    void resolve();
+  }, []);
 
   return (
     <div className="px-4 pb-16 pt-24 text-white">

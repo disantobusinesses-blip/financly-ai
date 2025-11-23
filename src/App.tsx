@@ -12,6 +12,7 @@ import SubscribePage from "./pages/Subscribe";
 import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
+import SignupPage from "./pages/Signup";
 
 const usePath = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -50,12 +51,26 @@ const AppContent: React.FC = () => {
     </>
   );
 
-  if (path === "/onboarding") {
+  if (path === "/signup") {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <OnboardingPage onComplete={() => navigate("/subscribe")} />
+        <SignupPage />
+      </div>
+    );
+  }
+
+  if (path === "/onboarding") {
+    if (!user && !loading) {
+      navigate("/login");
+      return null;
+    }
+    return (
+      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+        {backgroundLayers}
+        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <OnboardingPage />
       </div>
     );
   }
@@ -95,24 +110,24 @@ const AppContent: React.FC = () => {
 
   if (path === "/subscription/success") {
     if (!user && !loading) {
-      navigate("/onboarding");
+      navigate("/login");
       return null;
     }
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <SubscriptionSuccessPage onComplete={() => navigate("/dashboard")} />
+        <SubscriptionSuccessPage onComplete={() => navigate("/app/dashboard")} />
       </div>
     );
   }
 
-  if (path === "/dashboard" || path === "/app") {
+  if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
     if (!user && !loading) {
-      navigate("/onboarding");
+      navigate("/login");
       return null;
     }
-    if (user && profile?.subscription_status !== "active") {
-      navigate("/subscribe");
+    if (user && profile && !profile.is_onboarded) {
+      navigate("/onboarding");
       return null;
     }
     return (
@@ -154,7 +169,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
       {backgroundLayers}
       <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-      <WelcomeScreen onGetStarted={() => navigate("/onboarding")} onLogin={() => navigate("/login")} />
+      <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} />
     </div>
   );
 };
