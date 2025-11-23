@@ -15,6 +15,15 @@ interface AuthContextType {
   profile: SupabaseProfile | null;
   session: Session | null;
   loading: boolean;
+  remainingBasicDays: number | null;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
+  isSignupModalOpen: boolean;
+  setIsSignupModalOpen: (open: boolean) => void;
+  openSignupModal: () => void;
+  isUpgradeModalOpen: boolean;
+  setIsUpgradeModalOpen: (open: boolean) => void;
+  upgradeUser: () => Promise<void>;
   signup: (payload: SignupPayload) => Promise<{ error?: string }>;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
@@ -40,6 +49,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [remainingBasicDays, setRemainingBasicDays] = useState<number | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const refreshProfile = async (): Promise<void> => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -137,11 +150,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProfile(null);
   };
 
+  const openSignupModal = () => {
+    setIsLoginModalOpen(false);
+    setIsSignupModalOpen(true);
+  };
+
+  const upgradeUser = async () => {
+    setIsUpgradeModalOpen(true);
+  };
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
+    remainingBasicDays,
+    isLoginModalOpen,
+    setIsLoginModalOpen,
+    isSignupModalOpen,
+    setIsSignupModalOpen,
+    openSignupModal,
+    isUpgradeModalOpen,
+    setIsUpgradeModalOpen,
+    upgradeUser,
     signup,
     login,
     logout,

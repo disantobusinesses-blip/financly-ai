@@ -51,6 +51,10 @@ export const fetchProfile = async (): Promise<SupabaseProfile | null> => {
 export const upsertProfile = async (
   updates: Partial<SupabaseProfile> & { id: string }
 ): Promise<{ error?: string }> => {
-  const { error } = await supabase.from("profiles").upsert(updates, { returning: "minimal" });
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(updates, { onConflict: "id" })
+    .select()
+    .single();
   return error ? { error: error.message } : {};
 };
