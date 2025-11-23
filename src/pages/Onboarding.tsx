@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import type { SupabaseProfile, OnboardingStep } from "../lib/supabaseClient";
 
 interface StepConfig {

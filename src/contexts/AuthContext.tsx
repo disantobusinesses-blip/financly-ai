@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { Session } from "@supabase/supabase-js";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import type { SupabaseProfile } from "../lib/supabaseClient";
 import { User as AppUser } from "../types";
 
@@ -15,7 +15,7 @@ interface AuthContextType {
   profile: SupabaseProfile | null;
   session: Session | null;
   loading: boolean;
-  signup: (payload: SignupPayload) => Promise<{ error?: string; requiresEmailConfirmation?: boolean }>;
+  signup: (payload: SignupPayload) => Promise<{ error?: string }>;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -78,9 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return buildUserFromProfile(session, profile);
   }, [session, profile]);
 
-  const signup = async (
-    payload: SignupPayload
-  ): Promise<{ error?: string; requiresEmailConfirmation?: boolean }> => {
+  const signup = async (payload: SignupPayload): Promise<{ error?: string }> => {
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: payload.email,
@@ -111,13 +109,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    if (!data.session) {
-      setLoading(false);
-      return { requiresEmailConfirmation: true };
+    if (data.session) {
+      setSession(data.session);
+      await refreshProfile();
     }
 
-    setSession(data.session);
-    await refreshProfile();
     setLoading(false);
     return {};
   };

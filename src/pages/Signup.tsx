@@ -7,7 +7,6 @@ const SignupPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -17,23 +16,8 @@ const SignupPage: React.FC = () => {
       setError(result.error);
       return;
     }
-    if (result.requiresEmailConfirmation) {
-      setConfirmation(true);
-      return;
-    }
     window.location.replace("/onboarding");
   };
-
-  if (confirmation) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center px-4 text-white">
-        <div className="w-full max-w-md space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-          <h1 className="text-2xl font-bold">Check your email</h1>
-          <p className="text-white/70">Confirm your email to continue onboarding.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4 text-white">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 
 interface Props {
   onComplete: () => void;
