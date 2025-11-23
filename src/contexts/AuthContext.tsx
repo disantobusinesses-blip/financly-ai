@@ -10,12 +10,13 @@ export interface SignupPayload {
   fullName: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: AppUser | null;
   profile: SupabaseProfile | null;
   session: Session | null;
   loading: boolean;
   remainingBasicDays: number | null;
+  setRemainingBasicDays: (value: number | null) => void;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
   isSignupModalOpen: boolean;
@@ -165,6 +166,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     session,
     loading,
     remainingBasicDays,
+    setRemainingBasicDays,
     isLoginModalOpen,
     setIsLoginModalOpen,
     isSignupModalOpen,
