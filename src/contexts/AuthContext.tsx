@@ -69,22 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    if (!data) {
-      const { data: upserted, error: upsertError } = await supabase
-        .from("profiles")
-        .upsert({ id: activeSession.user.id, email: activeSession.user.email || "" }, { onConflict: "id" })
-        .select()
-        .single();
-      if (upsertError) {
-        console.error("Unable to upsert profile", upsertError);
-        setProfile(null);
-        return;
-      }
-      setProfile(upserted as SupabaseProfile);
-      return;
-    }
-
-    setProfile(data as SupabaseProfile);
+    setProfile((data as SupabaseProfile) || null);
   };
 
   useEffect(() => {
@@ -97,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     void init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event: string, newSession: Session | null) => {
       setSession(newSession);
       if (newSession?.user?.id) {
         void refreshProfile();
@@ -129,24 +114,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { error: error.message };
     }
 
-    const newUser = data.user;
-    if (newUser) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: newUser.id,
-        email: payload.email,
-        full_name: payload.fullName,
-        onboarding_step: "BASICS",
-        is_onboarded: false,
-      });
-      if (profileError) {
-        setLoading(false);
-        return { error: profileError.message };
-      }
-    }
-
     if (data.session) {
       setSession(data.session);
-      await refreshProfile();
     }
 
     setLoading(false);
@@ -161,7 +130,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { error: error?.message || "Unable to login" };
     }
     setSession(data.session);
-    await refreshProfile();
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.session.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Unable to load profile", profileError);
+      setProfile(null);
+      setLoading(false);
+      return { error: profileError.message };
+    }
+
+    if (!profileData) {
+      const { data: upserted, error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: data.session.user.id,
+            email: data.session.user.email || "",
+            full_name: data.session.user.user_metadata?.full_name || "",
+          },
+          { onConflict: "id" }
+        )
+        .select()
+        .single();
+
+      if (upsertError) {
+        console.error("Unable to upsert profile", upsertError);
+        setProfile(null);
+        setLoading(false);
+        return { error: upsertError.message };
+      }
+      setProfile(upserted as SupabaseProfile);
+    } else {
+      setProfile(profileData as SupabaseProfile);
+    }
     setLoading(false);
     return {};
   };
