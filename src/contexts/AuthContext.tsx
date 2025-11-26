@@ -10,7 +10,7 @@ import { User, UserMembershipType } from "../types";
 import { registerReferral, syncReferralProfile } from "../services/ReferralService";
 import { isDevProUnlocked } from "../utils/devFlags";
 
-interface SignupPayload {
+interface SignupPayload { 
   email: string;
   password: string;
   region: "AU" | "US";
