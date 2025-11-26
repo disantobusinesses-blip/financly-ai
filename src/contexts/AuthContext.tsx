@@ -82,14 +82,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     void init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event: string, newSession: Session | null) => {
-      setSession(newSession);
-      if (newSession?.user?.id) {
-        void refreshProfile();
-      } else {
-        setProfile(null);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event: string, newSession: Session | null) => {
+        setSession(newSession);
+        if (newSession?.user?.id) {
+          void refreshProfile();
+        } else {
+          setProfile(null);
+        }
       }
-    });
+    );
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
