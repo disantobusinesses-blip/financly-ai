@@ -35,7 +35,7 @@ const BasiqCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
         setStatus("Connection confirmed. Redirecting...");
-        window.location.replace("/onboarding");
+        window.location.replace("/app/dashboard");
       } catch (err: any) {
         setError(err?.message || "Unable to confirm your bank connection.");
       }
