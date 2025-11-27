@@ -37,10 +37,16 @@ export class BankingService {
   }
 }
 
-export async function initiateBankConnection(email: string): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/create-consent-session", {
+export async function initiateBankConnection(
+  email: string,
+  accessToken?: string
+): Promise<{ consentUrl: string; userId: string }> {
+  const res = await fetch("/api/start-basiq-consent", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify({ email }),
   });
 
