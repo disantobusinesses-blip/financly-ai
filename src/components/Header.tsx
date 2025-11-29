@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
-import logoMark from "../assets/myaibank-logo.svg";
 
 interface HeaderProps {
   activeView: "dashboard" | "what-we-do" | "sandbox";
@@ -9,7 +8,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
-  const { user, logout, remainingBasicDays } = useAuth();
+  const { user, profile, session, logout, remainingBasicDays } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const statusChip = (() => {
     if (!user) return "";
@@ -33,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
     try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email);
+      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
       localStorage.setItem("basiqUserId", userId);
       localStorage.removeItem("demoMode");
       window.location.href = consentUrl;
@@ -65,14 +64,9 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         )}
         <button
           onClick={() => onNavigate("dashboard")}
-          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-bold tracking-wide text-white transition hover:bg-white/20"
+          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-black tracking-[0.18em] text-white transition hover:bg-white/20"
         >
-          <img
-            src={logoMark}
-            alt="MyAiBank logo"
-            className="h-8 w-8 rounded-xl bg-white p-1"
-          />
-          MyAiBank
+          <span className="text-xl uppercase">MyAiBank</span>
         </button>
       </div>
 
@@ -81,12 +75,14 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           <span className="hidden text-xs font-semibold uppercase tracking-widest text-white/70 sm:inline-flex">
             {statusChip}
           </span>
-          <button
-            onClick={handleConnectBankClick}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
-          >
-            Connect bank
-          </button>
+          {!profile?.has_bank_connection && (
+            <button
+              onClick={handleConnectBankClick}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
+            >
+              Connect bank
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex w-full flex-col items-stretch gap-2 text-right sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
