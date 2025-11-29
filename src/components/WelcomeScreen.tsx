@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
 import { SparklesIcon, GaugeIcon, LoanIcon, ChartIcon } from "./icon/Icon";
 import { useNewsletterSignup } from "../hooks/useNewsletterSignup";
 import LegalFooter from "./LegalFooter";
@@ -60,8 +59,12 @@ const AnimatedNumber: React.FC<{ value: number; format?: (value: number) => stri
   return <span>{formatted}</span>;
 };
 
-const WelcomeScreen: React.FC = () => {
-  const { openLoginModal, openSignupModal } = useAuth();
+interface WelcomeScreenProps {
+  onGetStarted: () => void;
+  onLogin: () => void;
+}
+
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) => {
   const { email, setEmail, status, submit, reset } = useNewsletterSignup();
   const [frequency, setFrequency] = useState<Frequency>("monthly");
   const [income, setIncome] = useState(5000);
@@ -107,7 +110,7 @@ const WelcomeScreen: React.FC = () => {
             </div>
             <div className="space-y-4">
               <h1 className="text-4xl font-black leading-tight md:text-5xl lg:text-6xl">
-                First 500 users get <span className="text-primary-light">25% off for 6 months.</span>
+                Meet MyAiBank: premium, AI-guided finances for Australia.
               </h1>
               <p className="text-lg text-slate-200 md:text-xl">
                 All-in-one cashflow, Financial Health scoring, and smart subscription intelligence designed for both mobile and desktop.
@@ -115,13 +118,13 @@ const WelcomeScreen: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-4">
               <button
-                onClick={openSignupModal}
-                className="hover-zoom rounded-2xl bg-primary px-6 py-3 text-lg font-semibold text-white shadow-lg"
+                onClick={onGetStarted}
+                className="interactive-primary rounded-2xl bg-primary px-6 py-3 text-lg font-semibold text-white shadow-lg"
               >
-                Get started
+                Get Started
               </button>
               <button
-                onClick={openLoginModal}
+                onClick={onLogin}
                 className="hover-zoom rounded-2xl border border-white/40 px-6 py-3 text-lg font-semibold text-white"
               >
                 Login
@@ -283,7 +286,6 @@ const WelcomeScreen: React.FC = () => {
           </div>
         </aside>
       </div>
-
       <LegalFooter />
     </div>
   );
