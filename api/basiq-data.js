@@ -1,106 +1,62 @@
 // 🚀 REPLACEMENT FOR: /api/basiq-data.js
 // Live-only. Optional jobId polling. Retries. Clear errors.
 
-const BASIQ_API_KEY = process.env.BASIQ_API_KEY;
-const BASIQ_API_URL = "https://au-api.basiq.io";
+const FISKIL_API_KEY = process.env.FISKIL_API_KEY;
+const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com").replace(/\/$/, "");
 
-let CACHED_SERVER_TOKEN = null;
-let SERVER_TOKEN_EXPIRY = 0;
-
-function normalizedBasicKey() {
-  if (!BASIQ_API_KEY) throw new Error("Missing BASIQ_API_KEY env var");
-  const raw = BASIQ_API_KEY.trim();
-  return raw.startsWith("Basic ") ? raw : `Basic ${raw}`;
-}
-
-async function getServerToken() {
-  const now = Date.now();
-  if (CACHED_SERVER_TOKEN && now < SERVER_TOKEN_EXPIRY) return CACHED_SERVER_TOKEN;
-
-  const res = await fetch(`${BASIQ_API_URL}/token`, {
-    method: "POST",
-    headers: {
-      Authorization: normalizedBasicKey(),
-      "Content-Type": "application/x-www-form-urlencoded",
-      "basiq-version": "3.0",
-    },
-    body: new URLSearchParams({ scope: "SERVER_ACCESS" }),
-  });
-
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Failed to get server token: ${t}`);
-  }
-  const { access_token } = await res.json();
-  CACHED_SERVER_TOKEN = access_token;
-  SERVER_TOKEN_EXPIRY = now + 55 * 60 * 1000;
-  return CACHED_SERVER_TOKEN;
+function fiskilHeaders() {
+  if (!FISKIL_API_KEY) throw new Error("Missing FISKIL_API_KEY env var");
+  return {
+    Authorization: `Bearer ${FISKIL_API_KEY}`,
+    "Content-Type": "application/json",
+  };
 }
 
 async function fetchJSON(url, headers, retries = 2) {
   try {
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-    return await res.json();
+    const contentType = res.headers.get("content-type") || "";
+    return contentType.includes("application/json") ? await res.json() : await res.text();
   } catch (e) {
     if (retries > 0) {
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1500));
       return fetchJSON(url, headers, retries - 1);
     }
     throw e;
   }
 }
 
-async function pollJobUntilDone(jobId, serverToken, maxAttempts = 12, delayMs = 2500) {
-  for (let i = 0; i < maxAttempts; i++) {
-    const data = await fetchJSON(`${BASIQ_API_URL}/jobs/${jobId}`, {
-      Authorization: `Bearer ${serverToken}`,
-      "basiq-version": "3.0",
-    });
-    const status = data?.status;
-    if (status === "success") return data;
-    if (status === "failed") throw new Error(`Basiq job failed: ${JSON.stringify(data?.result || {})}`);
-    await new Promise(r => setTimeout(r, delayMs));
-  }
-  throw new Error("Timed out waiting for Basiq job to finish");
-}
-
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
 
+  if (!FISKIL_API_KEY || !FISKIL_API_URL) {
+    return res.status(500).json({ error: "Fiskil configuration missing on server" });
+  }
+
   try {
     const userId = String(req.query?.userId || "").trim();
-    const jobId = req.query?.jobId ? String(req.query.jobId) : null;
+    const since = req.query?.from ? String(req.query.from) : null;
 
-    if (!userId) return res.status(400).json({ error: "Missing Basiq userId" });
+    if (!userId) return res.status(400).json({ error: "Missing Fiskil userId" });
 
-    const SERVER_TOKEN = await getServerToken();
-
-    // If jobId present from redirect, wait for it to complete before fetching data
-    if (jobId) {
-      try {
-        await pollJobUntilDone(jobId, SERVER_TOKEN);
-      } catch (e) {
-        // Continue to try fetching data, but include hint in response
-        console.warn("⚠️ job polling warning:", e?.message || e);
-      }
-    }
+    const query = since ? `?from=${encodeURIComponent(since)}` : "";
+    const headers = fiskilHeaders();
 
     const [accountsData, transactionsData] = await Promise.all([
-      fetchJSON(`${BASIQ_API_URL}/users/${encodeURIComponent(userId)}/accounts`, {
-        Authorization: `Bearer ${SERVER_TOKEN}`,
-        "basiq-version": "3.0",
-      }),
-      fetchJSON(`${BASIQ_API_URL}/users/${encodeURIComponent(userId)}/transactions`, {
-        Authorization: `Bearer ${SERVER_TOKEN}`,
-        "basiq-version": "3.0",
-      }),
+      fetchJSON(`${FISKIL_API_URL}/banking/v2/users/${encodeURIComponent(userId)}/accounts`, headers),
+      fetchJSON(
+        `${FISKIL_API_URL}/banking/v2/users/${encodeURIComponent(userId)}/transactions${query}`,
+        headers
+      ),
     ]);
 
     return res.status(200).json({
       mode: "live",
-      accounts: accountsData?.data || [],
-      transactions: transactionsData?.data || [],
+      accounts: Array.isArray(accountsData?.data) ? accountsData.data : accountsData?.accounts || [],
+      transactions: Array.isArray(transactionsData?.data)
+        ? transactionsData.data
+        : transactionsData?.transactions || [],
     });
   } catch (err) {
     console.error("❌ /api/basiq-data error:", err);
