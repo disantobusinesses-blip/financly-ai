@@ -13,7 +13,8 @@ import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
-import BasiqCallbackPage from "./pages/BasiqCallback";
+import FiskilCallbackPage from "./pages/FiskilCallback";
+import PricingPage from "./pages/pricing";
 
 const usePath = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -134,11 +135,11 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (path === "/basiq/callback") {
+  if (path === "/fiskil/callback") {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <BasiqCallbackPage />
+        <FiskilCallbackPage />
       </div>
     );
   }
@@ -195,6 +196,18 @@ const AppContent: React.FC = () => {
         <Header activeView="what-we-do" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <WhatWeDo />
+        </main>
+      </div>
+    );
+  }
+
+  if (path === "/pricing") {
+    return (
+      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+        {backgroundLayers}
+        <Header activeView="pricing" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <main className="px-4 pb-16 pt-24 md:px-8">
+          <PricingPage />
         </main>
       </div>
     );

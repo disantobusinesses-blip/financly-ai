@@ -3,7 +3,7 @@ export default function SecurityPage() {
     <div className="max-w-4xl mx-auto py-12 px-6 space-y-6">
       <h1 className="text-3xl font-bold">Your Security Matters</h1>
       <p>
-        MyAiBank uses <strong>Basiq</strong> for bank connections and{" "}
+        MyAiBank uses <strong>Fiskil</strong> for bank connections and{" "}
         <strong>Stripe</strong> for payments. Both are industry leaders in
         security and compliance.
       </p>

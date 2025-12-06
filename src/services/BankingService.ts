@@ -1,35 +1,35 @@
-// 🚀 REPLACEMENT FOR: /src/services/BankingService.ts
-// Frontend initiator for consent; live-only data fetch helpers.
+// 🚀 Replacement for /src/services/BankingService.ts
+// Frontend initiator for Fiskil Link; live-only data fetch helpers.
 
 import { Account, Transaction } from "../types";
 
 export class BankingService {
-  static getStoredUserId(): string | null {
-    return localStorage.getItem("basiqUserId");
+  static getStoredCustomerId(): string | null {
+    return localStorage.getItem("fiskilCustomerId");
   }
 
-  static setStoredUserId(id: string) {
-    localStorage.setItem("basiqUserId", id);
+  static setStoredCustomerId(id: string) {
+    localStorage.setItem("fiskilCustomerId", id);
   }
 
-  static clearStoredUserId() {
-    localStorage.removeItem("basiqUserId");
+  static clearStoredCustomerId() {
+    localStorage.removeItem("fiskilCustomerId");
   }
 
-  static async getAccounts(userId?: string): Promise<Account[]> {
-    const id = userId || this.getStoredUserId();
+  static async getAccounts(customerId?: string): Promise<Account[]> {
+    const id = customerId || this.getStoredCustomerId();
     if (!id) return [];
-    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
+    const url = `/api/fiskil-data?userId=${encodeURIComponent(id)}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     return data.accounts || [];
   }
 
-  static async getTransactions(userId?: string): Promise<Transaction[]> {
-    const id = userId || this.getStoredUserId();
+  static async getTransactions(customerId?: string): Promise<Transaction[]> {
+    const id = customerId || this.getStoredCustomerId();
     if (!id) return [];
-    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
+    const url = `/api/fiskil-data?userId=${encodeURIComponent(id)}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
@@ -40,8 +40,8 @@ export class BankingService {
 export async function initiateBankConnection(
   email: string,
   accessToken?: string
-): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/start-basiq-consent", {
+): Promise<{ consentUrl?: string; linkUrl?: string; userId?: string; customerId: string }> {
+  const res = await fetch("/api/start-fiskil-link", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -52,24 +52,26 @@ export async function initiateBankConnection(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Consent session failed: ${text}`);
+    throw new Error(`Link session failed: ${text}`);
   }
 
   const data = await res.json();
-  if (!data?.consentUrl || !data?.userId) {
-    throw new Error("Invalid consent response");
+  if (!data?.linkUrl || !(data?.customerId || data?.userId)) {
+    throw new Error("Invalid link response");
   }
+
+  const customerId = data.customerId || data.userId;
 
   // Store identifiers so callback or polling can finalise the connection
   try {
-    localStorage.setItem("basiqPendingUserId", data.userId);
-    localStorage.setItem("basiqConnectionStatus", "pending");
+    localStorage.setItem("fiskilPendingCustomerId", customerId);
+    localStorage.setItem("fiskilConnectionStatus", "pending");
   } catch (err) {
-    console.warn("Unable to persist pending Basiq user id", err);
+    console.warn("Unable to persist pending Fiskil customer id", err);
   }
 
   // Store userId so we can fetch data immediately after redirect
-  BankingService.setStoredUserId(data.userId);
+  BankingService.setStoredCustomerId(customerId);
 
-  return data; // caller will set window.location.href = consentUrl
+  return { ...data, customerId };
 }

@@ -3,8 +3,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { initiateBankConnection } from "../services/BankingService";
 
 interface HeaderProps {
-  activeView: "dashboard" | "what-we-do" | "sandbox";
-  onNavigate: (view: "dashboard" | "what-we-do" | "sandbox") => void;
+  activeView: "dashboard" | "what-we-do" | "sandbox" | "pricing";
+  onNavigate: (view: "dashboard" | "what-we-do" | "sandbox" | "pricing") => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
@@ -32,10 +32,10 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
     try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
-      localStorage.setItem("basiqUserId", userId);
+      const { linkUrl, customerId } = await initiateBankConnection(user.email, session?.access_token);
+      localStorage.setItem("fiskilCustomerId", customerId);
       localStorage.removeItem("demoMode");
-      window.location.href = consentUrl;
+      window.location.href = linkUrl;
     } catch (err) {
       console.error("Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -95,6 +95,14 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
             Home
           </button>
           <button
+            onClick={() => onNavigate("pricing")}
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
+              activeView === "pricing" ? "text-white" : "text-white/60"
+            }`}
+          >
+            Pricing
+          </button>
+          <button
             onClick={() => onNavigate("what-we-do")}
             className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "what-we-do" ? "text-white" : "text-white/60"
@@ -137,6 +145,17 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               </button>
               <button
                 onClick={() => {
+                  onNavigate("pricing");
+                  setMenuOpen(false);
+                }}
+                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
+                  activeView === "pricing" ? "bg-white/10 text-white" : ""
+                }`}
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => {
                   onNavigate("what-we-do");
                   setMenuOpen(false);
                 }}
@@ -165,7 +184,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               Logout
             </button>
             <div className="mt-6 space-y-3 text-xs text-white/60">
-              <p>Your email becomes your Basiq user ID for secure bank connections.</p>
+              <p>Your email becomes your Fiskil customer ID for secure bank connections.</p>
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>

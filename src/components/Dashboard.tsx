@@ -13,7 +13,7 @@ import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
 import LegalFooter from "./LegalFooter";
 import { ArrowRightIcon } from "./icon/Icon";
-import { useBasiqData } from "../hooks/useBasiqData";
+import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 
@@ -23,7 +23,7 @@ const LEGACY_TOUR_KEY = "financly_tour_seen";
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
-  const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
+  const { accounts, transactions, loading, error, lastUpdated } = useFiskilData(user?.id);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);

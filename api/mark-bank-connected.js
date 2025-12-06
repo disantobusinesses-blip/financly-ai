@@ -25,13 +25,13 @@ export default async function handler(req, res) {
     const userId = userData?.user?.id;
     if (!userId) return res.status(400).json({ error: "User not found" });
 
-    const basiqUserId = req.body?.basiqUserId;
+    const fiskilCustomerId = req.body?.fiskilCustomerId;
 
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
         has_bank_connection: true,
-        basiq_user_id: basiqUserId || null,
+        fiskil_customer_id: fiskilCustomerId || null,
         onboarding_step: "COMPLETE",
         is_onboarded: true,
       })

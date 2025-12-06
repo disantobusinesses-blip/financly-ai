@@ -20,7 +20,7 @@ export interface SupabaseProfile {
   full_name: string;
   onboarding_step: OnboardingStep;
   is_onboarded: boolean;
-  basiq_user_id?: string | null;
+  fiskil_customer_id?: string | null;
   has_bank_connection?: boolean | null;
   last_transactions_sync_at?: string | null;
   country?: string | null;
