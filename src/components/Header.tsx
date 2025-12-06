@@ -6,20 +6,23 @@ const Header: React.FC = () => {
   const { user, logout } = useAuth();
 
   const handleConnectBankClick = async () => {
-    if (!user?.email) return;
-    try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email);
+  const email = user?.email;        // may be string | undefined
 
-      // ✅ Save Basiq userId and clear demo mode
-      localStorage.setItem("basiqUserId", userId);
-      localStorage.removeItem("demoMode");
+  if (!email) return;               // runtime guard
 
-      window.location.href = consentUrl; // Redirect to Basiq consent
-    } catch (err) {
-      console.error("Failed to start bank connection:", err);
-      alert("Unable to connect bank right now.");
-    }
-  };
+  try {
+    const { consentUrl, userId } = await initiateBankConnection(email); // email is now string
+    // ✅ Save Basiq userId and clear demo mode
+    localStorage.setItem("basiqUserId", userId);
+    localStorage.removeItem("demoMode");
+
+    window.location.href = consentUrl; // Redirect to Basiq consent
+  } catch (err) {
+    console.error("Failed to start bank connection:", err);
+    alert("Unable to connect bank right now.");
+  }
+};
+
 
   const handleLogout = async () => {
     try {
