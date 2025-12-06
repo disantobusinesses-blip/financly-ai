@@ -11,9 +11,6 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-let cachedToken = null;
-let cachedExpiry = 0;
-
 function ensureFiskilConfig() {
   if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
     throw new Error("Fiskil configuration missing on server");
@@ -28,40 +25,31 @@ function createSupabaseServerClient(token) {
   });
 }
 
-async function getFiskilAccessToken() {
-  ensureFiskilConfig();
-  const now = Date.now();
-  if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
-
-  const res = await fetch(`${FISKIL_API_URL}/oauth/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${Buffer.from(`${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`).toString("base64")}`,
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Fiskil token request failed (${res.status}): ${body}`);
-  }
-
-  const json = await res.json();
-  cachedToken = json.access_token;
-  cachedExpiry = now + (json.expires_in ? json.expires_in * 1000 : 0);
-  return cachedToken;
-}
-
+/**
+ * Generic Fiskil request helper.
+ *
+ * NOTE: Update the auth header names below to match the Authentication docs.
+ * Many client-based APIs use something like:
+ *   "X-Client-Id" / "X-Client-Secret"
+ * but you must use the exact names from https://docs.fiskil.com/authentication.
+ */
 async function fiskilRequest(path, options = {}) {
-  const token = await getFiskilAccessToken();
-  const res = await fetch(`${FISKIL_API_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+  ensureFiskilConfig();
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  // TODO: change these header keys if the docs use different names.
+  headers["X-Client-Id"] = FISKIL_CLIENT_ID;
+  headers["X-Client-Secret"] = FISKIL_CLIENT_SECRET;
+
+  const url = `${FISKIL_API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const res = await fetch(url, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -117,9 +105,11 @@ export default async function handler(req, res) {
       if (upsertError) throw upsertError;
     }
 
+    // Create / lookup Fiskil user
     let fiskilUserId = profileData?.basiq_user_id || null;
     if (!fiskilUserId) {
       try {
+        // NOTE: update the URL to the exact "create user" path in the Fiskil Banking API docs.
         const created = await fiskilRequest("/banking/v2/users", {
           method: "POST",
           body: JSON.stringify({ email }),
@@ -135,6 +125,8 @@ export default async function handler(req, res) {
       }
     }
 
+    // Create a Link token / consent session
+    // NOTE: check the Fiskil Link Widget docs for the exact endpoint + body.
     const linkToken = await fiskilRequest("/link/token", {
       method: "POST",
       body: JSON.stringify({
@@ -144,11 +136,18 @@ export default async function handler(req, res) {
     });
 
     const consentUrl =
-      linkToken?.url || linkToken?.linkTokenUrl || linkToken?.link_url || linkToken?.linkToken || linkToken?.redirectUrl;
+      linkToken?.url ||
+      linkToken?.linkTokenUrl ||
+      linkToken?.link_url ||
+      linkToken?.linkToken ||
+      linkToken?.redirectUrl;
 
     await supabaseAuth
       .from("profiles")
-      .upsert({ id: userId, email, basiq_user_id: fiskilUserId, has_bank_connection: true }, { onConflict: "id" })
+      .upsert(
+        { id: userId, email, basiq_user_id: fiskilUserId, has_bank_connection: true },
+        { onConflict: "id" },
+      )
       .select()
       .single();
 
