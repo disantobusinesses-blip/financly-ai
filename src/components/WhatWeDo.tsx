@@ -53,7 +53,7 @@ const WhatWeDo: React.FC = () => {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">1. Read your money story instantly</h2>
           <p>
-            We start with your real accounts. MyAiBank connects through Basiq&apos;s regulated open-banking platform so you can
+            We start with your real accounts. MyAiBank connects through Fiskil&apos;s regulated open-banking platform so you can
             securely pull balances, mortgages, credit cards, and transaction history into a single canvas. Our
             <a href="#financial-health" className="font-semibold text-primary"> Financial Health score</a> takes that live
             data and transforms it into a 0-100 health indicator that updates as soon as new activity arrives. We factor your
@@ -158,7 +158,7 @@ const WhatWeDo: React.FC = () => {
           New members choose between a seven-day Basic showcase or MyAiBank Pro. Basic keeps Financial Health, Goals, and
           Balance Summary visible while softly blurring AI-heavy panels to demonstrate the value of upgrading. Our playful
           emoji-filled signup modal helps you pick an avatar, region, and plan while explaining that the email you enter becomes
-          your Basiq user ID.
+          your Fiskil customer ID.
         </p>
         <p>
           After connecting your bank, a live tutorial icon appears on the dashboard. Tap “Need a tour?” and a glowing pointer

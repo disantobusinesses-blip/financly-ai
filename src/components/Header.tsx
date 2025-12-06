@@ -32,10 +32,10 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
     try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
-      localStorage.setItem("basiqUserId", userId);
+      const { linkUrl, customerId } = await initiateBankConnection(user.email, session?.access_token);
+      localStorage.setItem("fiskilCustomerId", customerId);
       localStorage.removeItem("demoMode");
-      window.location.href = consentUrl;
+      window.location.href = linkUrl;
     } catch (err) {
       console.error("Failed to start bank connection:", err);
       alert("Unable to connect bank right now.");
@@ -184,7 +184,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               Logout
             </button>
             <div className="mt-6 space-y-3 text-xs text-white/60">
-              <p>Your email becomes your Basiq user ID for secure bank connections.</p>
+              <p>Your email becomes your Fiskil customer ID for secure bank connections.</p>
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>

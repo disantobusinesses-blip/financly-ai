@@ -13,7 +13,7 @@ import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
-import BasiqCallbackPage from "./pages/BasiqCallback";
+import FiskilCallbackPage from "./pages/FiskilCallback";
 import PricingPage from "./pages/pricing";
 
 const usePath = () => {
@@ -135,11 +135,11 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (path === "/basiq/callback") {
+  if (path === "/fiskil/callback") {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <BasiqCallbackPage />
+        <FiskilCallbackPage />
       </div>
     );
   }

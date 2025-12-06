@@ -1,4 +1,4 @@
-// 🚀 Optimized useBasiqData.ts — fast + cached + ready for AI insights
+// 🚀 Optimized useFiskilData.ts — fast + cached + ready for AI insights
 import { useEffect, useRef, useState } from "react";
 import { Account, AccountType, Transaction } from "../types";
 
@@ -155,7 +155,7 @@ const normalizeTransaction = (raw: any): Transaction => {
   };
 };
 
-interface BasiqData {
+interface FiskilData {
   accounts: Account[];
   transactions: Transaction[];
   loading: boolean;
@@ -164,7 +164,7 @@ interface BasiqData {
   lastUpdated: string | null;
 }
 
-export function useBasiqData(identityKey?: string): BasiqData {
+export function useFiskilData(identityKey?: string): FiskilData {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,8 +174,8 @@ export function useBasiqData(identityKey?: string): BasiqData {
 
   useEffect(() => {
     const storedId =
-      localStorage.getItem("basiqUserId") || localStorage.getItem("basiqPendingUserId") || "";
-    const basiqUserId = storedId;
+      localStorage.getItem("fiskilCustomerId") || localStorage.getItem("fiskilPendingCustomerId") || "";
+    const fiskilCustomerId = storedId;
     const params = new URLSearchParams(window.location.search);
     const jobIdParam = params.get("jobId") || params.get("jobIds");
     let jobId = jobIdParam ? jobIdParam.trim() : "";
@@ -196,7 +196,7 @@ export function useBasiqData(identityKey?: string): BasiqData {
       return;
     }
 
-    if (!basiqUserId) {
+    if (!fiskilCustomerId) {
       setAccounts([]);
       setTransactions([]);
       setLoading(false);
@@ -208,7 +208,7 @@ export function useBasiqData(identityKey?: string): BasiqData {
     // 🔹 Try cached data immediately
     const cachedAccounts = localStorage.getItem("accountsCache");
     const cachedTransactions = localStorage.getItem("transactionsCache");
-    const cachedTime = localStorage.getItem("basiqCacheTime");
+    const cachedTime = localStorage.getItem("fiskilCacheTime");
     if (cachedAccounts && cachedTransactions) {
       try {
         const parsedAccounts = JSON.parse(cachedAccounts);
@@ -231,12 +231,12 @@ export function useBasiqData(identityKey?: string): BasiqData {
 
     const fetchData = async () => {
       try {
-        const query = new URLSearchParams({ userId: basiqUserId });
+        const query = new URLSearchParams({ userId: fiskilCustomerId });
         if (jobId) {
           query.set("jobId", jobId);
         }
 
-        const res = await fetch(`/api/basiq-data?${query.toString()}`, {
+        const res = await fetch(`/api/fiskil-data?${query.toString()}`, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -257,24 +257,24 @@ export function useBasiqData(identityKey?: string): BasiqData {
         // 🔹 Save to cache for next load
         localStorage.setItem("accountsCache", JSON.stringify(normalisedAccounts));
         localStorage.setItem("transactionsCache", JSON.stringify(normalisedTransactions));
-        localStorage.setItem("basiqCacheTime", new Date().toISOString());
+        localStorage.setItem("fiskilCacheTime", new Date().toISOString());
 
         if (jobId) {
           try {
-            localStorage.setItem("basiqConnectionStatus", "success");
-            const pendingId = localStorage.getItem("basiqPendingUserId");
+            localStorage.setItem("fiskilConnectionStatus", "success");
+            const pendingId = localStorage.getItem("fiskilPendingCustomerId");
             if (pendingId) {
-              localStorage.setItem("basiqUserId", pendingId);
-              localStorage.removeItem("basiqPendingUserId");
+              localStorage.setItem("fiskilCustomerId", pendingId);
+              localStorage.removeItem("fiskilPendingCustomerId");
             }
           } catch (storageErr) {
-            console.warn("Unable to finalise Basiq connection state", storageErr);
+            console.warn("Unable to finalise Fiskil connection state", storageErr);
           }
           removeQueryParams(["jobId", "jobIds"]);
           jobId = "";
         }
       } catch (err: any) {
-        console.error("❌ Failed to load Basiq data:", err);
+        console.error("❌ Failed to load Fiskil data:", err);
         if (hasDataRef.current) {
           setError("We're retrying your bank sync. Showing last saved balances while we reconnect.");
         } else {
@@ -282,7 +282,7 @@ export function useBasiqData(identityKey?: string): BasiqData {
         }
         if (jobId) {
           try {
-            localStorage.setItem("basiqConnectionStatus", "error");
+            localStorage.setItem("fiskilConnectionStatus", "error");
           } catch (storageErr) {
             console.warn("Unable to persist connection error", storageErr);
           }

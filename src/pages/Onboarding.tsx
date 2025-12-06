@@ -208,7 +208,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     }
 
     try {
-      const res = await fetch("/api/start-basiq-consent", {
+      const res = await fetch("/api/start-fiskil-link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -221,11 +221,11 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         throw new Error(text || "Unable to start bank connection");
       }
       const data = await res.json();
-      if (data.userId) {
-        setProfile((prev) => (prev ? { ...prev, basiq_user_id: data.userId } : prev));
+      if (data.customerId) {
+        setProfile((prev) => (prev ? { ...prev, fiskil_customer_id: data.customerId } : prev));
       }
-      if (data.consentUrl) {
-        window.location.href = data.consentUrl;
+      if (data.linkUrl) {
+        window.location.href = data.linkUrl;
       }
     } catch (err: any) {
       setError(err?.message || "Unable to connect bank.");

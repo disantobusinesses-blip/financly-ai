@@ -52,7 +52,7 @@ You are responsible for maintaining the security of your login information.
 5. Third-Party Services
 
 MyAiBank integrates with third-party providers, including but not limited to:
-• Open banking providers such as Basiq
+• Open banking providers such as Fiskil
 • Payment processors such as Stripe
 • Email and communication platforms
 
@@ -131,7 +131,7 @@ We may collect:
 
 1.2 Financial Information
 
-If you choose to link your bank accounts through a secure third-party open banking provider (such as Basiq), we may receive:
+If you choose to link your bank accounts through a secure third-party open banking provider (such as Fiskil), we may receive:
 • Transaction histories
 • Account balances
 • Merchant details

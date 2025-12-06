@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-const BasiqCallback: React.FC = () => {
+const FiskilCallback: React.FC = () => {
   const [status, setStatus] = useState("Confirming your bank connection...");
   const [error, setError] = useState<string | null>(null);
 
@@ -15,11 +15,12 @@ const BasiqCallback: React.FC = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("basiq_user_id")
+        .select("fiskil_customer_id")
         .eq("id", sessionData.session.user.id)
         .maybeSingle();
       const params = new URLSearchParams(window.location.search);
-      const basiqUserId = (profileData as { basiq_user_id?: string | null } | null)?.basiq_user_id || params.get("userId");
+      const fiskilCustomerId =
+        (profileData as { fiskil_customer_id?: string | null } | null)?.fiskil_customer_id || params.get("customerId");
 
       try {
         const res = await fetch("/api/mark-bank-connected", {
@@ -28,7 +29,7 @@ const BasiqCallback: React.FC = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${sessionData.session.access_token}`,
           },
-          body: JSON.stringify({ basiqUserId }),
+          body: JSON.stringify({ fiskilCustomerId }),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -63,4 +64,4 @@ const BasiqCallback: React.FC = () => {
   );
 };
 
-export default BasiqCallback;
+export default FiskilCallback;
