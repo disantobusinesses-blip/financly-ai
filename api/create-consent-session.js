@@ -2,97 +2,92 @@
 // Node 18+ (Vercel) uses native fetch. No node-fetch import.
 // Robust: server-token caching, existing-user reuse, clear errors.
 
-const BASIQ_API_KEY = process.env.BASIQ_API_KEY; // should include or be without "Basic", we normalize below
-const BASIQ_API_URL = "https://au-api.basiq.io";
+const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com").replace(/\/$/, "");
+const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
+const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
-// in-memory cache for server token (lives per serverless instance)
-let CACHED_SERVER_TOKEN = null;
-let SERVER_TOKEN_EXPIRY = 0; // epoch ms
+let cachedToken = null;
+let cachedExpiry = 0;
 
-function normalizedBasicKey() {
-  if (!BASIQ_API_KEY) throw new Error("Missing BASIQ_API_KEY env var");
-  const raw = BASIQ_API_KEY.trim();
-  return raw.startsWith("Basic ") ? raw : `Basic ${raw}`;
+function ensureFiskilConfig() {
+  if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
+    throw new Error("Fiskil configuration missing on server");
+  }
 }
 
-async function getServerToken() {
+async function getFiskilAccessToken() {
+  ensureFiskilConfig();
   const now = Date.now();
-  if (CACHED_SERVER_TOKEN && now < SERVER_TOKEN_EXPIRY) return CACHED_SERVER_TOKEN;
+  if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
 
-  const res = await fetch(`${BASIQ_API_URL}/token`, {
+  const res = await fetch(`${FISKIL_API_URL}/oauth/token`, {
     method: "POST",
     headers: {
-      Authorization: normalizedBasicKey(),
       "Content-Type": "application/x-www-form-urlencoded",
-      "basiq-version": "3.0",
+      Authorization: `Basic ${Buffer.from(`${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`).toString("base64")}`,
     },
-    body: new URLSearchParams({ scope: "SERVER_ACCESS" }),
+    body: "grant_type=client_credentials",
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Fiskil token request failed (${res.status}): ${body}`);
+  }
+
+  const json = await res.json();
+  cachedToken = json.access_token;
+  cachedExpiry = now + (json.expires_in ? json.expires_in * 1000 : 0);
+  return cachedToken;
+}
+
+async function fiskilRequest(path, options = {}) {
+  const token = await getFiskilAccessToken();
+  const res = await fetch(`${FISKIL_API_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
   });
 
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(`Failed to get server token: ${t}`);
+    throw new Error(`Fiskil request failed: ${t}`);
   }
-  const { access_token } = await res.json();
-  // token validity 60m; refresh a bit earlier
-  CACHED_SERVER_TOKEN = access_token;
-  SERVER_TOKEN_EXPIRY = now + 55 * 60 * 1000;
-  return CACHED_SERVER_TOKEN;
+  const contentType = res.headers.get("content-type") || "";
+  return contentType.includes("application/json") ? res.json() : res.text();
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
+  if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
+    return res.status(500).json({ error: "Fiskil configuration missing on server" });
+  }
+
   try {
-    const email =
-      req.body?.email?.toLowerCase()?.trim() || `user-${Date.now()}@example.com`;
+    const email = req.body?.email?.toLowerCase()?.trim() || `user-${Date.now()}@example.com`;
 
-    const SERVER_TOKEN = await getServerToken();
-
-    // 1) Create (or reuse) user for this email
-    let userId;
-    const createRes = await fetch(`${BASIQ_API_URL}/users`, {
+    const userPayload = await fiskilRequest("/banking/v2/users", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${SERVER_TOKEN}`,
-        "Content-Type": "application/json",
-        "basiq-version": "3.0",
-      },
       body: JSON.stringify({ email }),
+    }).catch(async (err) => {
+      // try lookup if already exists
+      const lookup = await fiskilRequest(`/banking/v2/users?email=${encodeURIComponent(email)}`);
+      if (Array.isArray(lookup?.data) && lookup.data[0]?.id) return lookup;
+      throw err;
     });
 
-    if (createRes.status === 201) {
-      const user = await createRes.json();
-      userId = user.id;
-    } else if (createRes.status === 409) {
-      // lookup existing user
-      const lookup = await fetch(
-        `${BASIQ_API_URL}/users?email=${encodeURIComponent(email)}`,
-        { headers: { Authorization: `Bearer ${SERVER_TOKEN}`, "basiq-version": "3.0" } }
-      );
-      if (!lookup.ok) throw new Error(`User conflict but lookup failed: ${await lookup.text()}`);
-      const { data } = await lookup.json();
-      userId = data?.[0]?.id;
-      if (!userId) throw new Error("User exists but could not be fetched");
-    } else {
-      throw new Error(`Create user failed: ${await createRes.text()}`);
-    }
+    const userId = userPayload?.id || userPayload?.data?.[0]?.id;
+    if (!userId) throw new Error("Unable to create or locate Fiskil user");
 
-    // 2) Get CLIENT token bound to userId
-    const clientTok = await fetch(`${BASIQ_API_URL}/token`, {
+    const link = await fiskilRequest("/link/token", {
       method: "POST",
-      headers: {
-        Authorization: normalizedBasicKey(),
-        "Content-Type": "application/x-www-form-urlencoded",
-        "basiq-version": "3.0",
-      },
-      body: new URLSearchParams({ scope: "CLIENT_ACCESS", userId }),
+      body: JSON.stringify({ userId, products: ["banking"] }),
     });
-    if (!clientTok.ok) throw new Error(`Failed to get client token: ${await clientTok.text()}`);
-    const { access_token: CLIENT_TOKEN } = await clientTok.json();
 
-    // 3) Consent UI URL (return to your site via Basiq app setting redirect)
-    const consentUrl = `https://consent.basiq.io/home?token=${CLIENT_TOKEN}&action=connect`;
+    const consentUrl = link?.url || link?.linkTokenUrl || link?.link_url || link?.redirectUrl;
 
     // Frontend should store userId and navigate to consentUrl
     return res.status(200).json({ consentUrl, userId });
