@@ -1,10 +1,14 @@
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 
+const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+let cachedToken = null;
+let cachedExpiry = 0;
 
 function ensureFiskilConfig() {
   if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
@@ -22,10 +26,16 @@ function createSupabaseServerClient(token) {
 
 async function getFiskilAccessToken() {
   ensureFiskilConfig();
-  const response = await fetch("https://api.fiskil.com/v1/token", {
+  const now = Date.now();
+  if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
+
+  const response = await fetch(`${FISKIL_API_URL}/oauth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: FISKIL_CLIENT_ID, client_secret: FISKIL_CLIENT_SECRET }),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${Buffer.from(`${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`).toString("base64")}`,
+    },
+    body: "grant_type=client_credentials",
   });
 
   if (!response.ok) {
@@ -34,14 +44,19 @@ async function getFiskilAccessToken() {
   }
 
   const json = await response.json();
-  if (!json?.access_token) {
+  const accessToken = json?.access_token || json?.accessToken || json?.token || json?.token?.access_token;
+
+  if (!accessToken) {
     throw new Error("Fiskil token response missing access_token");
   }
-  return json.access_token;
+
+  cachedToken = accessToken;
+  cachedExpiry = now + (json?.expires_in ? json.expires_in * 1000 : 0);
+  return accessToken;
 }
 
 async function createFiskilEndUser(accessToken, email, name) {
-  const response = await fetch("https://api.fiskil.com/v1/end-users", {
+  const response = await fetch(`${FISKIL_API_URL}/v1/end-users`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -59,7 +74,7 @@ async function createFiskilEndUser(accessToken, email, name) {
 }
 
 async function createFiskilAuthSession(accessToken, endUserId, cancelUri) {
-  const response = await fetch("https://api.fiskil.com/v1/auth/session", {
+  const response = await fetch(`${FISKIL_API_URL}/v1/auth/session`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
