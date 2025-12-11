@@ -9,8 +9,16 @@ interface StepConfig {
 }
 
 const steps: StepConfig[] = [
-  { key: "BASICS", title: "Tell us where you are", description: "Country and currency help us tailor your experience." },
-  { key: "MONEY", title: "Your pay and bank", description: "We will personalise insights around your pay cycle." },
+  {
+    key: "BASICS",
+    title: "Tell us where you are",
+    description: "Country and currency help us tailor your experience.",
+  },
+  {
+    key: "MONEY",
+    title: "Your pay and bank",
+    description: "We will personalise insights around your pay cycle.",
+  },
   {
     key: "CONNECT_BANK",
     title: "Connect your bank",
@@ -31,7 +39,20 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
   const [saving, setSaving] = useState(false);
   const [connectingBank, setConnectingBank] = useState(false);
 
-  const activeStep = useMemo<OnboardingStep>(() => profile?.onboarding_step ?? "BASICS", [profile?.onboarding_step]);
+  const activeStep = useMemo<OnboardingStep>(
+    () => profile?.onboarding_step ?? "BASICS",
+    [profile?.onboarding_step]
+  );
+
+  const activeDefinition = useMemo(
+    () => steps.find((step) => step.key === activeStep),
+    [activeStep]
+  );
+
+  const activeIndex = useMemo(
+    () => steps.findIndex((step) => step.key === activeStep) + 1,
+    [activeStep]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -47,23 +68,48 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         .eq("id", data.session.user.id)
         .maybeSingle();
 
-      if (profileError) setError(profileError.message);
+      if (profileError) {
+        setError(profileError.message);
+      }
 
-      const loaded = profileData as SupabaseProfile | null;
-      if (!loaded) {
+      const loadedProfile = profileData as SupabaseProfile | null;
+      if (!loadedProfile) {
         setError("Profile not found. Please sign up again.");
         setLoading(false);
         return;
       }
 
-      setProfile(loaded);
+      setProfile(loadedProfile);
 
-      if (loaded.country) setBasics((prev) => ({ ...prev, country: loaded.country }));
-      if (loaded.currency) setBasics((prev) => ({ ...prev, currency: loaded.currency }));
-      if (loaded.pay_cycle) setMoney((prev) => ({ ...prev, pay_cycle: loaded.pay_cycle }));
-      if (loaded.primary_bank) setMoney((prev) => ({ ...prev, primary_bank: loaded.primary_bank }));
+      if (loadedProfile.country !== undefined && loadedProfile.country !== null) {
+        setBasics((prev) => ({
+          ...prev,
+          country: loadedProfile.country ?? prev.country,
+        }));
+      }
 
-      if (loaded.is_onboarded) {
+      if (loadedProfile.currency !== undefined && loadedProfile.currency !== null) {
+        setBasics((prev) => ({
+          ...prev,
+          currency: loadedProfile.currency ?? prev.currency,
+        }));
+      }
+
+      if (loadedProfile.pay_cycle !== undefined && loadedProfile.pay_cycle !== null) {
+        setMoney((prev) => ({
+          ...prev,
+          pay_cycle: loadedProfile.pay_cycle ?? prev.pay_cycle,
+        }));
+      }
+
+      if (loadedProfile.primary_bank !== undefined && loadedProfile.primary_bank !== null) {
+        setMoney((prev) => ({
+          ...prev,
+          primary_bank: loadedProfile.primary_bank ?? prev.primary_bank,
+        }));
+      }
+
+      if (loadedProfile.is_onboarded) {
         window.location.replace("/app/dashboard");
         return;
       }
@@ -78,7 +124,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     if (!profile) return;
     setSaving(true);
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({
         country: basics.country,
@@ -87,11 +133,20 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       })
       .eq("id", profile.id);
 
-    if (error) setError(error.message);
-    else
+    if (updateError) {
+      setError(updateError.message);
+    } else {
       setProfile((prev) =>
-        prev ? { ...prev, country: basics.country, currency: basics.currency, onboarding_step: "MONEY" } : prev
+        prev
+          ? {
+              ...prev,
+              country: basics.country,
+              currency: basics.currency,
+              onboarding_step: "MONEY",
+            }
+          : prev
       );
+    }
 
     setSaving(false);
   };
@@ -100,7 +155,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     if (!profile) return;
     setSaving(true);
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({
         pay_cycle: money.pay_cycle,
@@ -109,8 +164,9 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       })
       .eq("id", profile.id);
 
-    if (error) setError(error.message);
-    else
+    if (updateError) {
+      setError(updateError.message);
+    } else {
       setProfile((prev) =>
         prev
           ? {
@@ -121,43 +177,43 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
             }
           : prev
       );
+    }
 
     setSaving(false);
   };
 
   useEffect(() => {
     if (activeStep === "CONNECT_BANK" && profile?.has_bank_connection) {
-      const complete = async () => {
+      const completeOnboarding = async () => {
         if (!profile) return;
         setSaving(true);
 
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from("profiles")
           .update({ onboarding_step: "COMPLETE", is_onboarded: true })
           .eq("id", profile.id);
 
         setSaving(false);
 
-        if (!error) {
+        if (!updateError) {
           window.location.replace("/app/dashboard");
           onComplete?.();
         }
       };
 
-      void complete();
+      void completeOnboarding();
     }
-  }, [activeStep, profile, onComplete]);
+  }, [activeStep, onComplete, profile]);
 
   const handleConnectBank = async () => {
     if (!profile) return;
-
     setConnectingBank(true);
     setError(null);
 
-    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-    if (sessionErr || !sessionData.session) {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
       setConnectingBank(false);
-      setError(sessionErr?.message || "Please log in again.");
+      setError(sessionError?.message || "Please log in again to connect your bank.");
       return;
     }
 
@@ -178,7 +234,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
       const data = await res.json();
 
-      // Save Fiskil user ID
       if (data.userId) {
         await supabase
           .from("profiles")
@@ -289,7 +344,8 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       ? renderMoney()
       : renderConnectBank();
 
-  if (loading) return <div className="px-4 py-24 text-center text-white">Loading onboarding...</div>;
+  if (loading)
+    return <div className="px-4 py-24 text-center text-white">Loading onboarding...</div>;
 
   if (error) {
     return (
