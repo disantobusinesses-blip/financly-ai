@@ -41,7 +41,7 @@ export async function initiateBankConnection(
   email: string,
   accessToken?: string
 ): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/start-basiq-consent", {
+  const res = await fetch("/api/create-consent-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -208,7 +208,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     }
 
     try {
-      const res = await fetch("/api/start-basiq-consent", {
+      const res = await fetch("/api/start-fiskil-auth-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
