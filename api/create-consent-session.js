@@ -1,210 +1,245 @@
 // api/create-consent-session.js
-import { createClient } from "@supabase/supabase-js";
+// Vercel Serverless Function (Node.js)
+// Requires env vars:
+// - SUPABASE_URL
+// - SUPABASE_SERVICE_ROLE_KEY
+// - FISKIL_CLIENT_ID
+// - FISKIL_CLIENT_SECRET
 
+const { createClient } = require("@supabase/supabase-js");
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
+const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
+
+// Fiskil base
 const FISKIL_BASE_URL = "https://api.fiskil.com/v1";
 
-const {
-  FISKIL_CLIENT_ID,
-  FISKIL_CLIENT_SECRET,
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-} = process.env;
+// Create an admin Supabase client for DB writes + auth lookups
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+});
 
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Simple in-memory Fiskil token cache (works within a warm lambda)
+let cachedFiskilToken = null;
+let cachedFiskilTokenExpiresAtMs = 0;
 
-// --------------------
-// Fiskil auth handling
-// --------------------
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
-async function getFiskilToken() {
+async function getFiskilAccessToken() {
   const now = Date.now();
-  if (cachedToken && tokenExpiresAt > now) return cachedToken;
+  if (cachedFiskilToken && now < cachedFiskilTokenExpiresAtMs - 10_000) {
+    return cachedFiskilToken;
+  }
 
   const res = await fetch(`${FISKIL_BASE_URL}/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
     body: JSON.stringify({
       client_id: FISKIL_CLIENT_ID,
       client_secret: FISKIL_CLIENT_SECRET,
     }),
   });
 
-  const data = await res.json();
-
-  if (!res.ok || !data?.token) {
-    console.error("FISKIL_TOKEN_ERROR", data);
-    throw new Error("Failed to authenticate with Fiskil");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      `FISKIL_TOKEN_ERROR: ${res.status} ${JSON.stringify(data)}`
+    );
   }
 
-  cachedToken = data.token;
-  tokenExpiresAt = now + data.expires_in * 1000 - 5000;
-  return cachedToken;
+  if (!data?.token) {
+    throw new Error(`FISKIL_TOKEN_MISSING: ${JSON.stringify(data)}`);
+  }
+
+  cachedFiskilToken = data.token;
+  const expiresInSec = Number(data.expires_in || 600);
+  cachedFiskilTokenExpiresAtMs = Date.now() + expiresInSec * 1000;
+
+  return cachedFiskilToken;
 }
 
-async function fiskilRequest(path, options = {}) {
-  const token = await getFiskilToken();
+async function fiskilRequest(path, { method = "GET", token, body } = {}) {
+  const headers = {
+    accept: "application/json",
+    "content-type": "application/json",
+    authorization: `Bearer ${token}`,
+  };
 
   const res = await fetch(`${FISKIL_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await res.json();
-
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    console.error("FISKIL_API_ERROR", path, data);
-    throw new Error(data?.message || "Fiskil API request failed");
+    throw new Error(`FISKIL_API_ERROR ${method} ${path}: ${res.status} ${JSON.stringify(data)}`);
   }
-
   return data;
 }
 
-// --------------------
-// API handler
-// --------------------
-export default async function handler(req, res) {
+// Extract Bearer token from Authorization header
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader || typeof authHeader !== "string") return null;
+  const m = authHeader.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : null;
+}
+
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
-    }
+    const accessToken =
+      getBearerToken(req) ||
+      req.body?.access_token ||
+      req.body?.accessToken ||
+      null;
 
-    if (
-      !FISKIL_CLIENT_ID ||
-      !FISKIL_CLIENT_SECRET ||
-      !SUPABASE_URL ||
-      !SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      console.error("ENV_MISSING", {
-        hasFiskilClientId: !!FISKIL_CLIENT_ID,
-        hasFiskilClientSecret: !!FISKIL_CLIENT_SECRET,
-        hasSupabaseUrl: !!SUPABASE_URL,
-        hasServiceRole: !!SUPABASE_SERVICE_ROLE_KEY,
+    if (!accessToken) {
+      return res.status(401).json({
+        error: "Missing Supabase access token",
+        details:
+          "Send Authorization: Bearer <session.access_token> when calling this endpoint.",
       });
-      return res.status(500).json({ error: "Server misconfigured" });
     }
 
-    // Validate Supabase session
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing authorization header" });
+    // Validate token and get auth user (guarantees email is available)
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(
+      accessToken
+    );
+
+    if (userErr || !userData?.user) {
+      return res.status(401).json({
+        error: "Invalid Supabase session",
+        details: userErr?.message || "Could not fetch user from token",
+      });
     }
 
-    const jwt = authHeader.replace("Bearer ", "").trim();
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.getUser(jwt);
-
-    if (authError || !authData?.user) {
-      console.error("SUPABASE_AUTH_ERROR", authError);
-      return res.status(401).json({ error: "Invalid session" });
-    }
-
-    const appUserId = authData.user.id;
-    const email = authData.user.email;
+    const appUser = userData.user;
+    const appUserId = appUser.id;
+    const email = appUser.email;
 
     if (!email) {
-      return res.status(400).json({ error: "User email missing" });
+      // With your NOT NULL constraint, we must stop here.
+      return res.status(400).json({
+        error: "Supabase user email missing",
+        details:
+          "Your profiles.email is NOT NULL. Ensure the auth user has an email.",
+      });
     }
 
-    // ---- Profiles: lookup + auto-create row if missing ----
-    // Assumes profiles primary key column is "id" and profiles.email is NOT NULL
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const fullName =
+      appUser.user_metadata?.full_name ||
+      appUser.user_metadata?.name ||
+      null;
+
+    // Ensure profile exists (UPSERT so login users from a week ago are fixed)
+    const { error: upsertErr } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id,email")
-      .eq("id", appUserId)
-      .maybeSingle();
+      .upsert(
+        {
+          id: appUserId,
+          email,
+          full_name: fullName,
+        },
+        { onConflict: "id" }
+      );
 
-    if (profileError) {
-      console.error("SUPABASE_PROFILE_ERROR", profileError);
-      return res.status(500).json({ error: "Profile lookup failed" });
+    if (upsertErr) {
+      console.error("SUPABASE_PROFILE_UPSERT_ERROR", upsertErr);
+      return res.status(500).json({
+        error: "Profile create failed",
+        details: upsertErr.message,
+      });
     }
 
-    if (!profile) {
-      const { error: insertError } = await supabaseAdmin
-        .from("profiles")
-        .insert({ id: appUserId, email });
-
-      if (insertError) {
-        console.error("SUPABASE_PROFILE_INSERT_ERROR", insertError);
-        return res.status(500).json({ error: "Profile create failed" });
-      }
-    }
-
-    // Re-fetch profile after possible insert
-    const { data: profile2, error: profile2Error } = await supabaseAdmin
+    // Load profile to get fiskil_user_id
+    const { data: profile, error: profileErr } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id,email")
+      .select("id,email,full_name,fiskil_user_id")
       .eq("id", appUserId)
-      .maybeSingle();
+      .single();
 
-    if (profile2Error) {
-      console.error("SUPABASE_PROFILE_REFETCH_ERROR", profile2Error);
-      return res.status(500).json({ error: "Profile lookup failed" });
+    if (profileErr || !profile) {
+      console.error("SUPABASE_PROFILE_LOOKUP_ERROR", profileErr);
+      return res.status(500).json({
+        error: "Profile lookup failed",
+        details: profileErr?.message || "No profile returned",
+      });
     }
 
-    // If email is missing in profiles (shouldn't be), update it
-    if (profile2 && !profile2.email) {
-      const { error: emailUpdateError } = await supabaseAdmin
-        .from("profiles")
-        .update({ email })
-        .eq("id", appUserId);
+    const fiskilToken = await getFiskilAccessToken();
 
-      if (emailUpdateError) {
-        console.error("SUPABASE_PROFILE_EMAIL_UPDATE_ERROR", emailUpdateError);
-        return res.status(500).json({ error: "Profile update failed" });
-      }
-    }
+    let fiskilUserId = profile.fiskil_user_id;
 
-    let fiskilUserId = profile2?.fiskil_user_id;
-
-    // ---- Create Fiskil End User once ----
+    // Create Fiskil End User if missing
     if (!fiskilUserId) {
-      const endUser = await fiskilRequest("/end-users", {
+      const created = await fiskilRequest("/end-users", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        token: fiskilToken,
+        body: {
+          email: profile.email,
+          name: profile.full_name || undefined,
+        },
       });
 
-      fiskilUserId = endUser?.id;
+      // Docs usually return { end_user_id: "..." }
+      fiskilUserId = created.end_user_id || created.id;
       if (!fiskilUserId) {
-        console.error("FISKIL_END_USER_BAD_RESPONSE", endUser);
-        return res.status(500).json({ error: "Fiskil end user create failed" });
+        return res.status(500).json({
+          error: "Fiskil end user create failed",
+          details: `Unexpected response: ${JSON.stringify(created)}`,
+        });
       }
 
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateErr } = await supabaseAdmin
         .from("profiles")
         .update({ fiskil_user_id: fiskilUserId })
         .eq("id", appUserId);
 
-      if (updateError) {
-        console.error("SUPABASE_UPDATE_ERROR", updateError);
-        return res.status(500).json({ error: "Failed to persist Fiskil user ID" });
+      if (updateErr) {
+        console.error("SUPABASE_PROFILE_UPDATE_ERROR", updateErr);
+        return res.status(500).json({
+          error: "Failed to persist Fiskil user ID",
+          details: updateErr.message,
+        });
       }
     }
 
-    // ---- Create Auth Session (Fiskil requires "end_user") ----
+    // Create Auth Session (this is where your earlier error complained about end_user_id missing)
     const session = await fiskilRequest("/auth/session", {
       method: "POST",
-      body: JSON.stringify({
-        end_user: fiskilUserId,
-      }),
+      token: fiskilToken,
+      body: {
+        end_user_id: fiskilUserId, // IMPORTANT: end_user_id (not end_user)
+      },
     });
 
-    if (!session?.redirect_url) {
-      console.error("FISKIL_SESSION_BAD_RESPONSE", session);
-      return res.status(500).json({ error: "Missing redirect_url from Fiskil" });
-    }
+    // Try common URL fields; if none exist, return the whole session payload
+    const consentUrl =
+      session.consent_url ||
+      session.redirect_url ||
+      session.url ||
+      session.link ||
+      null;
 
-    return res.status(200).json({ redirect_url: session.redirect_url });
+    return res.status(200).json({
+      userId: fiskilUserId,
+      consentUrl,
+      session,
+    });
   } catch (err) {
     console.error("CREATE_CONSENT_SESSION_ERROR", err);
     return res.status(500).json({
       error: "Unable to start bank connection",
-      details: err.message,
+      details: err?.message || String(err),
     });
   }
-}
+};
