@@ -1,74 +1,58 @@
-// api/fiskil-data.js
-
-const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
-const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
-const BASE_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
+const FISKIL_BASE_URL = "https://api.fiskil.com/v1";
+const { FISKIL_CLIENT_ID, FISKIL_CLIENT_SECRET } = process.env;
 
 let cachedToken = null;
-let cachedExpiry = 0;
+let tokenExpiry = 0;
 
-function ensureFiskilConfig() {
-  if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
-    throw new Error("Fiskil configuration missing on server");
-  }
-}
-
-async function token() {
-  ensureFiskilConfig();
-
+async function getToken() {
   const now = Date.now();
-  if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
+  if (cachedToken && tokenExpiry > now) return cachedToken;
 
-  const response = await fetch(`${BASE_URL}/oauth/token`, {
+  const res = await fetch(`${FISKIL_BASE_URL}/token`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${Buffer.from(`${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`).toString("base64")}`,
-    },
-    body: "grant_type=client_credentials",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: FISKIL_CLIENT_ID,
+      client_secret: FISKIL_CLIENT_SECRET,
+    }),
   });
 
-  const bodyText = await response.text();
+  const data = await res.json();
 
-  if (!response.ok) {
-    console.error("FISKIL_HTTP_ERROR", { url: `${BASE_URL}/oauth/token`, status: response.status, body: bodyText });
-    throw new Error(`Fiskil token request failed (${response.status}): ${bodyText}`);
+  if (!res.ok) {
+    console.error("FISKIL TOKEN ERROR", data);
+    throw new Error("Token error");
   }
 
-  const json = JSON.parse(bodyText);
-  cachedToken = json.access_token;
-  cachedExpiry = now + (json.expires_in ? json.expires_in * 1000 : 50 * 60 * 1000);
+  cachedToken = data.token;
+  tokenExpiry = now + data.expires_in * 1000 - 5000;
   return cachedToken;
 }
 
 export default async function handler(req, res) {
   try {
-    const accessToken = await token();
-
     const path = req.query.path;
-    if (!path || typeof path !== "string") {
-      return res.status(400).json({ error: "Missing path query param" });
+    if (!path) {
+      return res.status(400).json({ error: "Missing path" });
     }
 
-    const fiskilRes = await fetch(`${BASE_URL}/${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    const token = await getToken();
+    const response = await fetch(`${FISKIL_BASE_URL}/${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
-    const text = await fiskilRes.text();
+    const data = await response.json();
 
-    if (!fiskilRes.ok) {
-      console.error("FISKIL_HTTP_ERROR", { url: `${BASE_URL}/${path}`, status: fiskilRes.status, body: text });
-      return res.status(502).json({ error: "Fiskil request failed", status: fiskilRes.status, body: text });
+    if (!response.ok) {
+      console.error("FISKIL DATA ERROR", data);
+      return res.status(500).json(data);
     }
 
-    // return JSON if possible
-    try {
-      return res.status(200).json(JSON.parse(text));
-    } catch {
-      return res.status(200).send(text);
-    }
-  } catch (error) {
-    console.error("❌ /api/fiskil-data error:", error);
-    return res.status(500).json({ error: "Server error", details: String(error?.message || error) });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error("FISKIL DATA PROXY ERROR", err);
+    return res.status(500).json({ error: err.message });
   }
 }
