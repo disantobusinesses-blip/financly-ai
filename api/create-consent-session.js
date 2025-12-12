@@ -1,9 +1,14 @@
 // api/create-consent-session.js
 // Node 18+ (Vercel) uses native fetch.
+import { createClient } from "@supabase/supabase-js";
 
 const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 let cachedToken = null;
 let cachedExpiry = 0;
@@ -64,7 +69,8 @@ async function fiskilRequest(path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(`Fiskil request failed (${res.status}): ${bodyText}`);
+    console.error({ url, status: res.status, body });
+    throw new Error(`Fiskil request failed (${res.status})`);
   }
 
   return body;
@@ -111,41 +117,64 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Fiskil configuration missing on server" });
   }
 
-  const rawEmail = req.body?.email;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: "Supabase configuration missing on server" });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const jwt = authHeader.replace("Bearer ", "");
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAdmin.auth.getUser(jwt);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("fiskil_user_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return res.status(500).json({ error: "Unable to load profile" });
+  }
+
+  const rawEmail = req.body?.email || user.email;
   const email =
     typeof rawEmail === "string" && rawEmail.trim()
       ? rawEmail.toLowerCase().trim()
       : `user-${Date.now()}@example.com`;
 
   try {
-    let userPayload;
+    let userId = profile?.fiskil_user_id;
 
-    // 1) Try to create the user
-    try {
-      userPayload = await fiskilRequest("/banking/v2/users", {
+    if (!userId) {
+      const userPayload = await fiskilRequest("/banking/v2/users", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-    } catch (createErr) {
-      // 2) If create fails, try to look up by email
-      try {
-        userPayload = await fiskilRequest(`/banking/v2/users?email=${encodeURIComponent(email)}`, {
-          method: "GET",
+
+      userId = extractUserId(userPayload);
+
+      if (!userId) {
+        console.error("❌ Fiskil user payload had no id:", JSON.stringify(userPayload));
+        return res.status(500).json({
+          error: "Could not create Fiskil user",
+          raw: userPayload || null,
         });
-      } catch (lookupErr) {
-        console.error("❌ Fiskil user create + lookup failed:", createErr, lookupErr);
-        throw new Error("Fiskil user create and lookup both failed");
       }
-    }
 
-    const userId = extractUserId(userPayload);
-
-    if (!userId) {
-      console.error("❌ Fiskil user payload had no id:", JSON.stringify(userPayload));
-      return res.status(500).json({
-        error: "Could not create/find Fiskil user",
-        raw: userPayload || null,
-      });
+      await supabaseAdmin
+        .from("profiles")
+        .update({ fiskil_user_id: userId })
+        .eq("id", user.id);
     }
 
     // Now create link token / consent URL

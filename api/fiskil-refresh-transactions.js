@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const FISKIL_API_URL = "https://api.fiskil.com/v1";
+const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
@@ -27,18 +27,34 @@ async function getToken() {
     body: "grant_type=client_credentials",
   });
 
-  const json = await res.json();
+  const bodyText = await res.text();
+
+  if (!res.ok) {
+    console.error({ url: `${FISKIL_API_URL}/oauth/token`, status: res.status, body: bodyText });
+    throw new Error(`Fiskil token request failed (${res.status})`);
+  }
+
+  const json = bodyText ? JSON.parse(bodyText) : {};
   cachedToken = json.access_token;
-  cachedExpiry = now + json.expires_in * 1000;
+  cachedExpiry = now + (json.expires_in ? json.expires_in * 1000 : 0);
   return cachedToken;
 }
 
 async function fiskil(path) {
   const token = await getToken();
-  const r = await fetch(`${FISKIL_API_URL}${path}`, {
+  const url = `${FISKIL_API_URL}${path}`;
+  const r = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  return r.json();
+
+  const bodyText = await r.text();
+
+  if (!r.ok) {
+    console.error({ url, status: r.status, body: bodyText });
+    throw new Error(`Fiskil request failed (${r.status})`);
+  }
+
+  return bodyText ? JSON.parse(bodyText) : {};
 }
 
 export default async function handler(req, res) {

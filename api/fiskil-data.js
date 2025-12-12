@@ -2,7 +2,7 @@
 
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
-const BASE_URL = "https://api.fiskil.com/v1"; // FIXED
+const BASE_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, ""); // FIXED
 
 let cachedToken = null;
 let cachedExpiry = 0;
@@ -30,6 +30,10 @@ async function token() {
 }
 
 export default async function handler(req, res) {
+  if (!FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
+    return res.status(500).json({ error: "Fiskil configuration missing on server" });
+  }
+
   try {
     const accessToken = await token();
 
