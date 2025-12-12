@@ -1,23 +1,16 @@
 // api/create-consent-session.js
-// Vercel Node 18+ uses native fetch.
+// Node 18+ (Vercel) uses native fetch.
+
 import { createClient } from "@supabase/supabase-js";
 
-// IMPORTANT:
-// - Set FISKIL_API_URL to "https://api.fiskil.com" (no /v1)
-// - If not set, default is "https://api.fiskil.com"
-const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com").replace(/\/$/, "");
+const FISKIL_API_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
-// Support both server + public env var names for Supabase URL/key
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Your app URL (used for cancel_uri)
-const FRONTEND_URL =
-  (process.env.FRONTEND_URL || "").replace(/\/$/, "") ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 let cachedToken = null;
 let cachedExpiry = 0;
@@ -27,182 +20,186 @@ function ensureConfig() {
     throw new Error("Fiskil configuration missing on server");
   }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Supabase configuration missing on server");
+    throw new Error("Supabase admin configuration missing on server");
   }
 }
 
-function getSupabaseAdminClient() {
-  // Create inside handler so missing env doesn't crash module load
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-}
-
-async function getFiskilAccessToken() {
-  ensureConfig();
-
+async function getToken() {
   const now = Date.now();
   if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
 
-  // ✅ Correct per Fiskil docs:
-  // POST /v1/token with JSON { client_id, client_secret }
-  const res = await fetch(`${FISKIL_API_URL}/v1/token`, {
+  const res = await fetch(`${FISKIL_API_URL}/oauth/token`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${Buffer.from(`${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`).toString("base64")}`,
     },
-    body: JSON.stringify({
-      client_id: FISKIL_CLIENT_ID,
-      client_secret: FISKIL_CLIENT_SECRET,
-    }),
+    body: "grant_type=client_credentials",
   });
 
-  const json = await res.json().catch(() => null);
+  const bodyText = await res.text();
 
-  if (!res.ok || !json?.access_token) {
-    throw new Error(
-      `Fiskil token error (${res.status}): ${json ? JSON.stringify(json) : "no json body"}`
-    );
+  if (!res.ok) {
+    console.error("FISKIL_HTTP_ERROR", { url: `${FISKIL_API_URL}/oauth/token`, status: res.status, body: bodyText });
+    throw new Error(`Fiskil token request failed (${res.status}): ${bodyText}`);
   }
 
-  cachedToken = json.access_token;
-  cachedExpiry = now + (Number(json.expires_in || 0) * 1000);
+  const json = safeJsonParse(bodyText);
+  const accessToken = json?.access_token;
+
+  if (!accessToken) {
+    throw new Error("Fiskil token response missing access_token");
+  }
+
+  cachedToken = accessToken;
+  cachedExpiry = now + (json.expires_in ? json.expires_in * 1000 : 50 * 60 * 1000);
   return cachedToken;
 }
 
-async function fiskilRequest(path, options = {}) {
-  const token = await getFiskilAccessToken();
-  const url = `${FISKIL_API_URL}${path.startsWith("/") ? path : `/${path}`}`;
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
+async function fiskilRequest(path, options = {}) {
+  const accessToken = await getToken();
+
+  const url = `${FISKIL_API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   const res = await fetch(url, {
     ...options,
     headers: {
-      Accept: "application/json",
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       ...(options.headers || {}),
     },
   });
 
-  const text = await res.text();
-  let body = text;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    // keep as text
-  }
+  const bodyText = await res.text();
+  const json = safeJsonParse(bodyText);
 
   if (!res.ok) {
-    console.error("Fiskil HTTP error", { url, status: res.status, body });
-    throw new Error(`Fiskil request failed (${res.status}): ${typeof body === "string" ? body : JSON.stringify(body)}`);
+    console.error("FISKIL_HTTP_ERROR", { url, status: res.status, body: bodyText });
+    throw new Error(`Fiskil request failed (${res.status}): ${bodyText}`);
   }
 
-  return body;
+  return json ?? bodyText;
 }
 
-// Extractors for Fiskil shapes
-function extractEndUserId(payload) {
+function extractUserId(payload) {
   if (!payload) return null;
-  if (typeof payload === "object" && typeof payload.id === "string") return payload.id;
-  if (payload.data && typeof payload.data.id === "string") return payload.data.id;
-  if (Array.isArray(payload.data) && payload.data[0] && typeof payload.data[0].id === "string") return payload.data[0].id;
+
+  // Common shapes
+  if (typeof payload === "object") {
+    if (payload.id && typeof payload.id === "string") return payload.id;
+    if (payload.userId && typeof payload.userId === "string") return payload.userId;
+    if (payload.data?.id && typeof payload.data.id === "string") return payload.data.id;
+
+    // Arrays
+    if (Array.isArray(payload.data) && payload.data[0]?.id) return payload.data[0].id;
+    if (Array.isArray(payload.users) && payload.users[0]?.id) return payload.users[0].id;
+  }
+
   return null;
 }
 
-function extractAuthUrl(payload) {
-  if (!payload) return null;
-  return (
-    payload.auth_url ||
-    payload.authUrl ||
-    payload.url ||
-    payload.redirect_url ||
-    payload.redirectUrl ||
-    null
-  );
-}
-
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
-
   try {
     ensureConfig();
-  } catch (e) {
-    return res.status(500).json({ error: String(e?.message || e) });
-  }
 
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ")) return res.status(401).json({ error: "Unauthorized" });
-
-  const jwt = authHeader.replace("Bearer ", "").trim();
-  const supabaseAdmin = getSupabaseAdminClient();
-
-  // Verify the user via Supabase
-  const { data: userData, error: authError } = await supabaseAdmin.auth.getUser(jwt);
-  const user = userData?.user;
-
-  if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
-
-  // Load profile
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("fiskil_user_id,email")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) return res.status(500).json({ error: "Unable to load profile" });
-
-  // Email source priority: request body -> profile -> auth user
-  const rawEmail = req.body?.email || profile?.email || user.email;
-  const email =
-    typeof rawEmail === "string" && rawEmail.trim()
-      ? rawEmail.toLowerCase().trim()
-      : `user-${Date.now()}@example.com`;
-
-  try {
-    // 1) Ensure Fiskil end_user_id exists (stored in profiles.fiskil_user_id)
-    let endUserId = profile?.fiskil_user_id || null;
-
-    if (!endUserId) {
-      const endUserPayload = await fiskilRequest("/v1/end-users", {
-        method: "POST",
-        body: JSON.stringify({
-          email,
-          name: email.split("@")[0] || "User",
-        }),
-      });
-
-      endUserId = extractEndUserId(endUserPayload);
-      if (!endUserId) {
-        console.error("Fiskil end-user missing id", endUserPayload);
-        return res.status(500).json({ error: "Could not create Fiskil end user", raw: endUserPayload || null });
-      }
-
-      await supabaseAdmin
-        .from("profiles")
-        .upsert({ id: user.id, email, fiskil_user_id: endUserId }, { onConflict: "id" });
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" });
     }
 
-    // 2) Create auth session -> returns auth_url (consent URL)
-    const cancelUri =
-      FRONTEND_URL ? `${FRONTEND_URL}/dashboard?bankConnect=cancel` : "https://example.com/cancel";
+    // Require Supabase session token
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing auth" });
+    }
 
-    const authSessionPayload = await fiskilRequest("/v1/auth/session", {
+    const jwt = auth.replace("Bearer ", "").trim();
+    const { data: userRes, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
+
+    if (userErr || !userRes?.user) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
+
+    const appUserId = userRes.user.id;
+
+    // Load profile mapping
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .select("fiskil_user_id")
+      .eq("id", appUserId)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error("SUPABASE_PROFILE_LOOKUP_ERROR", profileErr);
+      return res.status(500).json({ error: "Profile lookup failed" });
+    }
+
+    let fiskilUserId = profile?.fiskil_user_id || null;
+
+    // Create Fiskil user once (NO email lookup)
+    if (!fiskilUserId) {
+      const rawEmail = req.body?.email;
+      const email =
+        (typeof rawEmail === "string" && rawEmail.trim() ? rawEmail.toLowerCase().trim() : null) ||
+        (userRes.user.email ? userRes.user.email.toLowerCase().trim() : null);
+
+      if (!email) {
+        return res.status(400).json({ error: "Missing email" });
+      }
+
+      const created = await fiskilRequest("/banking/v2/users", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+
+      fiskilUserId = extractUserId(created);
+
+      if (!fiskilUserId) {
+        console.error("FISKIL_CREATE_USER_NO_ID", { created });
+        return res.status(500).json({ error: "Could not create Fiskil user" });
+      }
+
+      // Persist mapping so we never need lookup-by-email
+      const { error: updateErr } = await supabaseAdmin
+        .from("profiles")
+        .update({ fiskil_user_id: fiskilUserId })
+        .eq("id", appUserId);
+
+      if (updateErr) {
+        console.error("SUPABASE_PROFILE_UPDATE_ERROR", updateErr);
+        // Not fatal for returning consent URL, but log it.
+      }
+    }
+
+    // Create link token / consent URL
+    const linkPayload = await fiskilRequest("/link/token", {
       method: "POST",
       body: JSON.stringify({
-        end_user_id: endUserId,
-        cancel_uri: cancelUri,
+        userId: fiskilUserId,
+        products: ["banking"],
       }),
     });
 
-    const consentUrl = extractAuthUrl(authSessionPayload);
+    const consentUrl =
+      linkPayload?.url ||
+      linkPayload?.linkTokenUrl ||
+      linkPayload?.link_url ||
+      linkPayload?.redirectUrl ||
+      null;
+
     if (!consentUrl) {
-      console.error("Fiskil auth session missing auth_url", authSessionPayload);
-      return res.status(500).json({ error: "Could not obtain consent URL from Fiskil", raw: authSessionPayload || null });
+      console.error("FISKIL_LINK_TOKEN_MISSING_URL", { linkPayload });
+      return res.status(500).json({ error: "Could not obtain consent URL from Fiskil" });
     }
 
     return res.status(200).json({
-      userId: endUserId,
+      userId: fiskilUserId,
       consentUrl,
     });
   } catch (err) {
