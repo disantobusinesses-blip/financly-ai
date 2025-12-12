@@ -74,7 +74,6 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    // Validate env vars at runtime (clear error in logs)
     if (
       !FISKIL_CLIENT_ID ||
       !FISKIL_CLIENT_SECRET ||
@@ -90,7 +89,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Server misconfigured" });
     }
 
-    // Validate Supabase session (expects Authorization: Bearer <supabase_jwt>)
+    // Validate Supabase session
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing authorization header" });
@@ -113,12 +112,11 @@ export default async function handler(req, res) {
     }
 
     // ---- Profiles: lookup + auto-create row if missing ----
-    // NOTE: This assumes your profiles PK column is "id" = auth.users.id.
-    // If your schema uses "user_id" instead, change the 3 marked lines.
+    // Assumes profiles primary key column is "id" and profiles.email is NOT NULL
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id")
-      .eq("id", appUserId) // <-- change to .eq("user_id", appUserId) if needed
+      .select("fiskil_user_id,email")
+      .eq("id", appUserId)
       .maybeSingle();
 
     if (profileError) {
@@ -129,7 +127,7 @@ export default async function handler(req, res) {
     if (!profile) {
       const { error: insertError } = await supabaseAdmin
         .from("profiles")
-        .insert({ id: appUserId }); // <-- change to { user_id: appUserId } if needed
+        .insert({ id: appUserId, email });
 
       if (insertError) {
         console.error("SUPABASE_PROFILE_INSERT_ERROR", insertError);
@@ -137,10 +135,11 @@ export default async function handler(req, res) {
       }
     }
 
+    // Re-fetch profile after possible insert
     const { data: profile2, error: profile2Error } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id")
-      .eq("id", appUserId) // <-- change to .eq("user_id", appUserId) if needed
+      .select("fiskil_user_id,email")
+      .eq("id", appUserId)
       .maybeSingle();
 
     if (profile2Error) {
@@ -148,16 +147,28 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Profile lookup failed" });
     }
 
+    // If email is missing in profiles (shouldn't be), update it
+    if (profile2 && !profile2.email) {
+      const { error: emailUpdateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ email })
+        .eq("id", appUserId);
+
+      if (emailUpdateError) {
+        console.error("SUPABASE_PROFILE_EMAIL_UPDATE_ERROR", emailUpdateError);
+        return res.status(500).json({ error: "Profile update failed" });
+      }
+    }
+
     let fiskilUserId = profile2?.fiskil_user_id;
 
-    // ---- Create Fiskil End User once (store id in profiles.fiskil_user_id) ----
+    // ---- Create Fiskil End User once ----
     if (!fiskilUserId) {
       const endUser = await fiskilRequest("/end-users", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
 
-      // Fiskil docs show End User object contains "id"
       fiskilUserId = endUser?.id;
       if (!fiskilUserId) {
         console.error("FISKIL_END_USER_BAD_RESPONSE", endUser);
@@ -167,7 +178,7 @@ export default async function handler(req, res) {
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({ fiskil_user_id: fiskilUserId })
-        .eq("id", appUserId); // <-- change to .eq("user_id", appUserId) if needed
+        .eq("id", appUserId);
 
       if (updateError) {
         console.error("SUPABASE_UPDATE_ERROR", updateError);
@@ -175,11 +186,11 @@ export default async function handler(req, res) {
       }
     }
 
-    // ---- Create Auth Session (Fiskil requires "end_user" field) ----
+    // ---- Create Auth Session (Fiskil requires "end_user") ----
     const session = await fiskilRequest("/auth/session", {
       method: "POST",
       body: JSON.stringify({
-        end_user: fiskilUserId, // REQUIRED field name (not end_user_id)
+        end_user: fiskilUserId,
       }),
     });
 
