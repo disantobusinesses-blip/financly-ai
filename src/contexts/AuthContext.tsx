@@ -48,21 +48,26 @@ const buildUserFromProfile = (session: Session, profile: SupabaseProfile | null)
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [remainingBasicDays] = useState<number | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  const refreshProfile = async (): Promise<void> => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const activeSession = sessionData.session;
-    if (!activeSession?.user?.id) {
+  const refreshProfileInternal = async (activeSession?: Session | null): Promise<void> => {
+    const sess = activeSession ?? (await supabase.auth.getSession()).data.session;
+
+    if (!sess?.user?.id) {
       setProfile(null);
       return;
     }
 
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", activeSession.user.id).maybeSingle();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", sess.user.id)
+      .maybeSingle();
+
     if (error) {
       console.error("Unable to load profile", error);
       setProfile(null);
@@ -72,24 +77,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProfile((data as SupabaseProfile) || null);
   };
 
+  const refreshProfile = async (): Promise<void> => {
+    await refreshProfileInternal(null);
+  };
+
   useEffect(() => {
     const init = async () => {
+      setLoading(true);
       const { data } = await supabase.auth.getSession();
       setSession(data.session);
+
       if (data.session?.user?.id) {
-        await refreshProfile();
+        await refreshProfileInternal(data.session);
+      } else {
+        setProfile(null);
       }
+
+      setLoading(false);
     };
+
     void init();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event: string, newSession: Session | null) => {
+      // Always trust newSession from Supabase, so access_token is immediately available
       setSession(newSession);
+
       if (newSession?.user?.id) {
-        void refreshProfile();
+        void refreshProfileInternal(newSession);
       } else {
         setProfile(null);
       }
     });
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -100,6 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signup = async (payload: SignupPayload): Promise<{ error?: string }> => {
     setLoading(true);
+
     const { data, error } = await supabase.auth.signUp({
       email: payload.email,
       password: payload.password,
@@ -114,8 +134,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { error: error.message };
     }
 
+    // Some configurations return null session until email confirmation;
+    // if a session exists, set it and pull profile.
     if (data.session) {
       setSession(data.session);
+      await refreshProfileInternal(data.session);
     }
 
     setLoading(false);
@@ -124,12 +147,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     setLoading(true);
+
     const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error || !data.session) {
       setLoading(false);
       return { error: error?.message || "Unable to login" };
     }
+
     setSession(data.session);
+
+    // Ensure profile exists, then load it
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("*")
@@ -163,18 +191,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(false);
         return { error: upsertError.message };
       }
+
       setProfile(upserted as SupabaseProfile);
     } else {
       setProfile(profileData as SupabaseProfile);
     }
+
     setLoading(false);
     return {};
   };
 
   const logout = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
     setSession(null);
     setProfile(null);
+    setLoading(false);
   };
 
   const openSignupModal = () => {
