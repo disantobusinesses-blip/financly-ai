@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { initiateBankConnection } from "../services/BankingService";
+import { initiateBankConnection, BankingService } from "../services/BankingService";
 
 interface HeaderProps {
   activeView: "dashboard" | "what-we-do" | "sandbox";
@@ -10,6 +10,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const { user, profile, session, logout, remainingBasicDays } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
   const statusChip = (() => {
     if (!user) return "";
     if (user.membershipType === "Basic") {
@@ -21,30 +22,49 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       const diff = Math.ceil(
         (new Date(user.proTrialEnds).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
-      if (diff > 0) {
-        return `Pro trial: ${diff} day${diff === 1 ? "" : "s"} left`;
-      }
+      if (diff > 0) return `Pro trial: ${diff} day${diff === 1 ? "" : "s"} left`;
       return "Pro trial completed";
     }
     return "Pro member";
   })();
 
   const handleConnectBankClick = async () => {
-    if (!user?.email) return;
+    const email = user?.email;
+    const accessToken = session?.access_token;
+
+    if (!email) return;
+
+    // Critical: your /api/create-consent-session requires Authorization: Bearer <supabase_jwt>
+    if (!accessToken) {
+      alert("Session missing. Please log out and log back in, then try again.");
+      return;
+    }
+
     try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
-      localStorage.setItem("basiqUserId", userId);
+      const { consentUrl, userId } = await initiateBankConnection(email, accessToken);
+
+      // Store returned Fiskil end_user_id (kept on old key for backward compatibility)
+      BankingService.setStoredUserId(userId);
+
       localStorage.removeItem("demoMode");
-      window.location.href = consentUrl;
-    } catch (err) {
+      window.location.assign(consentUrl);
+    } catch (err: any) {
       console.error("Failed to start bank connection:", err);
-      alert("Unable to connect bank right now.");
+
+      // Show useful error detail when it exists
+      const msg =
+        typeof err?.message === "string" && err.message.trim()
+          ? err.message
+          : "Unable to connect bank right now.";
+      alert(msg);
     }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
+      // Optional: clear stored bank id on logout
+      BankingService.clearStoredUserId();
       window.location.href = "/";
     } catch (err) {
       console.error("Logout error:", err);
@@ -58,10 +78,11 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           <button
             onClick={() => setMenuOpen(true)}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold uppercase tracking-[0.3em] hover:border-white/50"
-            >
+          >
             ☰
           </button>
         )}
+
         <button
           onClick={() => onNavigate("dashboard")}
           className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-black tracking-[0.18em] text-white transition hover:bg-white/20"
@@ -75,6 +96,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           <span className="hidden text-xs font-semibold uppercase tracking-widest text-white/70 sm:inline-flex">
             {statusChip}
           </span>
+
           {!profile?.has_bank_connection && (
             <button
               onClick={handleConnectBankClick}
@@ -94,6 +116,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           >
             Home
           </button>
+
           <button
             onClick={() => onNavigate("what-we-do")}
             className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
@@ -102,6 +125,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           >
             What we do
           </button>
+
           <button
             onClick={() => onNavigate("sandbox")}
             className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
@@ -115,14 +139,22 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
 
       {menuOpen && user && (
         <div className="fixed inset-0 z-40 flex bg-black" onClick={() => setMenuOpen(false)}>
-          <div className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-6 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
-              <p className="text-lg font-semibold text-white">{user.displayName} {user.avatar}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+                Quick links
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {user.displayName} {user.avatar}
+              </p>
               <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
                 {statusChip}
               </span>
             </div>
+
             <nav className="space-y-4 text-sm font-semibold text-white/80">
               <button
                 onClick={() => {
@@ -135,6 +167,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               >
                 Dashboard
               </button>
+
               <button
                 onClick={() => {
                   onNavigate("what-we-do");
@@ -146,6 +179,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               >
                 What we do
               </button>
+
               <button
                 onClick={() => {
                   onNavigate("sandbox");
@@ -158,14 +192,16 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
                 Sandbox preview
               </button>
             </nav>
+
             <button
               onClick={handleLogout}
               className="mt-8 inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:text-white"
             >
               Logout
             </button>
+
             <div className="mt-6 space-y-3 text-xs text-white/60">
-              <p>Your email becomes your Basiq user ID for secure bank connections.</p>
+              <p>Your email becomes your secure bank connection identifier.</p>
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>
