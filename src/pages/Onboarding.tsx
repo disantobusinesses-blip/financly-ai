@@ -224,30 +224,46 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionData.session.access_token}`,
         },
+        // Email is optional for the server if it reads Supabase user from access token,
+        // but we can still pass it safely.
         body: JSON.stringify({ email: sessionData.session.user.email }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        // if server returns non-JSON
         throw new Error(text || "Unable to start bank connection");
       }
 
-      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.details || data?.error || "Unable to start bank connection");
+      }
 
-      if (data.userId) {
-        await supabase
+      // Accept both response shapes:
+      // Old: { userId, consentUrl }
+      // New: { end_user_id, redirect_url }
+      const endUserId = data?.end_user_id ?? data?.userId ?? null;
+      const redirectUrl = data?.redirect_url ?? data?.consentUrl ?? null;
+
+      if (endUserId) {
+        const { error: updateErr } = await supabase
           .from("profiles")
-          .update({ fiskil_user_id: data.userId })
+          .update({ fiskil_user_id: endUserId })
           .eq("id", profile.id);
 
-        setProfile((prev) =>
-          prev ? { ...prev, fiskil_user_id: data.userId } : prev
-        );
+        if (!updateErr) {
+          setProfile((prev) => (prev ? { ...prev, fiskil_user_id: endUserId } : prev));
+        }
       }
 
-      if (data.consentUrl) {
-        window.location.href = data.consentUrl;
+      if (!redirectUrl) {
+        throw new Error("Missing redirect URL from server");
       }
+
+      window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err?.message || "Unable to connect bank.");
     } finally {

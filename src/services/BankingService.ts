@@ -1,10 +1,14 @@
-// 🚀 REPLACEMENT FOR: /src/services/BankingService.ts
+// /src/services/BankingService.ts
 // Frontend initiator for consent; live-only data fetch helpers.
+// Accepts both backend response shapes:
+// - Old: { consentUrl, userId }
+// - New: { redirect_url, end_user_id }
 
 import { Account, Transaction } from "../types";
 
 export class BankingService {
   static getStoredUserId(): string | null {
+    // Keeping the existing key for backwards compatibility
     return localStorage.getItem("basiqUserId");
   }
 
@@ -50,26 +54,39 @@ export async function initiateBankConnection(
     body: JSON.stringify({ email }),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Consent session failed: ${text}`);
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    // non-json error response
+    if (!res.ok) throw new Error(`Consent session failed: ${text}`);
+    throw new Error("Consent session returned invalid JSON");
   }
 
-  const data = await res.json();
-  if (!data?.consentUrl || !data?.userId) {
-    throw new Error("Invalid consent response");
+  if (!res.ok) {
+    throw new Error(`Consent session failed: ${data?.details || data?.error || text}`);
+  }
+
+  // Accept both new + old response shapes
+  const consentUrl: string | undefined = data?.redirect_url ?? data?.consentUrl;
+  const userId: string | undefined = data?.end_user_id ?? data?.userId;
+
+  if (!consentUrl || !userId) {
+    throw new Error("Invalid consent response (missing consentUrl/userId)");
   }
 
   // Store identifiers so callback or polling can finalise the connection
   try {
-    localStorage.setItem("basiqPendingUserId", data.userId);
+    // Keep existing keys to avoid breaking other code paths
+    localStorage.setItem("basiqPendingUserId", userId);
     localStorage.setItem("basiqConnectionStatus", "pending");
   } catch (err) {
-    console.warn("Unable to persist pending Basiq user id", err);
+    console.warn("Unable to persist pending user id", err);
   }
 
   // Store userId so we can fetch data immediately after redirect
-  BankingService.setStoredUserId(data.userId);
+  BankingService.setStoredUserId(userId);
 
-  return data; // caller will set window.location.href = consentUrl
+  return { consentUrl, userId };
 }
