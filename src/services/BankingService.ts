@@ -1,3 +1,4 @@
+import { supabase } from "../lib/supabaseClient";
 import { Account, Transaction } from "../types";
 
 const STORAGE = {
@@ -46,6 +47,11 @@ async function fetchJson(url: string, init?: RequestInit) {
   return data;
 }
 
+async function getSupabaseAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.access_token || null;
+}
+
 export class BankingService {
   static getStoredEndUserId(): string | null {
     return readStorage(STORAGE.endUserId);
@@ -60,19 +66,31 @@ export class BankingService {
     removeStorage(STORAGE.connectionStatus);
   }
 
-  static async getAccounts(endUserId?: string): Promise<Account[]> {
-    const id = endUserId || this.getStoredEndUserId();
-    if (!id) return [];
-    const url = `/api/fiskil-data?end_user_id=${encodeURIComponent(id)}`;
-    const data = await fetchJson(url, { cache: "no-store" });
+  static async getAccounts(): Promise<Account[]> {
+    const token = await getSupabaseAccessToken();
+    if (!token) return [];
+
+    const data = await fetchJson("/api/fiskil-data", {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return data.accounts || [];
   }
 
-  static async getTransactions(endUserId?: string): Promise<Transaction[]> {
-    const id = endUserId || this.getStoredEndUserId();
-    if (!id) return [];
-    const url = `/api/fiskil-data?end_user_id=${encodeURIComponent(id)}`;
-    const data = await fetchJson(url, { cache: "no-store" });
+  static async getTransactions(): Promise<Transaction[]> {
+    const token = await getSupabaseAccessToken();
+    if (!token) return [];
+
+    const data = await fetchJson("/api/fiskil-data", {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return data.transactions || [];
   }
 }
@@ -96,7 +114,7 @@ export async function initiateBankConnection(
     throw new Error("Invalid server response (missing redirect_url or end_user_id)");
   }
 
-  // Persist for later fetch/callback flows
+  // Persist for later fetch/callback flows (optional)
   BankingService.setStoredEndUserId(endUserId);
   writeStorage(STORAGE.connectionStatus, "pending");
 
