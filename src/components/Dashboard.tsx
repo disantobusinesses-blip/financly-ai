@@ -23,11 +23,17 @@ const LEGACY_TOUR_KEY = "financly_tour_seen";
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
+
+  // Hook now calls /api/fiskil-data internally (Fiskil-only)
   const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
+
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
-  const [railScrollState, setRailScrollState] = useState({ canScrollLeft: false, canScrollRight: false });
+  const [railScrollState, setRailScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const updateRailScrollState = useCallback(() => {
     const el = railRef.current;
@@ -59,8 +65,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    const seenTour =
-      localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
+    const seenTour = localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
     if (!seenTour && accounts.length > 0) {
       setTourOpen(true);
       localStorage.setItem(TOUR_KEY, "1");
@@ -86,17 +91,16 @@ const Dashboard: React.FC = () => {
     const now = new Date();
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
+
     const recent = transactions.filter((tx) => {
       const date = new Date(tx.date);
       return !Number.isNaN(date.getTime()) && date >= start;
     });
+
     const income = recent.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0);
     const expenses = Math.abs(recent.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0));
-    return {
-      income,
-      expenses,
-      net: income - expenses,
-    };
+
+    return { income, expenses, net: income - expenses };
   }, [transactions]);
 
   const tourSteps: TourStep[] = [
@@ -113,7 +117,8 @@ const Dashboard: React.FC = () => {
     {
       id: "goal-planner",
       title: "Goal planner",
-      description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
+      description:
+        "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
     },
     {
       id: "refer-a-friend",
@@ -163,23 +168,16 @@ const Dashboard: React.FC = () => {
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
-        subscriptionTotal,
-        region
-      )} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
     : "Connect a bank to discover recurring services.";
+
   const cashflowTeaser = monthlyStats.income
     ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
     : "Link your accounts to calculate monthly cashflow.";
+
   const pinnedCards = [
-    {
-      key: "goal-planner",
-      element: <GoalPlanner accounts={accounts} transactions={transactions} />,
-    },
-    {
-      key: "refer",
-      element: <ReferAFriendCard />,
-    },
+    { key: "goal-planner", element: <GoalPlanner accounts={accounts} transactions={transactions} /> },
+    { key: "refer", element: <ReferAFriendCard /> },
   ];
 
   const featureCards = [
@@ -202,11 +200,7 @@ const Dashboard: React.FC = () => {
     {
       key: "spending-forecast",
       element: (
-        <PlanGate
-          feature="Spending forecast"
-          teaser="Upgrade to view AI cashflow scenarios."
-          dataTourId="forecast"
-        >
+        <PlanGate feature="Spending forecast" teaser="Upgrade to view AI cashflow scenarios." dataTourId="forecast">
           <SpendingForecast transactions={transactions} region={region} />
         </PlanGate>
       ),
@@ -222,11 +216,7 @@ const Dashboard: React.FC = () => {
     {
       key: "transactions",
       element: (
-        <PlanGate
-          feature="Transactions"
-          teaser="Unlock full transaction history with AI filters."
-          dataTourId="transactions"
-        >
+        <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
           <TransactionsList transactions={transactions} />
         </PlanGate>
       ),
@@ -240,6 +230,7 @@ const Dashboard: React.FC = () => {
           {error}
         </div>
       )}
+
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
       <FinancialHealthCard accounts={accounts} transactions={transactions} region={region} />
 
@@ -257,6 +248,7 @@ const Dashboard: React.FC = () => {
             <div key={key}>{element}</div>
           ))}
         </div>
+
         <div className="relative" data-tour-id="tool-carousel">
           <button
             type="button"
@@ -267,6 +259,7 @@ const Dashboard: React.FC = () => {
           >
             <ArrowRightIcon className="h-5 w-5 -scale-x-100" />
           </button>
+
           <div
             ref={railRef}
             onScroll={updateRailScrollState}
@@ -278,6 +271,7 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
           </div>
+
           <button
             type="button"
             onClick={() => handleRailScroll("right")}
@@ -291,7 +285,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        <p className="text-center text-xs text-slate-400">
+          Last updated: {new Date(lastUpdated).toLocaleString()}
+        </p>
       )}
 
       <TutorialButton
