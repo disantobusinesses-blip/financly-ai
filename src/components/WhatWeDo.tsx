@@ -111,7 +111,7 @@ const WhatWeDo: React.FC = () => {
           Inside the Goal Planner (you&apos;ll find it just beneath Financial Health on the dashboard) you can create {personalisedWord} savings
           missions like “New Car 🚗” or “Europe Trip ✈️”. Add a target amount, optional date, and we&apos;ll estimate a finish line
           using your current savings rate. Every contribution triggers a cheerful “Great stuff!” toast using your name, and
-        milestones at 25%, 50%, and 75% unlock GPT-4o encouragement. We even suggest tips such as trimming unused
+        milestones at 25%, 50%, and 75% unlock GPT-5.2 encouragement. We even suggest tips such as trimming unused
           subscriptions or redirecting a portion of surplus income. Goals persist in local storage per user, so your plan
           survives refreshes and device switches.
         </p>
