@@ -1,43 +1,63 @@
-import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://wyommhasmvdhqxwehhel.supabase.co";
-const SUPABASE_ANON_KEY =
-  process.env.SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY);
+function mustEnv(name, value) {
+  if (!value) throw new Error(`Missing env var: ${name}`);
+  return value;
+}
+
+const supabaseAdmin = (() => {
+  mustEnv("SUPABASE_URL", SUPABASE_URL);
+  mustEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+})();
+
+function getBearerToken(req) {
+  const h = req.headers?.authorization || req.headers?.Authorization;
+  if (!h) return null;
+  const s = String(h);
+  if (!s.toLowerCase().startsWith("bearer ")) return null;
+  return s.slice(7).trim();
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : null;
+  const token = getBearerToken(req);
   if (!token) return res.status(401).json({ error: "Missing token" });
 
   try {
-    const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
-    });
-    if (!userResponse.ok) return res.status(401).json({ error: "Invalid token" });
-    const userData = await userResponse.json();
-    const userId = userData?.user?.id;
-    if (!userId) return res.status(400).json({ error: "User not found" });
+    // Validate session + get user id safely
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
 
-    const basiqUserId = req.body?.basiqUserId;
+    const userId = userData.user.id;
 
-    const { error } = await supabaseAdmin
+    // Accept new (Fiskil) and legacy (Basiq) payload keys
+    const endUserId =
+      req.body?.end_user_id ||
+      req.body?.endUserId ||
+      req.body?.basiqUserId ||
+      null;
+
+    const { error: updateErr } = await supabaseAdmin
       .from("profiles")
       .update({
         has_bank_connection: true,
-        basiq_user_id: basiqUserId || null,
+        fiskil_user_id: endUserId, // store Fiskil end user id here
         onboarding_step: "COMPLETE",
         is_onboarded: true,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (updateErr) return res.status(500).json({ error: updateErr.message });
 
     return res.status(200).json({ success: true });
   } catch (err) {
