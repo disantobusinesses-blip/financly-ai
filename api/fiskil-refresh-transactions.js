@@ -1,102 +1,181 @@
 import { createClient } from "@supabase/supabase-js";
 
-const FISKIL_API_URL = "https://api.fiskil.com/v1";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const FISKIL_BASE_URL = (process.env.FISKIL_BASE_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+function mustEnv(name, value) {
+  if (!value) throw new Error(`Missing env var: ${name}`);
+  return value;
+}
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+const supabaseAdmin = (() => {
+  mustEnv("SUPABASE_URL", SUPABASE_URL);
+  mustEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+})();
 
+function getBearerToken(req) {
+  const h = req.headers?.authorization || req.headers?.Authorization;
+  if (!h) return null;
+  const s = String(h);
+  if (!s.toLowerCase().startsWith("bearer ")) return null;
+  return s.slice(7).trim();
+}
+
+// Fiskil token cache (per warm lambda instance)
 let cachedToken = null;
-let cachedExpiry = 0;
+let cachedTokenExpMs = 0;
 
-async function getToken() {
+async function getFiskilToken() {
+  mustEnv("FISKIL_CLIENT_ID", FISKIL_CLIENT_ID);
+  mustEnv("FISKIL_CLIENT_SECRET", FISKIL_CLIENT_SECRET);
+
   const now = Date.now();
-  if (cachedToken && cachedExpiry > now + 5000) return cachedToken;
+  if (cachedToken && now < cachedTokenExpMs - 15_000) return cachedToken;
 
-  const res = await fetch(`${FISKIL_API_URL}/oauth/token`, {
+  const r = await fetch(`${FISKIL_BASE_URL}/token`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${Buffer.from(
-        `${FISKIL_CLIENT_ID}:${FISKIL_CLIENT_SECRET}`
-      ).toString("base64")}`,
+      accept: "application/json",
+      "content-type": "application/json; charset=UTF-8",
     },
-    body: "grant_type=client_credentials",
+    body: JSON.stringify({
+      client_id: FISKIL_CLIENT_ID,
+      client_secret: FISKIL_CLIENT_SECRET,
+    }),
   });
 
-  const json = await res.json();
-  cachedToken = json.access_token;
-  cachedExpiry = now + json.expires_in * 1000;
+  const text = await r.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!r.ok) {
+    throw new Error(`Fiskil token failed (${r.status}): ${text}`);
+  }
+
+  const token = data?.token;
+  const expiresIn = Number(data?.expires_in ?? 600);
+
+  if (!token) throw new Error(`Fiskil token missing in response: ${text}`);
+
+  cachedToken = token;
+  cachedTokenExpMs = now + expiresIn * 1000;
   return cachedToken;
 }
 
-async function fiskil(path) {
-  const token = await getToken();
-  const r = await fetch(`${FISKIL_API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+async function fiskilGet(pathWithQuery) {
+  const token = await getFiskilToken();
+  const url = `${FISKIL_BASE_URL}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
+
+  const r = await fetch(url, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${token}`,
+    },
   });
-  return r.json();
+
+  const text = await r.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!r.ok) {
+    throw new Error(`Fiskil GET ${pathWithQuery} failed (${r.status}): ${text}`);
+  }
+
+  return data;
+}
+
+// Normalise transaction fields across shapes
+function normaliseTx(t, appUserId) {
+  return {
+    id: t.id,
+    user_id: appUserId,
+    amount: t.amount ?? t.value ?? null,
+    date: t.date ?? t.posted_at ?? t.postedAt ?? t.timestamp ?? null,
+    description: t.description ?? t.narrative ?? t.merchant_name ?? t.merchantName ?? null,
+    account_id: t.account_id ?? t.accountId ?? null,
+    category: t.category ?? t.category_name ?? t.categoryName ?? null,
+    raw: t, // optional: remove if your table doesn't have a jsonb "raw" column
+  };
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST")
-    return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ error: "Missing auth" });
+  try {
+    const jwt = getBearerToken(req);
+    if (!jwt) return res.status(401).json({ error: "Missing auth" });
 
-  const jwt = auth.replace("Bearer ", "");
-  const { data: user } = await supabase.auth.getUser(jwt);
+    // Validate the caller (Supabase session)
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
+    if (userErr || !userData?.user?.id) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
 
-  if (!user) return res.status(401).json({ error: "Invalid session" });
+    const appUserId = userData.user.id;
 
-  const userId = user.id;
+    const { data: profile, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("fiskil_user_id,last_transactions_sync_at")
+      .eq("id", appUserId)
+      .maybeSingle();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("fiskil_user_id,last_transactions_sync_at")
-    .eq("id", userId)
-    .maybeSingle();
+    if (profErr) return res.status(500).json({ error: profErr.message });
+    if (!profile?.fiskil_user_id) return res.status(400).json({ error: "No connected bank" });
 
-  if (!profile?.fiskil_user_id)
-    return res.status(400).json({ error: "No connected bank" });
+    const from = profile.last_transactions_sync_at
+      ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+      : "";
 
-  const from = profile.last_transactions_sync_at
-    ? `?from=${profile.last_transactions_sync_at}`
-    : "";
+    // Fiskil transaction list endpoint (end_user_id scoped)
+    const txResp = await fiskilGet(
+      `/banking/transactions?end_user_id=${encodeURIComponent(profile.fiskil_user_id)}${from}`
+    );
 
-  const tx = await fiskil(
-    `/banking/v2/users/${profile.fiskil_user_id}/transactions${from}`
-  );
+    const transactions = Array.isArray(txResp) ? txResp : txResp?.data || [];
 
-  const transactions = tx?.data || [];
+    if (transactions.length) {
+      const formatted = transactions
+        .filter((t) => t && t.id)
+        .map((t) => normaliseTx(t, appUserId));
 
-  if (transactions.length) {
-    const formatted = transactions.map((t) => ({
-      id: t.id,
-      user_id: userId,
-      amount: t.amount,
-      date: t.date,
-      description: t.description,
-      account_id: t.accountId,
-      category: t.category,
-    }));
+      // If your "transactions" table does NOT have a "raw" column, remove raw above.
+      const { error: upsertErr } = await supabaseAdmin.from("transactions").upsert(formatted, {
+        onConflict: "id",
+      });
 
-    await supabase.from("transactions").upsert(formatted, {
-      onConflict: "id",
-    });
+      if (upsertErr) return res.status(500).json({ error: upsertErr.message });
+    }
+
+    const { error: updErr } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        last_transactions_sync_at: new Date().toISOString(),
+        has_bank_connection: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appUserId);
+
+    if (updErr) return res.status(500).json({ error: updErr.message });
+
+    return res.status(200).json({ success: true, imported: transactions.length });
+  } catch (err) {
+    console.error("❌ /api/refresh-transactions error:", err);
+    return res.status(500).json({ error: "Unable to refresh transactions", details: String(err?.message || err) });
   }
-
-  await supabase
-    .from("profiles")
-    .update({
-      last_transactions_sync_at: new Date().toISOString(),
-      has_bank_connection: true,
-    })
-    .eq("id", userId);
-
-  return res.status(200).json({ success: true });
 }
