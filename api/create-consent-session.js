@@ -92,7 +92,6 @@ export default async function handler(req, res) {
       return json(res, 500, { error: "Unable to load profile" });
     }
 
-    const endUserId = profileData?.fiskil_user_id || user.id;
     const userEmail = profileData?.email || user.email || req.body?.email;
 
     // -------- STEP 1: get Fiskil token --------
@@ -130,31 +129,38 @@ export default async function handler(req, res) {
 
     const fiskilToken = tokenJson.token;
 
-    // -------- STEP 2: create auth session --------
+    // -------- STEP 2: create end user --------
+    console.log("Checkpoint B1: creating Fiskil end user");
+    const endUserRes = await fetch(`${base}/v1/end-users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fiskilToken}`,
+      },
+      body: JSON.stringify({
+        reference: user.id,
+        email: userEmail,
+      }),
+    });
+
+    const endUserJson = await safeJson(endUserRes);
+
+    if (!endUserRes.ok || !endUserJson?.id) {
+      console.error("End user create error", { status: endUserRes.status, body: endUserJson });
+      return json(res, 500, {
+        error: "Failed to create Fiskil end user",
+        status: endUserRes.status,
+        endUserJson,
+      });
+    }
+
+    const fiskilEndUserId = endUserJson.id;
+
+    // -------- STEP 3: create auth session --------
     const sessionBody = {
-      end_user_id: endUserId,
+      end_user_id: fiskilEndUserId,
       redirect_uri,
       cancel_uri,
-    };
-
-    const tryCreateEndUser = async (path) => {
-      console.log("Checkpoint B1: ensuring end user", { path, end_user_id: endUserId });
-      const response = await fetch(path, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${fiskilToken}`,
-        },
-        body: JSON.stringify({
-          end_user_id: endUserId,
-          email: userEmail,
-        }),
-      });
-      const body = await safeJson(response);
-      if (!response.ok) {
-        console.error("End user create error", { status: response.status, body });
-      }
-      return { response, body };
     };
 
     const tryCreateSession = async (path) => {
@@ -181,22 +187,10 @@ export default async function handler(req, res) {
       const firstPath = `${base}/v1/auth/session`;
       ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
 
-      if (sessionRes.status === 404 || sessionJson?.name === "end_user_not_found") {
-        const endUserPathPrimary = `${base}/v1/endusers`;
-        await tryCreateEndUser(endUserPathPrimary);
-        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
-
-        if (sessionRes.status === 404) {
-          const fallbackPath = `${base}/auth/session`;
-          console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
-          ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
-
-          if (sessionJson?.name === "end_user_not_found") {
-            const endUserPathFallback = `${base}/endusers`;
-            await tryCreateEndUser(endUserPathFallback);
-            ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
-          }
-        }
+      if (sessionRes.status === 404) {
+        const fallbackPath = `${base}/auth/session`;
+        console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
+        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
       }
     } catch (err) {
       console.error("Fiskil auth session fetch failed:", err, "cause:", err?.cause);
@@ -225,7 +219,7 @@ export default async function handler(req, res) {
       auth_url: sessionJson.auth_url,
       session_id: sessionJson.session_id,
       expires_at: sessionJson.expires_at,
-      end_user_id: endUserId,
+      end_user_id: fiskilEndUserId,
     });
   } catch (err) {
     console.error("Unhandled:", err);
