@@ -13,7 +13,7 @@ import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
 import LegalFooter from "./LegalFooter";
 import { ArrowRightIcon } from "./icon/Icon";
-import { useBasiqData } from "../hooks/useBasiqData";
+import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 
