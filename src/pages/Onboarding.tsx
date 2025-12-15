@@ -239,14 +239,16 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       }
 
       if (!res.ok) {
-        throw new Error(data?.details || data?.error || "Unable to start bank connection");
+        throw new Error(
+          data?.error || data?.details || data?.message || "Unable to start bank connection"
+        );
       }
 
       // Accept both response shapes:
       // Old: { userId, consentUrl }
-      // New: { end_user_id, redirect_url }
+      // New: { auth_url, end_user_id }
       const endUserId = data?.end_user_id ?? data?.userId ?? null;
-      const redirectUrl = data?.redirect_url ?? data?.consentUrl ?? null;
+      const redirectUrl = data?.auth_url ?? data?.redirect_url ?? data?.consentUrl ?? null;
 
       if (endUserId) {
         const { error: updateErr } = await supabase

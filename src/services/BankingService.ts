@@ -107,7 +107,8 @@ export async function initiateBankConnection(
     body: JSON.stringify({}),
   });
 
-  const redirectUrl: string | undefined = data?.redirect_url || data?.url;
+  const redirectUrl: string | undefined =
+    data?.auth_url || data?.redirect_url || data?.url || data?.consentUrl;
   const endUserId: string | undefined = data?.end_user_id || data?.endUserId || data?.userId;
 
   if (!redirectUrl || !endUserId) {
