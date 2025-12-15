@@ -1,7 +1,13 @@
 import { createClient, Session, User } from "@supabase/supabase-js";
 
+const DEFAULT_SUPABASE_URL = "https://wyommhasmvdhqxwehhel.supabase.co";
+
+// Anon key is public (safe to ship). Keeping a default here prevents a hard-crash blank screen
+// if env vars are not injected correctly in Vercel/Vite.
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
+
 const getEnv = (key: string): string | undefined => {
-  // Vite / modern bundlers
   try {
     const metaEnv = (import.meta as any)?.env;
     if (metaEnv && typeof metaEnv[key] !== "undefined") return metaEnv[key];
@@ -9,7 +15,6 @@ const getEnv = (key: string): string | undefined => {
     // ignore
   }
 
-  // Node / server runtimes
   if (typeof process !== "undefined" && process.env) {
     return process.env[key];
   }
@@ -21,20 +26,20 @@ const supabaseUrl =
   getEnv("VITE_SUPABASE_URL") ||
   getEnv("NEXT_PUBLIC_SUPABASE_URL") ||
   getEnv("SUPABASE_URL") ||
-  "https://wyommhasmvdhqxwehhel.supabase.co";
+  DEFAULT_SUPABASE_URL;
 
 const supabaseAnonKey =
   getEnv("VITE_SUPABASE_ANON_KEY") ||
   getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
   getEnv("SUPABASE_ANON_KEY") ||
-  ""; // must be set via env in production
+  DEFAULT_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl) {
-  throw new Error("Missing Supabase URL (set VITE_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL).");
-}
-if (!supabaseAnonKey) {
-  throw new Error(
-    "Missing Supabase anon key (set VITE_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY)."
+// Never hard-crash the whole UI (blank screen) due to env issues.
+if (!supabaseUrl || !supabaseAnonKey) {
+  // eslint-disable-next-line no-console
+  console.error(
+    "Supabase config missing. Check Vercel env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).",
+    { hasUrl: Boolean(supabaseUrl), hasAnonKey: Boolean(supabaseAnonKey) }
   );
 }
 
