@@ -81,6 +81,20 @@ export default async function handler(req, res) {
 
     const user = userData.user;
 
+    const { data: profileData, error: profileErr } = await supabase
+      .from("profiles")
+      .select("fiskil_user_id,email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error("Supabase profile fetch failed:", profileErr);
+      return json(res, 500, { error: "Unable to load profile" });
+    }
+
+    const endUserId = profileData?.fiskil_user_id || user.id;
+    const userEmail = profileData?.email || user.email || req.body?.email;
+
     // -------- STEP 1: get Fiskil token --------
     console.log("Checkpoint A: about to call Fiskil token", { base });
 
@@ -118,9 +132,29 @@ export default async function handler(req, res) {
 
     // -------- STEP 2: create auth session --------
     const sessionBody = {
-      end_user_id: user.id,
+      end_user_id: endUserId,
       redirect_uri,
       cancel_uri,
+    };
+
+    const tryCreateEndUser = async (path) => {
+      console.log("Checkpoint B1: ensuring end user", { path, end_user_id: endUserId });
+      const response = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${fiskilToken}`,
+        },
+        body: JSON.stringify({
+          end_user_id: endUserId,
+          email: userEmail,
+        }),
+      });
+      const body = await safeJson(response);
+      if (!response.ok) {
+        console.error("End user create error", { status: response.status, body });
+      }
+      return { response, body };
     };
 
     const tryCreateSession = async (path) => {
@@ -147,10 +181,22 @@ export default async function handler(req, res) {
       const firstPath = `${base}/v1/auth/session`;
       ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
 
-      if (sessionRes.status === 404) {
-        const fallbackPath = `${base}/auth/session`;
-        console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
-        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
+      if (sessionRes.status === 404 || sessionJson?.name === "end_user_not_found") {
+        const endUserPathPrimary = `${base}/v1/endusers`;
+        await tryCreateEndUser(endUserPathPrimary);
+        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
+
+        if (sessionRes.status === 404) {
+          const fallbackPath = `${base}/auth/session`;
+          console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
+          ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
+
+          if (sessionJson?.name === "end_user_not_found") {
+            const endUserPathFallback = `${base}/endusers`;
+            await tryCreateEndUser(endUserPathFallback);
+            ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
+          }
+        }
       }
     } catch (err) {
       console.error("Fiskil auth session fetch failed:", err, "cause:", err?.cause);
@@ -179,6 +225,7 @@ export default async function handler(req, res) {
       auth_url: sessionJson.auth_url,
       session_id: sessionJson.session_id,
       expires_at: sessionJson.expires_at,
+      end_user_id: endUserId,
     });
   } catch (err) {
     console.error("Unhandled:", err);
