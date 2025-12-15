@@ -16,6 +16,7 @@ import { ArrowRightIcon } from "./icon/Icon";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
+import type { Transaction } from "../types";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
@@ -24,8 +25,8 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
 
-  // Hook now calls /api/fiskil-data internally (Fiskil-only)
-  const { accounts, transactions, loading, error, lastUpdated } = useBasiqData(user?.id);
+  // Hook calls /api/fiskil-data internally (Fiskil-only)
+  const { accounts, transactions, loading, error, lastUpdated } = useFiskilData(user?.id);
 
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -85,20 +86,27 @@ const Dashboard: React.FC = () => {
   }, [updateRailScrollState]);
 
   const subscriptionSummary = useMemo(() => deriveSubscriptionSummary(transactions), [transactions]);
-  const subscriptionTotal = subscriptionSummary.reduce((sum, item) => sum + item.total, 0);
+  const subscriptionTotal = subscriptionSummary.reduce((sum: number, item) => sum + item.total, 0);
 
   const monthlyStats = useMemo(() => {
     const now = new Date();
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
 
-    const recent = transactions.filter((tx) => {
+    const recent = transactions.filter((tx: Transaction) => {
       const date = new Date(tx.date);
       return !Number.isNaN(date.getTime()) && date >= start;
     });
 
-    const income = recent.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0);
-    const expenses = Math.abs(recent.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0));
+    const income = recent
+      .filter((tx: Transaction) => tx.amount > 0)
+      .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
+
+    const expenses = Math.abs(
+      recent
+        .filter((tx: Transaction) => tx.amount < 0)
+        .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0)
+    );
 
     return { income, expenses, net: income - expenses };
   }, [transactions]);
@@ -117,8 +125,7 @@ const Dashboard: React.FC = () => {
     {
       id: "goal-planner",
       title: "Goal planner",
-      description:
-        "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
+      description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
     },
     {
       id: "refer-a-friend",
@@ -208,7 +215,11 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+        <PlanGate
+          feature="Upcoming bills"
+          teaser="Upgrade to predict upcoming bills and due dates."
+          dataTourId="upcoming-bills"
+        >
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -285,9 +296,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
-        </p>
+        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
       )}
 
       <TutorialButton
