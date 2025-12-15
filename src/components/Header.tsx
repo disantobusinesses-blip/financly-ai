@@ -32,13 +32,12 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const handleConnectBankClick = async () => {
     if (!user?.email) return;
     try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
-      localStorage.setItem("basiqUserId", userId);
+      const { authUrl } = await initiateBankConnection(user.email, session?.access_token);
       localStorage.removeItem("demoMode");
-      window.location.href = consentUrl;
-    } catch (err) {
+      window.location.href = authUrl;
+    } catch (err: any) {
       console.error("Failed to start bank connection:", err);
-      alert("Unable to connect bank right now.");
+      alert(err?.message || "Unable to connect bank right now.");
     }
   };
 

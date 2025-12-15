@@ -40,8 +40,8 @@ export class BankingService {
 export async function initiateBankConnection(
   email: string,
   accessToken?: string
-): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/start-basiq-consent", {
+): Promise<{ authUrl: string; sessionId?: string; expiresAt?: string }> {
+  const res = await fetch("/api/create-consent-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -52,24 +52,35 @@ export async function initiateBankConnection(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Consent session failed: ${text}`);
+    let message = "Consent session failed";
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed?.error || text || message;
+    } catch (err) {
+      message = text || message;
+    }
+    throw new Error(message);
   }
 
   const data = await res.json();
-  if (!data?.consentUrl || !data?.userId) {
-    throw new Error("Invalid consent response");
+  const authUrl = data.auth_url || data.authUrl;
+  if (!authUrl) {
+    throw new Error("Invalid consent response: missing auth_url");
   }
 
   // Store identifiers so callback or polling can finalise the connection
   try {
-    localStorage.setItem("basiqPendingUserId", data.userId);
+    if (data.session_id) {
+      localStorage.setItem("fiskilSessionId", data.session_id);
+    }
     localStorage.setItem("basiqConnectionStatus", "pending");
   } catch (err) {
-    console.warn("Unable to persist pending Basiq user id", err);
+    console.warn("Unable to persist pending consent metadata", err);
   }
 
-  // Store userId so we can fetch data immediately after redirect
-  BankingService.setStoredUserId(data.userId);
-
-  return data; // caller will set window.location.href = consentUrl
+  return {
+    authUrl,
+    sessionId: data.session_id,
+    expiresAt: data.expires_at,
+  };
 }
