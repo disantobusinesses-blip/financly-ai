@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { initiateBankConnection } from "../services/BankingService";
 
 interface HeaderProps {
   activeView: "dashboard" | "what-we-do" | "sandbox";
@@ -8,8 +7,9 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
-  const { user, profile, session, logout, remainingBasicDays } = useAuth();
+  const { user, logout, remainingBasicDays } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
   const statusChip = (() => {
     if (!user) return "";
     if (user.membershipType === "Basic") {
@@ -21,26 +21,11 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       const diff = Math.ceil(
         (new Date(user.proTrialEnds).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
-      if (diff > 0) {
-        return `Pro trial: ${diff} day${diff === 1 ? "" : "s"} left`;
-      }
+      if (diff > 0) return `Pro trial: ${diff} day${diff === 1 ? "" : "s"} left`;
       return "Pro trial completed";
     }
     return "Pro member";
   })();
-
-  const handleConnectBankClick = async () => {
-    if (!user?.email) return;
-    try {
-      const { consentUrl, userId } = await initiateBankConnection(user.email, session?.access_token);
-      localStorage.setItem("basiqUserId", userId);
-      localStorage.removeItem("demoMode");
-      window.location.href = consentUrl;
-    } catch (err) {
-      console.error("Failed to start bank connection:", err);
-      alert("Unable to connect bank right now.");
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -58,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           <button
             onClick={() => setMenuOpen(true)}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold uppercase tracking-[0.3em] hover:border-white/50"
-            >
+          >
             ☰
           </button>
         )}
@@ -75,14 +60,6 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           <span className="hidden text-xs font-semibold uppercase tracking-widest text-white/70 sm:inline-flex">
             {statusChip}
           </span>
-          {!profile?.has_bank_connection && (
-            <button
-              onClick={handleConnectBankClick}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-primary/90"
-            >
-              Connect bank
-            </button>
-          )}
         </div>
       ) : (
         <div className="flex w-full flex-col items-stretch gap-2 text-right sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
@@ -115,14 +92,22 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
 
       {menuOpen && user && (
         <div className="fixed inset-0 z-40 flex bg-black" onClick={() => setMenuOpen(false)}>
-          <div className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-6 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Quick links</p>
-              <p className="text-lg font-semibold text-white">{user.displayName} {user.avatar}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+                Quick links
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {user.displayName} {user.avatar}
+              </p>
               <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
                 {statusChip}
               </span>
             </div>
+
             <nav className="space-y-4 text-sm font-semibold text-white/80">
               <button
                 onClick={() => {
@@ -158,14 +143,15 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
                 Sandbox preview
               </button>
             </nav>
+
             <button
               onClick={handleLogout}
               className="mt-8 inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:text-white"
             >
               Logout
             </button>
+
             <div className="mt-6 space-y-3 text-xs text-white/60">
-              <p>Your email becomes your Basiq user ID for secure bank connections.</p>
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>

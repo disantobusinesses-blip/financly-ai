@@ -1,14 +1,47 @@
 import { createClient, Session, User } from "@supabase/supabase-js";
 
+const DEFAULT_SUPABASE_URL = "https://wyommhasmvdhqxwehhel.supabase.co";
+
+// Anon key is public (safe to ship). Keeping a default here prevents a hard-crash blank screen
+// if env vars are not injected correctly in Vercel/Vite.
+const DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
+
+const getEnv = (key: string): string | undefined => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv && typeof metaEnv[key] !== "undefined") return metaEnv[key];
+  } catch {
+    // ignore
+  }
+
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[key];
+  }
+
+  return undefined;
+};
+
 const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ||
-  (typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined) ||
-  "https://wyommhasmvdhqxwehhel.supabase.co";
+  getEnv("VITE_SUPABASE_URL") ||
+  getEnv("NEXT_PUBLIC_SUPABASE_URL") ||
+  getEnv("SUPABASE_URL") ||
+  DEFAULT_SUPABASE_URL;
 
 const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  (typeof process !== "undefined" ? process.env.SUPABASE_ANON_KEY : undefined) ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
+  getEnv("VITE_SUPABASE_ANON_KEY") ||
+  getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+  getEnv("SUPABASE_ANON_KEY") ||
+  DEFAULT_SUPABASE_ANON_KEY;
+
+// Never hard-crash the whole UI (blank screen) due to env issues.
+if (!supabaseUrl || !supabaseAnonKey) {
+  // eslint-disable-next-line no-console
+  console.error(
+    "Supabase config missing. Check Vercel env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).",
+    { hasUrl: Boolean(supabaseUrl), hasAnonKey: Boolean(supabaseAnonKey) }
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -43,11 +76,13 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
 export const fetchProfile = async (): Promise<SupabaseProfile | null> => {
   const user = await fetchCurrentUser();
   if (!user) return null;
+
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
   return (data as SupabaseProfile | null) ?? null;
 };
 
@@ -59,5 +94,6 @@ export const upsertProfile = async (
     .upsert(updates, { onConflict: "id" })
     .select()
     .single();
+
   return error ? { error: error.message } : {};
 };

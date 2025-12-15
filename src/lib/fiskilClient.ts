@@ -1,4 +1,4 @@
-const FISKIL_BASE_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com").replace(/\/$/, "");
+const FISKIL_BASE_URL = (process.env.FISKIL_API_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 

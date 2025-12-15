@@ -13,7 +13,6 @@ import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
-import BasiqCallbackPage from "./pages/BasiqCallback";
 
 const usePath = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -81,7 +80,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <SignupPage />
       </div>
     );
@@ -95,7 +97,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <OnboardingPage />
       </div>
     );
@@ -105,7 +110,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <LoginPage onSuccess={() => navigate("/dashboard")} />
       </div>
     );
@@ -119,7 +127,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <SubscribePage />
       </div>
     );
@@ -134,14 +145,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (path === "/basiq/callback") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
-        {backgroundLayers}
-        <BasiqCallbackPage />
-      </div>
-    );
-  }
+  // NOTE: removed /basiq/callback route (migration to Fiskil + onboarding-only connect)
 
   if (path === "/subscription/success") {
     if (!user && !loading) {
@@ -168,7 +172,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <main className="px-4 pb-16 pt-6 md:px-8">
           {profile?.has_bank_connection && (
             <div className="mb-4 flex justify-end">
@@ -192,7 +199,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="what-we-do" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="what-we-do"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <WhatWeDo />
         </main>
@@ -204,7 +214,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
         {backgroundLayers}
-        <Header activeView="sandbox" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="sandbox"
+          onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <SandboxShowcase />
         </main>
@@ -220,7 +233,10 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
       {backgroundLayers}
-      <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+      <Header
+        activeView="dashboard"
+        onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+      />
       <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} />
     </div>
   );

@@ -1,75 +1,122 @@
-// 🚀 REPLACEMENT FOR: /src/services/BankingService.ts
-// Frontend initiator for consent; live-only data fetch helpers.
-
+import { supabase } from "../lib/supabaseClient";
 import { Account, Transaction } from "../types";
 
+const STORAGE = {
+  endUserId: "fiskilEndUserId",
+  connectionStatus: "fiskilConnectionStatus",
+};
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
+function removeStorage(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+async function fetchJson(url: string, init?: RequestInit) {
+  const res = await fetch(url, init);
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = text;
+  }
+
+  if (!res.ok) {
+    throw new Error(typeof data === "string" ? data : data?.details || data?.error || text);
+  }
+
+  return data;
+}
+
+async function getSupabaseAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.access_token || null;
+}
+
 export class BankingService {
-  static getStoredUserId(): string | null {
-    return localStorage.getItem("basiqUserId");
+  static getStoredEndUserId(): string | null {
+    return readStorage(STORAGE.endUserId);
   }
 
-  static setStoredUserId(id: string) {
-    localStorage.setItem("basiqUserId", id);
+  static setStoredEndUserId(id: string) {
+    writeStorage(STORAGE.endUserId, id);
   }
 
-  static clearStoredUserId() {
-    localStorage.removeItem("basiqUserId");
+  static clearStoredEndUserId() {
+    removeStorage(STORAGE.endUserId);
+    removeStorage(STORAGE.connectionStatus);
   }
 
-  static async getAccounts(userId?: string): Promise<Account[]> {
-    const id = userId || this.getStoredUserId();
-    if (!id) return [];
-    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
+  static async getAccounts(): Promise<Account[]> {
+    const token = await getSupabaseAccessToken();
+    if (!token) return [];
+
+    const data = await fetchJson("/api/fiskil-data", {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return data.accounts || [];
   }
 
-  static async getTransactions(userId?: string): Promise<Transaction[]> {
-    const id = userId || this.getStoredUserId();
-    if (!id) return [];
-    const url = `/api/basiq-data?userId=${encodeURIComponent(id)}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
+  static async getTransactions(): Promise<Transaction[]> {
+    const token = await getSupabaseAccessToken();
+    if (!token) return [];
+
+    const data = await fetchJson("/api/fiskil-data", {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return data.transactions || [];
   }
 }
 
 export async function initiateBankConnection(
-  email: string,
-  accessToken?: string
-): Promise<{ consentUrl: string; userId: string }> {
-  const res = await fetch("/api/start-basiq-consent", {
+  accessToken: string
+): Promise<{ redirectUrl: string; endUserId: string }> {
+  const data = await fetchJson("/api/create-consent-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({}),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Consent session failed: ${text}`);
+  const redirectUrl: string | undefined = data?.redirect_url || data?.url;
+  const endUserId: string | undefined = data?.end_user_id || data?.endUserId || data?.userId;
+
+  if (!redirectUrl || !endUserId) {
+    throw new Error("Invalid server response (missing redirect_url or end_user_id)");
   }
 
-  const data = await res.json();
-  if (!data?.consentUrl || !data?.userId) {
-    throw new Error("Invalid consent response");
-  }
+  // Persist for later fetch/callback flows (optional)
+  BankingService.setStoredEndUserId(endUserId);
+  writeStorage(STORAGE.connectionStatus, "pending");
 
-  // Store identifiers so callback or polling can finalise the connection
-  try {
-    localStorage.setItem("basiqPendingUserId", data.userId);
-    localStorage.setItem("basiqConnectionStatus", "pending");
-  } catch (err) {
-    console.warn("Unable to persist pending Basiq user id", err);
-  }
-
-  // Store userId so we can fetch data immediately after redirect
-  BankingService.setStoredUserId(data.userId);
-
-  return data; // caller will set window.location.href = consentUrl
+  return { redirectUrl, endUserId };
 }

@@ -37,7 +37,7 @@ export async function categorizeByAI(tx: Tx): Promise<Categorized> {
   };
 
   const res = await getClient().chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5.2",
     temperature: 0,
     messages: [
       { role: "system", content: SYSTEM },
