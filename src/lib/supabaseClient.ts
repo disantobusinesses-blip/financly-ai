@@ -1,14 +1,42 @@
 import { createClient, Session, User } from "@supabase/supabase-js";
 
+const getEnv = (key: string): string | undefined => {
+  // Vite / modern bundlers
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv && typeof metaEnv[key] !== "undefined") return metaEnv[key];
+  } catch {
+    // ignore
+  }
+
+  // Node / server runtimes
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[key];
+  }
+
+  return undefined;
+};
+
 const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ||
-  (typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined) ||
+  getEnv("VITE_SUPABASE_URL") ||
+  getEnv("NEXT_PUBLIC_SUPABASE_URL") ||
+  getEnv("SUPABASE_URL") ||
   "https://wyommhasmvdhqxwehhel.supabase.co";
 
 const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  (typeof process !== "undefined" ? process.env.SUPABASE_ANON_KEY : undefined) ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5b21taGFzbXZkaHF4d2VoaGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NTUwNDksImV4cCI6MjA3OTMzMTA0OX0.myCT42sdT4l69qMbH_tFGGGr60POlzu4IVZj7tFyjR0";
+  getEnv("VITE_SUPABASE_ANON_KEY") ||
+  getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+  getEnv("SUPABASE_ANON_KEY") ||
+  ""; // must be set via env in production
+
+if (!supabaseUrl) {
+  throw new Error("Missing Supabase URL (set VITE_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL).");
+}
+if (!supabaseAnonKey) {
+  throw new Error(
+    "Missing Supabase anon key (set VITE_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY)."
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -43,11 +71,13 @@ export const fetchCurrentUser = async (): Promise<User | null> => {
 export const fetchProfile = async (): Promise<SupabaseProfile | null> => {
   const user = await fetchCurrentUser();
   if (!user) return null;
+
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
   return (data as SupabaseProfile | null) ?? null;
 };
 
@@ -59,5 +89,6 @@ export const upsertProfile = async (
     .upsert(updates, { onConflict: "id" })
     .select()
     .single();
+
   return error ? { error: error.message } : {};
 };
