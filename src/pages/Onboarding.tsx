@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import type { SupabaseProfile, OnboardingStep } from "../lib/supabaseClient";
+import { initiateBankConnection } from "../services/BankingService";
 
 interface StepConfig {
   key: OnboardingStep;
@@ -208,25 +209,11 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     }
 
     try {
-      const res = await fetch("/api/start-basiq-consent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionData.session.access_token}`,
-        },
-        body: JSON.stringify({ email: sessionData.session.user.email }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Unable to start bank connection");
-      }
-      const data = await res.json();
-      if (data.userId) {
-        setProfile((prev) => (prev ? { ...prev, basiq_user_id: data.userId } : prev));
-      }
-      if (data.consentUrl) {
-        window.location.href = data.consentUrl;
-      }
+      const { authUrl } = await initiateBankConnection(
+        sessionData.session.user.email,
+        sessionData.session.access_token
+      );
+      window.location.href = authUrl;
     } catch (err: any) {
       setError(err?.message || "Unable to connect bank.");
     } finally {
