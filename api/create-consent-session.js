@@ -53,7 +53,8 @@ export default async function handler(req, res) {
     const accessToken = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
+    const { data: userData, error: userErr } =
+      await supabase.auth.getUser(accessToken);
 
     if (userErr || !userData?.user) {
       return json(res, 401, { error: "Invalid session" });
@@ -105,7 +106,8 @@ export default async function handler(req, res) {
 
     let sessionRes;
     try {
-      sessionRes = await fetch(`${base}/v1/auth/session`, {
+      // ✅ FIX: remove /v1 here
+      sessionRes = await fetch(`${base}/auth/session`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,9 +120,9 @@ export default async function handler(req, res) {
         }),
       });
     } catch (err) {
-      console.error("Fiskil /v1/auth/session fetch failed:", err, "cause:", err?.cause);
+      console.error("Fiskil /auth/session fetch failed:", err, "cause:", err?.cause);
       return json(res, 500, {
-        error: "Fiskil /v1/auth/session fetch failed",
+        error: "Fiskil /auth/session fetch failed",
         cause: String(err?.cause || err),
       });
     }
