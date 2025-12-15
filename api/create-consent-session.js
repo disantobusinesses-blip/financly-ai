@@ -15,11 +15,16 @@ const safeJson = async (response) => {
   }
 };
 
+const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+const originFromReq = (req) => {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  return `${proto}://${host}`;
+};
+
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return json(res, 405, { error: "Method not allowed" });
-    }
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
     const {
       SUPABASE_URL,
@@ -38,11 +43,15 @@ export default async function handler(req, res) {
     if (!FISKIL_BASE_URL) missing.push("FISKIL_BASE_URL");
     if (!FRONTEND_URL) missing.push("FRONTEND_URL");
 
-    if (missing.length) {
-      return json(res, 500, { error: "Server misconfigured", missing });
-    }
+    if (missing.length) return json(res, 500, { error: "Server misconfigured", missing });
 
-    const base = FISKIL_BASE_URL.replace(/\/$/, "");
+    const base = normalizeBase(FISKIL_BASE_URL);
+
+    // ✅ Build redirect/cancel from the actual request host to avoid domain mismatch
+    // If you need to lock it, set FRONTEND_URL correctly and use that only.
+    const origin = originFromReq(req);
+    const redirect_uri = `${origin}/onboarding`;
+    const cancel_uri = `${origin}/onboarding`;
 
     // -------- get user from Supabase --------
     const authHeader = req.headers.authorization;
@@ -50,19 +59,22 @@ export default async function handler(req, res) {
       return json(res, 401, { error: "Missing Authorization header" });
     }
 
-    const accessToken = authHeader.replace("Bearer ", "");
+    const accessToken = authHeader.slice("Bearer ".length);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: userData, error: userErr } =
-      await supabase.auth.getUser(accessToken);
+    console.log("Checkpoint 0: validating Supabase user");
+    const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
 
     if (userErr || !userData?.user) {
+      console.error("Supabase getUser failed:", userErr);
       return json(res, 401, { error: "Invalid session" });
     }
 
     const user = userData.user;
 
     // -------- STEP 1: get Fiskil token --------
+    console.log("Checkpoint A: about to call Fiskil token", { base });
+
     let tokenRes;
     try {
       tokenRes = await fetch(`${base}/v1/token`, {
@@ -81,9 +93,11 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log("Checkpoint B: token response", tokenRes.status);
     const tokenJson = await safeJson(tokenRes);
 
     if (!tokenRes.ok || !tokenJson.token) {
+      console.error("Token error body:", tokenJson);
       return json(res, 500, {
         error: "Failed to authenticate with Fiskil",
         status: tokenRes.status,
@@ -94,10 +108,7 @@ export default async function handler(req, res) {
     const fiskilToken = tokenJson.token;
 
     // -------- STEP 2: create auth session --------
-    const redirect_uri = "https://www.financlyai.com/onboarding";
-    const cancel_uri = "https://www.financlyai.com/onboarding";
-
-    console.log("Creating Fiskil auth session with:", {
+    console.log("Checkpoint C: creating auth session", {
       end_user_id: user.id,
       redirect_uri,
       cancel_uri,
@@ -106,7 +117,6 @@ export default async function handler(req, res) {
 
     let sessionRes;
     try {
-      // ✅ FIX: remove /v1 here
       sessionRes = await fetch(`${base}/auth/session`, {
         method: "POST",
         headers: {
@@ -127,7 +137,9 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log("Checkpoint D: auth/session response", sessionRes.status);
     const sessionJson = await safeJson(sessionRes);
+    console.log("Checkpoint E: auth/session body", sessionJson);
 
     if (!sessionRes.ok) {
       return json(res, 500, {
@@ -148,9 +160,12 @@ export default async function handler(req, res) {
       auth_url: sessionJson.auth_url,
       session_id: sessionJson.session_id,
       expires_at: sessionJson.expires_at,
+      // helpful for debugging (safe)
+      redirect_uri,
+      cancel_uri,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Unhandled:", err);
     return json(res, 500, { error: err?.message || "Internal Server Error" });
   }
 }
