@@ -6,6 +6,15 @@ const json = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
+const safeJson = async (response) => {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
+};
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -18,7 +27,7 @@ export default async function handler(req, res) {
       FISKIL_CLIENT_ID,
       FISKIL_CLIENT_SECRET,
       FISKIL_BASE_URL,
-      FRONTEND_URL,
+      FRONTEND_URL, // keep for validation, but we won't rely on it for redirect/cancel
     } = process.env;
 
     const missing = [];
@@ -52,7 +61,7 @@ export default async function handler(req, res) {
     const user = userData.user;
 
     // -------- STEP 1: get Fiskil token --------
-    const tokenRes = await fetch(`${FISKIL_BASE_URL}/v1/token`, {
+    const tokenRes = await fetch(`${FISKIL_BASE_URL.replace(/\/$/, "")}/v1/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -61,34 +70,59 @@ export default async function handler(req, res) {
       }),
     });
 
-    const tokenJson = await tokenRes.json();
+    const tokenJson = await safeJson(tokenRes);
+
     if (!tokenRes.ok || !tokenJson.token) {
-      return json(res, 500, { error: "Failed to authenticate with Fiskil", tokenJson });
+      return json(res, 500, {
+        error: "Failed to authenticate with Fiskil",
+        tokenJson,
+        status: tokenRes.status,
+      });
     }
 
     const fiskilToken = tokenJson.token;
 
     // -------- STEP 2: create auth session --------
-    const redirect_uri = `${FRONTEND_URL.replace(/\/$/, "")}/onboarding`;
+    // Hard-lock these to eliminate any runtime env/header issues.
+    const redirect_uri = "https://www.financlyai.com/onboarding";
+    const cancel_uri = "https://www.financlyai.com/onboarding";
 
-    const sessionRes = await fetch(`${FISKIL_BASE_URL}/v1/auth/session`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${fiskilToken}`,
-      },
-      body: JSON.stringify({
-        end_user_id: user.id,
-        redirect_uri,
-        cancel_uri: redirect_uri,
-      }),
+    console.log("Creating Fiskil auth session with:", {
+      end_user_id: user.id,
+      redirect_uri,
+      cancel_uri,
+      base: FISKIL_BASE_URL,
     });
 
-    const sessionJson = await sessionRes.json();
+    const sessionRes = await fetch(
+      `${FISKIL_BASE_URL.replace(/\/$/, "")}/v1/auth/session`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${fiskilToken}`,
+        },
+        body: JSON.stringify({
+          end_user_id: user.id,
+          redirect_uri,
+          cancel_uri,
+        }),
+      }
+    );
+
+    const sessionJson = await safeJson(sessionRes);
 
     if (!sessionRes.ok) {
       return json(res, 500, {
         error: "Fiskil auth session failed",
+        status: sessionRes.status,
+        sessionJson,
+      });
+    }
+
+    if (!sessionJson?.auth_url) {
+      return json(res, 500, {
+        error: "Fiskil auth session missing auth_url",
         sessionJson,
       });
     }
@@ -101,6 +135,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error(err);
-    return json(res, 500, { error: err.message });
+    return json(res, 500, { error: err?.message || "Internal Server Error" });
   }
 }
