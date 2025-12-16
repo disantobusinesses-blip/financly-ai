@@ -145,7 +145,13 @@ export default async function handler(req, res) {
 
     const endUserJson = await safeJson(endUserRes);
 
-    if (!endUserRes.ok || !endUserJson?.id) {
+    // Fiskil responses have differed across versions/environments:
+    // - { id: 'eu_...' }
+    // - { end_user_id: 'eu_...' }
+    // Treat both as success shapes.
+    const fiskilEndUserId = endUserJson?.id || endUserJson?.end_user_id;
+
+    if (!endUserRes.ok || !fiskilEndUserId) {
       console.error("End user create error", { status: endUserRes.status, body: endUserJson });
       return json(res, 500, {
         error: "Failed to create Fiskil end user",
@@ -153,8 +159,6 @@ export default async function handler(req, res) {
         endUserJson,
       });
     }
-
-    const fiskilEndUserId = endUserJson.id;
 
     // -------- STEP 3: create auth session --------
     const sessionBody = {

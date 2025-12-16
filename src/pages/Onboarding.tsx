@@ -81,6 +81,71 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
       setProfile(loadedProfile);
 
+      // If the user has just returned from the Fiskil consent flow, we may get
+      // query params on /onboarding. In that case, mark the bank connection and
+      // complete onboarding.
+      const params = new URLSearchParams(window.location.search);
+      const hasParams = window.location.search.length > 1;
+      const looksCancelled =
+        params.has("error") ||
+        params.get("status") === "cancelled" ||
+        params.get("status") === "canceled" ||
+        params.get("cancelled") === "true" ||
+        params.get("canceled") === "true";
+
+      const looksSuccessful =
+        params.get("status") === "success" ||
+        params.get("result") === "success" ||
+        params.get("connected") === "true" ||
+        params.has("session_id") ||
+        params.has("sessionId") ||
+        params.has("code") ||
+        params.has("state");
+
+      const returnedFromFiskil =
+        hasParams && !looksCancelled && (looksSuccessful || params.size > 0);
+
+      if (
+        returnedFromFiskil &&
+        !loadedProfile.has_bank_connection &&
+        loadedProfile.onboarding_step === "CONNECT_BANK"
+      ) {
+        const endUserId =
+          params.get("end_user_id") ||
+          params.get("endUserId") ||
+          params.get("userId") ||
+          loadedProfile.fiskil_user_id ||
+          null;
+
+        if (endUserId) {
+          setConnectingBank(true);
+          try {
+            const res = await fetch("/api/mark-bank-connected", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${data.session.access_token}`,
+              },
+              body: JSON.stringify({ end_user_id: endUserId }),
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(text || "Unable to confirm bank connection");
+            }
+
+            // Clear query params to avoid repeat finalisation on refresh.
+            window.history.replaceState({}, "", "/onboarding");
+            window.location.replace("/app/dashboard");
+            return;
+          } catch (err: any) {
+            setError(err?.message || "Unable to confirm your bank connection.");
+          } finally {
+            setConnectingBank(false);
+          }
+        }
+      }
+
       if (loadedProfile.country !== undefined && loadedProfile.country !== null) {
         setBasics((prev) => ({
           ...prev,
