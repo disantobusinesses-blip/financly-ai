@@ -34,6 +34,13 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // SupabaseProfile type in code may lag behind DB schema.
+  // Access Fiskil IDs via a safe helper to avoid TS build failures.
+  const getFiskilEndUserId = (p: SupabaseProfile | null): string | null => {
+    const anyProfile = p as any;
+    return anyProfile?.fiskil_user_id ?? anyProfile?.fiskil_end_user_id ?? null;
+  };
+
   const [basics, setBasics] = useState<BasicsForm>({ country: "Australia", currency: "AUD" });
   const [money, setMoney] = useState<MoneyForm>({ pay_cycle: "Monthly", primary_bank: "" });
   const [saving, setSaving] = useState(false);
@@ -80,6 +87,71 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       }
 
       setProfile(loadedProfile);
+
+      // If the user has just returned from the Fiskil consent flow, we may get
+      // query params on /onboarding. In that case, mark the bank connection and
+      // complete onboarding.
+      const params = new URLSearchParams(window.location.search);
+      const hasParams = window.location.search.length > 1;
+      const looksCancelled =
+        params.has("error") ||
+        params.get("status") === "cancelled" ||
+        params.get("status") === "canceled" ||
+        params.get("cancelled") === "true" ||
+        params.get("canceled") === "true";
+
+      const looksSuccessful =
+        params.get("status") === "success" ||
+        params.get("result") === "success" ||
+        params.get("connected") === "true" ||
+        params.has("session_id") ||
+        params.has("sessionId") ||
+        params.has("code") ||
+        params.has("state");
+
+      const returnedFromFiskil =
+        hasParams && !looksCancelled && (looksSuccessful || params.size > 0);
+
+      if (
+        returnedFromFiskil &&
+        !loadedProfile.has_bank_connection &&
+        loadedProfile.onboarding_step === "CONNECT_BANK"
+      ) {
+        const endUserId =
+          params.get("end_user_id") ||
+          params.get("endUserId") ||
+          params.get("userId") ||
+          getFiskilEndUserId(loadedProfile) ||
+          null;
+
+        if (endUserId) {
+          setConnectingBank(true);
+          try {
+            const res = await fetch("/api/mark-bank-connected", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${data.session.access_token}`,
+              },
+              body: JSON.stringify({ end_user_id: endUserId }),
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(text || "Unable to confirm bank connection");
+            }
+
+            // Clear query params to avoid repeat finalisation on refresh.
+            window.history.replaceState({}, "", "/onboarding");
+            window.location.replace("/app/dashboard");
+            return;
+          } catch (err: any) {
+            setError(err?.message || "Unable to confirm your bank connection.");
+          } finally {
+            setConnectingBank(false);
+          }
+        }
+      }
 
       if (loadedProfile.country !== undefined && loadedProfile.country !== null) {
         setBasics((prev) => ({
@@ -239,14 +311,16 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       }
 
       if (!res.ok) {
-        throw new Error(data?.details || data?.error || "Unable to start bank connection");
+        throw new Error(
+          data?.error || data?.details || data?.message || "Unable to start bank connection"
+        );
       }
 
       // Accept both response shapes:
       // Old: { userId, consentUrl }
-      // New: { end_user_id, redirect_url }
+      // New: { auth_url, end_user_id }
       const endUserId = data?.end_user_id ?? data?.userId ?? null;
-      const redirectUrl = data?.redirect_url ?? data?.consentUrl ?? null;
+      const redirectUrl = data?.auth_url ?? data?.redirect_url ?? data?.consentUrl ?? null;
 
       if (endUserId) {
         const { error: updateErr } = await supabase
@@ -255,7 +329,9 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           .eq("id", profile.id);
 
         if (!updateErr) {
-          setProfile((prev) => (prev ? { ...prev, fiskil_user_id: endUserId } : prev));
+          setProfile((prev) =>
+            prev ? ({ ...(prev as any), fiskil_user_id: endUserId } as SupabaseProfile) : prev
+          );
         }
       }
 
