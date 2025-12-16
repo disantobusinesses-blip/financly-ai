@@ -34,6 +34,13 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // SupabaseProfile type in code may lag behind DB schema.
+  // Access Fiskil IDs via a safe helper to avoid TS build failures.
+  const getFiskilEndUserId = (p: SupabaseProfile | null): string | null => {
+    const anyProfile = p as any;
+    return anyProfile?.fiskil_user_id ?? anyProfile?.fiskil_end_user_id ?? null;
+  };
+
   const [basics, setBasics] = useState<BasicsForm>({ country: "Australia", currency: "AUD" });
   const [money, setMoney] = useState<MoneyForm>({ pay_cycle: "Monthly", primary_bank: "" });
   const [saving, setSaving] = useState(false);
@@ -114,7 +121,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           params.get("end_user_id") ||
           params.get("endUserId") ||
           params.get("userId") ||
-          loadedProfile.fiskil_user_id ||
+          getFiskilEndUserId(loadedProfile) ||
           null;
 
         if (endUserId) {
@@ -322,7 +329,9 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           .eq("id", profile.id);
 
         if (!updateErr) {
-          setProfile((prev) => (prev ? { ...prev, fiskil_user_id: endUserId } : prev));
+          setProfile((prev) =>
+            prev ? ({ ...(prev as any), fiskil_user_id: endUserId } as SupabaseProfile) : prev
+          );
         }
       }
 

@@ -145,10 +145,9 @@ export default async function handler(req, res) {
 
     const endUserJson = await safeJson(endUserRes);
 
-    // Fiskil responses have differed across versions/environments:
+    // Accept both success shapes:
     // - { id: 'eu_...' }
     // - { end_user_id: 'eu_...' }
-    // Treat both as success shapes.
     const fiskilEndUserId = endUserJson?.id || endUserJson?.end_user_id;
 
     if (!endUserRes.ok || !fiskilEndUserId) {
