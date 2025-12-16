@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+// api/create-consent-session.js  (CommonJS for Vercel Serverless Functions)
 
 const json = (res, status, body) => {
   res.statusCode = status;
@@ -16,27 +16,23 @@ const safeJson = async (response) => {
 };
 
 const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+
 const ensureHttpsOrigin = (url) => {
   const normalized = normalizeBase(url);
   if (!normalized) return normalized;
 
-  if (normalized.startsWith("http://")) {
-    return `https://${normalized.slice("http://".length)}`;
-  }
-
-  if (!/^https?:\/\//i.test(normalized)) {
-    return `https://${normalized}`;
-  }
-
+  if (normalized.startsWith("http://")) return `https://${normalized.slice("http://".length)}`;
+  if (!/^https?:\/\//i.test(normalized)) return `https://${normalized}`;
   return normalized;
 };
+
 const originFromReq = (req) => {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
@@ -62,9 +58,12 @@ export default async function handler(req, res) {
     const redirect_uri = `${origin}/onboarding`;
     const cancel_uri = `${origin}/onboarding`;
 
+    // IMPORTANT: load supabase-js (ESM) from a CommonJS function
+    const { createClient } = await import("@supabase/supabase-js");
+
     // -------- get user from Supabase --------
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return json(res, 401, { error: "Missing Authorization header" });
     }
 
@@ -177,30 +176,18 @@ export default async function handler(req, res) {
         body: JSON.stringify(sessionBody),
       });
       const body = await safeJson(response);
-      if (!response.ok) {
-        console.error("Auth session error", { status: response.status, body });
-      }
+      if (!response.ok) console.error("Auth session error", { status: response.status, body });
       console.log("Checkpoint D: auth/session response", { status: response.status });
       return { response, body };
     };
 
     let sessionRes;
     let sessionJson;
-    try {
-      const firstPath = `${base}/v1/auth/session`;
-      ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
 
-      if (sessionRes.status === 404) {
-        const fallbackPath = `${base}/auth/session`;
-        console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
-        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
-      }
-    } catch (err) {
-      console.error("Fiskil auth session fetch failed:", err, "cause:", err?.cause);
-      return json(res, 500, {
-        error: "Fiskil auth session fetch failed",
-        cause: String(err?.cause || err),
-      });
+    // Try versioned endpoint first, then fallback
+    ({ response: sessionRes, body: sessionJson } = await tryCreateSession(`${base}/v1/auth/session`));
+    if (sessionRes.status === 404) {
+      ({ response: sessionRes, body: sessionJson } = await tryCreateSession(`${base}/auth/session`));
     }
 
     if (!sessionRes.ok) {
@@ -228,4 +215,4 @@ export default async function handler(req, res) {
     console.error("Unhandled:", err);
     return json(res, 500, { error: err?.message || "Internal Server Error" });
   }
-}
+};
