@@ -1,4 +1,6 @@
-// api/create-consent-session.js  (CommonJS for Vercel Serverless Functions)
+// api/create-consent-session.js  (ESM - project has "type": "module")
+
+import { createClient } from "@supabase/supabase-js";
 
 const json = (res, status, body) => {
   res.statusCode = status;
@@ -32,7 +34,7 @@ const originFromReq = (req) => {
   return `${proto}://${host}`;
 };
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
 
@@ -58,12 +60,9 @@ module.exports = async function handler(req, res) {
     const redirect_uri = `${origin}/onboarding`;
     const cancel_uri = `${origin}/onboarding`;
 
-    // IMPORTANT: load supabase-js (ESM) from a CommonJS function
-    const { createClient } = await import("@supabase/supabase-js");
-
     // -------- get user from Supabase --------
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return json(res, 401, { error: "Missing Authorization header" });
     }
 
@@ -184,7 +183,6 @@ module.exports = async function handler(req, res) {
     let sessionRes;
     let sessionJson;
 
-    // Try versioned endpoint first, then fallback
     ({ response: sessionRes, body: sessionJson } = await tryCreateSession(`${base}/v1/auth/session`));
     if (sessionRes.status === 404) {
       ({ response: sessionRes, body: sessionJson } = await tryCreateSession(`${base}/auth/session`));
@@ -215,4 +213,4 @@ module.exports = async function handler(req, res) {
     console.error("Unhandled:", err);
     return json(res, 500, { error: err?.message || "Internal Server Error" });
   }
-};
+}
