@@ -57,8 +57,16 @@ export class BankingService {
     return readStorage(STORAGE.endUserId);
   }
 
+  static getConnectionStatus(): string | null {
+    return readStorage(STORAGE.connectionStatus);
+  }
+
   static setStoredEndUserId(id: string) {
     writeStorage(STORAGE.endUserId, id);
+  }
+
+  static setConnectionStatus(status: string) {
+    writeStorage(STORAGE.connectionStatus, status);
   }
 
   static clearStoredEndUserId() {
@@ -107,7 +115,8 @@ export async function initiateBankConnection(
     body: JSON.stringify({}),
   });
 
-  const redirectUrl: string | undefined = data?.redirect_url || data?.url;
+  const redirectUrl: string | undefined =
+    data?.auth_url || data?.redirect_url || data?.url || data?.consentUrl;
   const endUserId: string | undefined = data?.end_user_id || data?.endUserId || data?.userId;
 
   if (!redirectUrl || !endUserId) {
@@ -116,7 +125,7 @@ export async function initiateBankConnection(
 
   // Persist for later fetch/callback flows (optional)
   BankingService.setStoredEndUserId(endUserId);
-  writeStorage(STORAGE.connectionStatus, "pending");
+  BankingService.setConnectionStatus("pending");
 
   return { redirectUrl, endUserId };
 }
