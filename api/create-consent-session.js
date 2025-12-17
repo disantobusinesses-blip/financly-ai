@@ -16,6 +16,20 @@ const safeJson = async (response) => {
 };
 
 const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+const ensureHttpsOrigin = (url) => {
+  const normalized = normalizeBase(url);
+  if (!normalized) return normalized;
+
+  if (normalized.startsWith("http://")) {
+    return `https://${normalized.slice("http://".length)}`;
+  }
+
+  if (!/^https?:\/\//i.test(normalized)) {
+    return `https://${normalized}`;
+  }
+
+  return normalized;
+};
 const originFromReq = (req) => {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
@@ -41,15 +55,10 @@ export default async function handler(req, res) {
     if (!FISKIL_CLIENT_ID) missing.push("FISKIL_CLIENT_ID");
     if (!FISKIL_CLIENT_SECRET) missing.push("FISKIL_CLIENT_SECRET");
     if (!FISKIL_BASE_URL) missing.push("FISKIL_BASE_URL");
-    if (!FRONTEND_URL) missing.push("FRONTEND_URL");
-
     if (missing.length) return json(res, 500, { error: "Server misconfigured", missing });
 
     const base = normalizeBase(FISKIL_BASE_URL);
-
-    // ✅ Build redirect/cancel from the actual request host to avoid domain mismatch
-    // If you need to lock it, set FRONTEND_URL correctly and use that only.
-    const origin = originFromReq(req);
+    const origin = ensureHttpsOrigin(FRONTEND_URL || originFromReq(req));
     const redirect_uri = `${origin}/onboarding`;
     const cancel_uri = `${origin}/onboarding`;
 
@@ -71,6 +80,19 @@ export default async function handler(req, res) {
     }
 
     const user = userData.user;
+
+    const { data: profileData, error: profileErr } = await supabase
+      .from("profiles")
+      .select("fiskil_user_id,email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error("Supabase profile fetch failed:", profileErr);
+      return json(res, 500, { error: "Unable to load profile" });
+    }
+
+    const userEmail = profileData?.email || user.email || req.body?.email;
 
     // -------- STEP 1: get Fiskil token --------
     console.log("Checkpoint A: about to call Fiskil token", { base });
@@ -97,7 +119,7 @@ export default async function handler(req, res) {
     const tokenJson = await safeJson(tokenRes);
 
     if (!tokenRes.ok || !tokenJson.token) {
-      console.error("Token error body:", tokenJson);
+      console.error("Token error body:", { status: tokenRes.status, body: tokenJson });
       return json(res, 500, {
         error: "Failed to authenticate with Fiskil",
         status: tokenRes.status,
@@ -107,39 +129,76 @@ export default async function handler(req, res) {
 
     const fiskilToken = tokenJson.token;
 
-    // -------- STEP 2: create auth session --------
-    console.log("Checkpoint C: creating auth session", {
-      end_user_id: user.id,
-      redirect_uri,
-      cancel_uri,
-      base,
+    // -------- STEP 2: create end user --------
+    console.log("Checkpoint B1: creating Fiskil end user");
+    const endUserRes = await fetch(`${base}/v1/end-users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fiskilToken}`,
+      },
+      body: JSON.stringify({
+        reference: user.id,
+        email: userEmail,
+      }),
     });
 
-    let sessionRes;
-    try {
-      sessionRes = await fetch(`${base}/auth/session`, {
+    const endUserJson = await safeJson(endUserRes);
+
+    if (!endUserRes.ok || !endUserJson?.id) {
+      console.error("End user create error", { status: endUserRes.status, body: endUserJson });
+      return json(res, 500, {
+        error: "Failed to create Fiskil end user",
+        status: endUserRes.status,
+        endUserJson,
+      });
+    }
+
+    const fiskilEndUserId = endUserJson.id;
+
+    // -------- STEP 3: create auth session --------
+    const sessionBody = {
+      end_user_id: fiskilEndUserId,
+      redirect_uri,
+      cancel_uri,
+    };
+
+    const tryCreateSession = async (path) => {
+      console.log("Checkpoint C: creating auth session", { path, ...sessionBody });
+      const response = await fetch(path, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${fiskilToken}`,
         },
-        body: JSON.stringify({
-          end_user_id: user.id,
-          redirect_uri,
-          cancel_uri,
-        }),
+        body: JSON.stringify(sessionBody),
       });
+      const body = await safeJson(response);
+      if (!response.ok) {
+        console.error("Auth session error", { status: response.status, body });
+      }
+      console.log("Checkpoint D: auth/session response", { status: response.status });
+      return { response, body };
+    };
+
+    let sessionRes;
+    let sessionJson;
+    try {
+      const firstPath = `${base}/v1/auth/session`;
+      ({ response: sessionRes, body: sessionJson } = await tryCreateSession(firstPath));
+
+      if (sessionRes.status === 404) {
+        const fallbackPath = `${base}/auth/session`;
+        console.log("Checkpoint C2: retrying auth session without version prefix", { path: fallbackPath });
+        ({ response: sessionRes, body: sessionJson } = await tryCreateSession(fallbackPath));
+      }
     } catch (err) {
-      console.error("Fiskil /auth/session fetch failed:", err, "cause:", err?.cause);
+      console.error("Fiskil auth session fetch failed:", err, "cause:", err?.cause);
       return json(res, 500, {
-        error: "Fiskil /auth/session fetch failed",
+        error: "Fiskil auth session fetch failed",
         cause: String(err?.cause || err),
       });
     }
-
-    console.log("Checkpoint D: auth/session response", sessionRes.status);
-    const sessionJson = await safeJson(sessionRes);
-    console.log("Checkpoint E: auth/session body", sessionJson);
 
     if (!sessionRes.ok) {
       return json(res, 500, {
@@ -160,9 +219,7 @@ export default async function handler(req, res) {
       auth_url: sessionJson.auth_url,
       session_id: sessionJson.session_id,
       expires_at: sessionJson.expires_at,
-      // helpful for debugging (safe)
-      redirect_uri,
-      cancel_uri,
+      end_user_id: fiskilEndUserId,
     });
   } catch (err) {
     console.error("Unhandled:", err);
