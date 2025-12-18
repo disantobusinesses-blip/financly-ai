@@ -16,10 +16,56 @@ const safeJson = async (response) => {
 };
 
 const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+const ensureHttpsOrigin = (url) => {
+  const normalized = normalizeBase(url);
+  if (!normalized) return normalized;
+  if (normalized.startsWith("http://")) return `https://${normalized.slice("http://".length)}`;
+  if (!/^https?:\/\//i.test(normalized)) return `https://${normalized}`;
+  return normalized;
+};
+
 const originFromReq = (req) => {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
+};
+
+const pickFrontendOrigin = (req, frontendWww, frontendNonWww) => {
+  // Prefer a configured frontend URL that matches the incoming host,
+  // so redirects land back on the same domain (www vs non-www).
+  const reqOrigin = ensureHttpsOrigin(originFromReq(req));
+  const reqHost = (() => {
+    try {
+      return new URL(reqOrigin).host;
+    } catch {
+      return "";
+    }
+  })();
+
+  const wwwOrigin = frontendWww ? ensureHttpsOrigin(frontendWww) : "";
+  const nonWwwOrigin = frontendNonWww ? ensureHttpsOrigin(frontendNonWww) : "";
+
+  const wwwHost = (() => {
+    try {
+      return wwwOrigin ? new URL(wwwOrigin).host : "";
+    } catch {
+      return "";
+    }
+  })();
+
+  const nonWwwHost = (() => {
+    try {
+      return nonWwwOrigin ? new URL(nonWwwOrigin).host : "";
+    } catch {
+      return "";
+    }
+  })();
+
+  if (reqHost && reqHost === wwwHost && wwwOrigin) return wwwOrigin;
+  if (reqHost && reqHost === nonWwwHost && nonWwwOrigin) return nonWwwOrigin;
+
+  // Fall back to env var priority, then request origin
+  return wwwOrigin || nonWwwOrigin || reqOrigin;
 };
 
 export default async function handler(req, res) {
@@ -33,6 +79,7 @@ export default async function handler(req, res) {
       FISKIL_CLIENT_SECRET,
       FISKIL_BASE_URL,
       FRONTEND_URL,
+      FRONTEND_URL_NON_WWW,
     } = process.env;
 
     const missing = [];
@@ -41,19 +88,15 @@ export default async function handler(req, res) {
     if (!FISKIL_CLIENT_ID) missing.push("FISKIL_CLIENT_ID");
     if (!FISKIL_CLIENT_SECRET) missing.push("FISKIL_CLIENT_SECRET");
     if (!FISKIL_BASE_URL) missing.push("FISKIL_BASE_URL");
-    if (!FRONTEND_URL) missing.push("FRONTEND_URL");
-
     if (missing.length) return json(res, 500, { error: "Server misconfigured", missing });
 
     const base = normalizeBase(FISKIL_BASE_URL);
 
-    // ✅ Build redirect/cancel from the actual request host to avoid domain mismatch
-    // If you need to lock it, set FRONTEND_URL correctly and use that only.
-    const origin = originFromReq(req);
+    const origin = pickFrontendOrigin(req, FRONTEND_URL, FRONTEND_URL_NON_WWW);
     const redirect_uri = `${origin}/onboarding`;
     const cancel_uri = `${origin}/onboarding`;
 
-    // -------- get user from Supabase --------
+    // -------- Supabase user --------
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return json(res, 401, { error: "Missing Authorization header" });
@@ -64,105 +107,101 @@ export default async function handler(req, res) {
 
     console.log("Checkpoint 0: validating Supabase user");
     const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
-
     if (userErr || !userData?.user) {
-      console.error("Supabase getUser failed:", userErr);
       return json(res, 401, { error: "Invalid session" });
     }
 
     const user = userData.user;
 
-    // -------- STEP 1: get Fiskil token --------
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const userEmail = profileData?.email || user.email || req.body?.email;
+
+    // -------- STEP 1: token --------
     console.log("Checkpoint A: about to call Fiskil token", { base });
 
-    let tokenRes;
-    try {
-      tokenRes = await fetch(`${base}/v1/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: FISKIL_CLIENT_ID,
-          client_secret: FISKIL_CLIENT_SECRET,
-        }),
-      });
-    } catch (err) {
-      console.error("Fiskil /v1/token fetch failed:", err, "cause:", err?.cause);
-      return json(res, 500, {
-        error: "Fiskil /v1/token fetch failed",
-        cause: String(err?.cause || err),
-      });
-    }
+    const tokenRes = await fetch(`${base}/v1/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: FISKIL_CLIENT_ID,
+        client_secret: FISKIL_CLIENT_SECRET,
+      }),
+    });
 
     console.log("Checkpoint B: token response", tokenRes.status);
     const tokenJson = await safeJson(tokenRes);
-
     if (!tokenRes.ok || !tokenJson.token) {
-      console.error("Token error body:", tokenJson);
-      return json(res, 500, {
-        error: "Failed to authenticate with Fiskil",
-        status: tokenRes.status,
-        tokenJson,
-      });
+      return json(res, 500, { error: "Failed to authenticate with Fiskil", tokenJson });
     }
 
     const fiskilToken = tokenJson.token;
 
-    // -------- STEP 2: create auth session --------
-    console.log("Checkpoint C: creating auth session", {
-      end_user_id: user.id,
-      redirect_uri,
-      cancel_uri,
-      base,
+    // -------- STEP 2: create end user --------
+    console.log("Checkpoint B1: creating Fiskil end user");
+
+    const endUserRes = await fetch(`${base}/v1/end-users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fiskilToken}`,
+      },
+      body: JSON.stringify({
+        reference: user.id,
+        email: userEmail,
+      }),
     });
 
-    let sessionRes;
-    try {
-      sessionRes = await fetch(`${base}/auth/session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${fiskilToken}`,
-        },
-        body: JSON.stringify({
-          end_user_id: user.id,
-          redirect_uri,
-          cancel_uri,
-        }),
-      });
-    } catch (err) {
-      console.error("Fiskil /auth/session fetch failed:", err, "cause:", err?.cause);
+    const endUserJson = await safeJson(endUserRes);
+
+    // Accept Fiskil success shape
+    const fiskilEndUserId = endUserJson?.end_user_id || endUserJson?.id;
+
+    if (!endUserRes.ok || !fiskilEndUserId) {
+      console.error("End user create error", { status: endUserRes.status, body: endUserJson });
       return json(res, 500, {
-        error: "Fiskil /auth/session fetch failed",
-        cause: String(err?.cause || err),
+        error: "Failed to create Fiskil end user",
+        status: endUserRes.status,
+        body: endUserJson,
       });
     }
 
-    console.log("Checkpoint D: auth/session response", sessionRes.status);
-    const sessionJson = await safeJson(sessionRes);
-    console.log("Checkpoint E: auth/session body", sessionJson);
+    console.log("Checkpoint B2: end user created", fiskilEndUserId);
 
-    if (!sessionRes.ok) {
+    // -------- STEP 3: auth session --------
+    console.log("Checkpoint C: creating auth session", { redirect_uri, cancel_uri });
+
+    const sessionRes = await fetch(`${base}/v1/auth/session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fiskilToken}`,
+      },
+      body: JSON.stringify({
+        end_user_id: fiskilEndUserId,
+        redirect_uri,
+        cancel_uri,
+      }),
+    });
+
+    const sessionJson = await safeJson(sessionRes);
+
+    if (!sessionRes.ok || !sessionJson?.auth_url) {
       return json(res, 500, {
         error: "Fiskil auth session failed",
         status: sessionRes.status,
-        sessionJson,
-      });
-    }
-
-    if (!sessionJson?.auth_url) {
-      return json(res, 500, {
-        error: "Fiskil auth session missing auth_url",
-        sessionJson,
+        body: sessionJson,
       });
     }
 
     return json(res, 200, {
       auth_url: sessionJson.auth_url,
-      session_id: sessionJson.session_id,
-      expires_at: sessionJson.expires_at,
-      // helpful for debugging (safe)
+      end_user_id: fiskilEndUserId,
       redirect_uri,
-      cancel_uri,
     });
   } catch (err) {
     console.error("Unhandled:", err);
