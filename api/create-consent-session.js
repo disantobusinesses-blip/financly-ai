@@ -23,10 +23,49 @@ const ensureHttpsOrigin = (url) => {
   if (!/^https?:\/\//i.test(normalized)) return `https://${normalized}`;
   return normalized;
 };
+
 const originFromReq = (req) => {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   return `${proto}://${host}`;
+};
+
+const pickFrontendOrigin = (req, frontendWww, frontendNonWww) => {
+  // Prefer a configured frontend URL that matches the incoming host,
+  // so redirects land back on the same domain (www vs non-www).
+  const reqOrigin = ensureHttpsOrigin(originFromReq(req));
+  const reqHost = (() => {
+    try {
+      return new URL(reqOrigin).host;
+    } catch {
+      return "";
+    }
+  })();
+
+  const wwwOrigin = frontendWww ? ensureHttpsOrigin(frontendWww) : "";
+  const nonWwwOrigin = frontendNonWww ? ensureHttpsOrigin(frontendNonWww) : "";
+
+  const wwwHost = (() => {
+    try {
+      return wwwOrigin ? new URL(wwwOrigin).host : "";
+    } catch {
+      return "";
+    }
+  })();
+
+  const nonWwwHost = (() => {
+    try {
+      return nonWwwOrigin ? new URL(nonWwwOrigin).host : "";
+    } catch {
+      return "";
+    }
+  })();
+
+  if (reqHost && reqHost === wwwHost && wwwOrigin) return wwwOrigin;
+  if (reqHost && reqHost === nonWwwHost && nonWwwOrigin) return nonWwwOrigin;
+
+  // Fall back to env var priority, then request origin
+  return wwwOrigin || nonWwwOrigin || reqOrigin;
 };
 
 export default async function handler(req, res) {
@@ -40,6 +79,7 @@ export default async function handler(req, res) {
       FISKIL_CLIENT_SECRET,
       FISKIL_BASE_URL,
       FRONTEND_URL,
+      FRONTEND_URL_NON_WWW,
     } = process.env;
 
     const missing = [];
@@ -51,7 +91,8 @@ export default async function handler(req, res) {
     if (missing.length) return json(res, 500, { error: "Server misconfigured", missing });
 
     const base = normalizeBase(FISKIL_BASE_URL);
-    const origin = ensureHttpsOrigin(FRONTEND_URL || originFromReq(req));
+
+    const origin = pickFrontendOrigin(req, FRONTEND_URL, FRONTEND_URL_NON_WWW);
     const redirect_uri = `${origin}/onboarding`;
     const cancel_uri = `${origin}/onboarding`;
 
@@ -117,7 +158,7 @@ export default async function handler(req, res) {
 
     const endUserJson = await safeJson(endUserRes);
 
-    // ✅ FIX: accept Fiskil’s real response shape
+    // Accept Fiskil success shape
     const fiskilEndUserId = endUserJson?.end_user_id || endUserJson?.id;
 
     if (!endUserRes.ok || !fiskilEndUserId) {
@@ -132,6 +173,8 @@ export default async function handler(req, res) {
     console.log("Checkpoint B2: end user created", fiskilEndUserId);
 
     // -------- STEP 3: auth session --------
+    console.log("Checkpoint C: creating auth session", { redirect_uri, cancel_uri });
+
     const sessionRes = await fetch(`${base}/v1/auth/session`, {
       method: "POST",
       headers: {
@@ -158,6 +201,7 @@ export default async function handler(req, res) {
     return json(res, 200, {
       auth_url: sessionJson.auth_url,
       end_user_id: fiskilEndUserId,
+      redirect_uri,
     });
   } catch (err) {
     console.error("Unhandled:", err);
