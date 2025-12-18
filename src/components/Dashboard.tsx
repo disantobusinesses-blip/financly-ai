@@ -15,6 +15,7 @@ import LegalFooter from "./LegalFooter";
 import { ArrowRightIcon } from "./icon/Icon";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabaseClient";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
 
@@ -22,11 +23,14 @@ const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
   // Hook calls /api/fiskil-data internally (Fiskil-only)
-  const { accounts, transactions, loading, error, lastUpdated } = useFiskilData(user?.id);
+  const { accounts, transactions, loading: dataLoading, error, lastUpdated } = useFiskilData(user?.id);
+
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -150,7 +154,7 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  if (loading && accounts.length === 0) {
+  if (dataLoading && accounts.length === 0) {
     return (
       <div className="flex h-[60vh] items-center justify-center text-slate-500">
         <p>Loading your financial data...</p>
@@ -234,8 +238,73 @@ const Dashboard: React.FC = () => {
     },
   ];
 
+  useEffect(() => {
+    if (!authLoading && !session) {
+      window.location.href = "/login";
+    }
+  }, [authLoading, session]);
+
+  const handleConnectBank = async (): Promise<void> => {
+    setConnectError(null);
+    setConnecting(true);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const activeSession = data.session;
+      if (!activeSession?.access_token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch("/api/create-consent-session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${activeSession.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: activeSession.user.email }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Unable to start bank connection.");
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      const authUrl = typeof payload.auth_url === "string" ? payload.auth_url : undefined;
+      const requestError = typeof payload.error === "string" ? payload.error : null;
+
+      if (authUrl) {
+        window.location.href = authUrl;
+        return;
+      }
+
+      throw new Error(requestError || "Missing auth URL from consent session.");
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : "Unable to connect bank right now.");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return (
     <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={handleConnectBank}
+          disabled={connecting}
+          className="self-end rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-white dark:hover:border-white/60"
+        >
+          {connecting ? "Connecting..." : "Connect bank"}
+        </button>
+        {connectError && <p className="text-sm text-red-500 sm:text-right">{connectError}</p>}
+      </div>
+
       {error && accounts.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
