@@ -138,7 +138,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        window.location.replace("/dashboard");
+        window.location.replace("/login");
         return;
       }
 

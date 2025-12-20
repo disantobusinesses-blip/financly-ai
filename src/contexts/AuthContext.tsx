@@ -48,7 +48,7 @@ const buildUserFromProfile = (session: Session, profile: SupabaseProfile | null)
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<SupabaseProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [remainingBasicDays] = useState<number | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
@@ -74,11 +74,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const init = async () => {
+      setLoading(true);
       const { data } = await supabase.auth.getSession();
       setSession(data.session);
       if (data.session?.user?.id) {
         await refreshProfile();
       }
+      setLoading(false);
     };
     void init();
 
@@ -89,6 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         setProfile(null);
       }
+      setLoading(false);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
