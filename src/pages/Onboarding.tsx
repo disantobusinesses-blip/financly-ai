@@ -63,7 +63,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         onComplete?.();
 
         setTimeout(() => {
-          window.location.replace("/app/dashboard");
+          window.location.replace("/dashboard");
         }, 600);
       } catch (err: any) {
         setError(err?.message || "Unable to finalise your bank connection.");
