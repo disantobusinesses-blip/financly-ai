@@ -17,6 +17,8 @@ import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
+import AIInsightsPanel from "./AIInsightsPanel";
+import { useAIInsights } from "../hooks/useAIInsights";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
@@ -27,6 +29,19 @@ const Dashboard: React.FC = () => {
 
   // Hook calls /api/fiskil-data internally (Fiskil-only)
   const { accounts, transactions, loading: dataLoading, error, lastUpdated } = useFiskilData(user?.id);
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + (account.balance || 0), 0),
+    [accounts]
+  );
+  const {
+    alerts,
+    insights,
+    forecast,
+    loading: aiLoading,
+    error: aiError,
+    disclaimer,
+    generatedAt,
+  } = useAIInsights(user?.id, region, accounts, transactions, totalBalance);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -338,6 +353,19 @@ const Dashboard: React.FC = () => {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
         </div>
+      )}
+
+      {accounts.length > 0 && (
+        <AIInsightsPanel
+          loading={aiLoading}
+          error={aiError}
+          insights={insights}
+          alerts={alerts}
+          forecast={forecast}
+          disclaimer={disclaimer}
+          generatedAt={generatedAt}
+          region={region}
+        />
       )}
 
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
