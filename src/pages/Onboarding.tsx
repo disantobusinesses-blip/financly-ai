@@ -78,7 +78,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        window.location.replace("/login");
+        window.location.replace("/dashboard");
         return;
       }
 
@@ -91,7 +91,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       if (endUserFromUrl) {
         BankingService.setStoredEndUserId(endUserFromUrl);
         BankingService.setConnectionStatus("pending");
-        window.history.replaceState({}, "", "/onboarding");
+        window.history.replaceState({}, "", "/Onboarding");
       }
 
       const storedEndUserId = BankingService.getStoredEndUserId();
