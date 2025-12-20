@@ -22,11 +22,14 @@ const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
   // Hook calls /api/fiskil-data internally (Fiskil-only)
-  const { accounts, transactions, loading, error, lastUpdated } = useFiskilData(user?.id);
+  const { accounts, transactions, loading: dataLoading, error, lastUpdated } = useFiskilData(user?.id);
+
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -52,7 +55,8 @@ const Dashboard: React.FC = () => {
 
       const slides = el.querySelectorAll<HTMLElement>("[data-tool-slide]");
       const style = window.getComputedStyle(el);
-      const gapCandidate = style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
+      const gapCandidate =
+        style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
       const parsedGap = gapCandidate ? parseFloat(gapCandidate) : 0;
       const gap = Number.isNaN(parsedGap) ? 0 : parsedGap;
       const slideWidth = slides.length > 0 ? slides[0].clientWidth : el.clientWidth;
@@ -150,36 +154,118 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  if (loading && accounts.length === 0) {
+  useEffect(() => {
+    if (!authLoading && !session) {
+      window.location.href = "/login";
+    }
+  }, [authLoading, session]);
+
+  const handleConnectBank = async (): Promise<void> => {
+    setConnectError(null);
+    setConnecting(true);
+
+    try {
+      // Use the AuthContext session (do NOT re-fetch session via supabase.auth.getSession()).
+      if (!session?.access_token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch("/api/create-consent-session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: session.user.email }),
+      });
+
+      const text = await response.text();
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok) {
+        const serverErr = typeof payload.error === "string" ? payload.error : null;
+        throw new Error(serverErr || text || "Unable to start bank connection.");
+      }
+
+      const authUrl = typeof payload.auth_url === "string" ? payload.auth_url : undefined;
+      const requestError = typeof payload.error === "string" ? payload.error : null;
+
+      if (authUrl) {
+        window.location.href = authUrl;
+        return;
+      }
+
+      throw new Error(requestError || "Missing auth URL from consent session.");
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : "Unable to connect bank right now.");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const ConnectBankCTA = (
+    <div className="flex flex-col items-center justify-center gap-3">
+      <button
+        type="button"
+        onClick={handleConnectBank}
+        disabled={connecting}
+        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-white dark:hover:border-white/60"
+      >
+        {connecting ? "Connecting..." : "Connect bank"}
+      </button>
+      {connectError && <p className="text-sm text-red-500 text-center">{connectError}</p>}
+    </div>
+  );
+
+  // --------- EARLY STATES (now include Connect Bank button) ---------
+
+  if (dataLoading && accounts.length === 0) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-slate-500">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <p>Loading your financial data...</p>
+        {ConnectBankCTA}
       </div>
     );
   }
 
   if (error && accounts.length === 0) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-red-500">
-        <p>Failed to load data: {error}</p>
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <p className="text-red-500">Failed to load data: {error}</p>
+        {ConnectBankCTA}
       </div>
     );
   }
 
   if (!accounts.length) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2 text-slate-500">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <p>No data yet. Connect your bank to see your dashboard.</p>
+        {ConnectBankCTA}
       </div>
     );
   }
 
+  // --------- NORMAL DASHBOARD ---------
+
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
+        subscriptionTotal,
+        region
+      )} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
+        monthlyStats.expenses,
+        region
+      )}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const pinnedCards = [
@@ -236,6 +322,18 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <button
+          type="button"
+          onClick={handleConnectBank}
+          disabled={connecting}
+          className="self-end rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-white dark:hover:border-white/60"
+        >
+          {connecting ? "Connecting..." : "Connect bank"}
+        </button>
+        {connectError && <p className="text-sm text-red-500 sm:text-right">{connectError}</p>}
+      </div>
+
       {error && accounts.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
@@ -296,7 +394,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        <p className="text-center text-xs text-slate-400">
+          Last updated: {new Date(lastUpdated).toLocaleString()}
+        </p>
       )}
 
       <TutorialButton

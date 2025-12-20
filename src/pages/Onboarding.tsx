@@ -23,16 +23,13 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       setStatus("Finalising your bank connection...");
 
       try {
-        const accessToken =
-          tokenOverride ||
-          (await supabase.auth.getSession()).data.session?.access_token ||
-          null;
-
+        const accessToken = tokenOverride || sessionToken;
         if (!accessToken) {
           throw new Error("Please log in to finish onboarding.");
         }
 
-        const res = await fetch("/api/mark-bank-connected", {
+        // 1) Mark bank connected (stores fiskil_user_id / has_bank_connection)
+        const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -41,9 +38,23 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           body: JSON.stringify({ end_user_id: endUserId }),
         });
 
-        if (!res.ok) {
-          const text = await res.text();
+        if (!markRes.ok) {
+          const text = await markRes.text();
           throw new Error(text || "Unable to finalise bank connection.");
+        }
+
+        // 2) Pull transactions NOW so the dashboard has data immediately
+        setStatus("Syncing your transactions...");
+        const refreshRes = await fetch("/api/refresh-transactions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!refreshRes.ok) {
+          const text = await refreshRes.text();
+          throw new Error(text || "Bank connected, but we couldn’t sync transactions yet.");
         }
 
         BankingService.setConnectionStatus("connected");
@@ -52,7 +63,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         onComplete?.();
 
         setTimeout(() => {
-          window.location.replace("/app/dashboard");
+          window.location.replace("/dashboard");
         }, 600);
       } catch (err: any) {
         setError(err?.message || "Unable to finalise your bank connection.");
@@ -60,14 +71,14 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         setFinalizing(false);
       }
     },
-    [onComplete]
+    [onComplete, sessionToken]
   );
 
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        window.location.replace("/login");
+        window.location.replace("/dashboard");
         return;
       }
 
@@ -80,7 +91,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       if (endUserFromUrl) {
         BankingService.setStoredEndUserId(endUserFromUrl);
         BankingService.setConnectionStatus("pending");
-        window.history.replaceState({}, "", "/onboarding");
+        window.history.replaceState({}, "", "/Onboarding");
       }
 
       const storedEndUserId = BankingService.getStoredEndUserId();
@@ -104,13 +115,17 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     setConnectingBank(true);
 
     try {
-      const token =
-        sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
+      const token = sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
       if (!token) {
         throw new Error("Please log in to connect your bank.");
       }
 
       const { redirectUrl, endUserId } = await initiateBankConnection(token);
+
+      // Store for when we return (Fiskil may not include end_user_id in the redirect)
+      BankingService.setStoredEndUserId(endUserId);
+      BankingService.setConnectionStatus("pending");
+
       setPendingEndUserId(endUserId);
       setConnectionStatus("pending");
       setStatus("Redirecting to securely connect your bank...");
@@ -122,8 +137,9 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     }
   };
 
-  if (loading)
+  if (loading) {
     return <div className="px-4 py-24 text-center text-white">Loading onboarding...</div>;
+  }
 
   return (
     <div className="px-4 pb-16 pt-24 text-white">
@@ -143,9 +159,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
         {connectionStatus === "pending" && pendingEndUserId ? (
           <div className="space-y-4">
-            <p className="text-white/80">
-              You returned from Fiskil. Finalise your connection to continue.
-            </p>
+            <p className="text-white/80">You returned from Fiskil. Finalise your connection to continue.</p>
             <button
               type="button"
               onClick={() => void finalizeConnection(pendingEndUserId)}
