@@ -3,7 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const FISKIL_BASE_URL = (process.env.FISKIL_BASE_URL || "https://api.fiskil.com/v1").replace(/\/$/, "");
+// IMPORTANT:
+// In this codebase, create-consent-session.js expects FISKIL_BASE_URL to be an *origin*
+// like "https://api.fiskil.com" and then appends "/v1/...".
+const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+const toFiskilV1Base = (base) => {
+  const b = normalizeBase(base || "https://api.fiskil.com");
+  return /\/v1$/i.test(b) ? b : `${b}/v1`;
+};
+
+const FISKIL_BASE_URL = toFiskilV1Base(process.env.FISKIL_BASE_URL);
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
@@ -95,6 +104,16 @@ async function fiskilGet(pathWithQuery) {
   return data;
 }
 
+function extractList(resp) {
+  if (Array.isArray(resp)) return resp;
+  if (!resp || typeof resp !== "object") return [];
+  if (Array.isArray(resp.data)) return resp.data;
+  if (Array.isArray(resp.items)) return resp.items;
+  if (Array.isArray(resp.accounts)) return resp.accounts;
+  if (Array.isArray(resp.transactions)) return resp.transactions;
+  return [];
+}
+
 export default async function handler(req, res) {
   try {
     const jwt = getBearerToken(req);
@@ -118,10 +137,7 @@ export default async function handler(req, res) {
 
     const endUserId = profile.fiskil_user_id;
 
-    // Fetch accounts + transactions scoped to end_user_id
-    const accountsResp = await fiskilGet(
-      `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`
-    );
+    const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
 
     const from = profile.last_transactions_sync_at
       ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
@@ -131,8 +147,8 @@ export default async function handler(req, res) {
       `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${from}`
     );
 
-    const accounts = Array.isArray(accountsResp) ? accountsResp : accountsResp?.data || [];
-    const transactions = Array.isArray(transactionsResp) ? transactionsResp : transactionsResp?.data || [];
+    const accounts = extractList(accountsResp);
+    const transactions = extractList(transactionsResp);
 
     return res.status(200).json({ accounts, transactions });
   } catch (error) {
