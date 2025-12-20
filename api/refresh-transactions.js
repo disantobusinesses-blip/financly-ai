@@ -4,7 +4,6 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // IMPORTANT:
-// Keep base URL handling consistent with create-consent-session.js.
 // Env FISKIL_BASE_URL should be an origin (e.g. https://api.fiskil.com).
 const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
 const toFiskilV1Base = (base) => {
@@ -68,13 +67,10 @@ async function getFiskilToken() {
     data = null;
   }
 
-  if (!r.ok) {
-    throw new Error(`Fiskil token failed (${r.status}): ${text}`);
-  }
+  if (!r.ok) throw new Error(`Fiskil token failed (${r.status}): ${text}`);
 
   const token = data?.token;
   const expiresIn = Number(data?.expires_in ?? 600);
-
   if (!token) throw new Error(`Fiskil token missing in response: ${text}`);
 
   cachedToken = token;
@@ -109,17 +105,45 @@ async function fiskilGet(pathWithQuery) {
   return data;
 }
 
-function normaliseTx(t, appUserId) {
+function normaliseAccount(a, appUserId) {
   return {
-    id: t.id,
+    id: String(a?.id),
     user_id: appUserId,
-    amount: t.amount ?? t.value ?? null,
-    date: t.date ?? t.posted_at ?? t.postedAt ?? t.timestamp ?? null,
-    description: t.description ?? t.narrative ?? t.merchant_name ?? t.merchantName ?? null,
-    account_id: t.account_id ?? t.accountId ?? null,
-    category: t.category ?? t.category_name ?? t.categoryName ?? null,
+    name: a?.name ?? a?.display_name ?? a?.displayName ?? a?.product_name ?? a?.productName ?? "Account",
+    type: a?.type ?? a?.account_type ?? a?.accountType ?? "checking",
+    currency: a?.currency ?? a?.currency_code ?? a?.currencyCode ?? "AUD",
+    balance:
+      a?.balance?.current ??
+      a?.balance?.available ??
+      a?.balance ??
+      a?.current_balance ??
+      a?.currentBalance ??
+      a?.available_balance ??
+      a?.availableBalance ??
+      0,
+    raw: a,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function normaliseTx(t, appUserId, accountId) {
+  return {
+    id: String(t?.id),
+    user_id: appUserId,
+    account_id: String(accountId || t?.account_id || t?.accountId || ""),
+    amount: t?.amount ?? t?.value ?? t?.transaction_amount ?? t?.transactionAmount ?? null,
+    date: t?.date ?? t?.posted_at ?? t?.postedAt ?? t?.timestamp ?? t?.created_at ?? t?.createdAt ?? null,
+    description: t?.description ?? t?.narrative ?? t?.merchant_name ?? t?.merchantName ?? "Transaction",
+    category: t?.category ?? t?.category_name ?? t?.categoryName ?? null,
     raw: t,
   };
+}
+
+function asArray(resp) {
+  if (Array.isArray(resp)) return resp;
+  if (Array.isArray(resp?.data)) return resp.data;
+  if (Array.isArray(resp?.items)) return resp.items;
+  return [];
 }
 
 export default async function handler(req, res) {
@@ -130,9 +154,7 @@ export default async function handler(req, res) {
     if (!jwt) return res.status(401).json({ error: "Missing auth" });
 
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
-    if (userErr || !userData?.user?.id) {
-      return res.status(401).json({ error: "Invalid session" });
-    }
+    if (userErr || !userData?.user?.id) return res.status(401).json({ error: "Invalid session" });
 
     const appUserId = userData.user.id;
 
@@ -145,26 +167,46 @@ export default async function handler(req, res) {
     if (profErr) return res.status(500).json({ error: profErr.message });
     if (!profile?.fiskil_user_id) return res.status(400).json({ error: "No connected bank" });
 
-    const from = profile.last_transactions_sync_at
-      ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
-      : "";
+    const endUserId = profile.fiskil_user_id;
 
-    const txResp = await fiskilGet(
-      `/banking/transactions?end_user_id=${encodeURIComponent(profile.fiskil_user_id)}${from}`
-    );
+    // 1) Fetch accounts for the end user
+    const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
+    const fiskilAccounts = asArray(accountsResp).filter((a) => a && a.id);
 
-    const transactions = Array.isArray(txResp) ? txResp : txResp?.data || [];
-
-    if (transactions.length) {
-      const formatted = transactions.filter((t) => t && t.id).map((t) => normaliseTx(t, appUserId));
-
-      const { error: upsertErr } = await supabaseAdmin.from("transactions").upsert(formatted, {
-        onConflict: "id",
-      });
-
-      if (upsertErr) return res.status(500).json({ error: upsertErr.message });
+    if (!fiskilAccounts.length) {
+      return res.status(200).json({ success: true, imported_accounts: 0, imported_transactions: 0 });
     }
 
+    // 2) Upsert accounts into Supabase
+    const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
+    const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, {
+      onConflict: "id",
+    });
+    if (upsertAccErr) return res.status(500).json({ error: upsertAccErr.message });
+
+    // 3) For each account, fetch transactions (optionally from last sync time)
+    const from = profile.last_transactions_sync_at
+      ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+      : "";
+
+    let allTransactions = [];
+    for (const acc of fiskilAccounts) {
+      const accountId = acc.id;
+      // Common Fiskil pattern: /banking/accounts/{account_id}/transactions
+      const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
+      const txList = asArray(txResp).filter((t) => t && t.id);
+      allTransactions.push(...txList.map((t) => normaliseTx(t, appUserId, accountId)));
+    }
+
+    // 4) Upsert transactions
+    if (allTransactions.length) {
+      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(allTransactions, {
+        onConflict: "id",
+      });
+      if (upsertTxErr) return res.status(500).json({ error: upsertTxErr.message });
+    }
+
+    // 5) Update profile sync timestamp
     const { error: updErr } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -176,11 +218,16 @@ export default async function handler(req, res) {
 
     if (updErr) return res.status(500).json({ error: updErr.message });
 
-    return res.status(200).json({ success: true, imported: transactions.length });
+    return res.status(200).json({
+      success: true,
+      imported_accounts: fiskilAccounts.length,
+      imported_transactions: allTransactions.length,
+    });
   } catch (err) {
     console.error("❌ /api/refresh-transactions error:", err);
-    return res
-      .status(500)
-      .json({ error: "Unable to refresh transactions", details: String(err?.message || err) });
+    return res.status(500).json({
+      error: "Unable to refresh transactions",
+      details: String(err?.message || err),
+    });
   }
 }

@@ -15,7 +15,6 @@ import LegalFooter from "./LegalFooter";
 import { ArrowRightIcon } from "./icon/Icon";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabaseClient";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
 
@@ -56,7 +55,8 @@ const Dashboard: React.FC = () => {
 
       const slides = el.querySelectorAll<HTMLElement>("[data-tool-slide]");
       const style = window.getComputedStyle(el);
-      const gapCandidate = style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
+      const gapCandidate =
+        style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
       const parsedGap = gapCandidate ? parseFloat(gapCandidate) : 0;
       const gap = Number.isNaN(parsedGap) ? 0 : parsedGap;
       const slideWidth = slides.length > 0 ? slides[0].clientWidth : el.clientWidth;
@@ -116,13 +116,42 @@ const Dashboard: React.FC = () => {
   }, [transactions]);
 
   const tourSteps: TourStep[] = [
-    { id: "balance-summary", title: "Where you stand", description: "Review spending-ready cash, net worth, and liabilities at a glance." },
-    { id: "financial-health", title: "Financial health", description: "See your health score, debt-to-income guidance, and savings split updated in real time." },
-    { id: "goal-planner", title: "Goal planner", description: "Create goals after funding them at your bank, then we track progress and celebrate contributions." },
-    { id: "refer-a-friend", title: "Refer & save", description: "Share your unique link to earn three months at 50% off once a friend upgrades." },
-    { id: "subscription-hunter", title: "Subscription Hunter", description: "AI groups repeat merchants and shows how often they bill you.", mobileHint: "Swipe right to reveal more tools on mobile." },
-    { id: "cashflow", title: "Cashflow", description: "Monitor break-even trends and monthly savings projections." },
-    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity without leaving the dashboard." },
+    {
+      id: "balance-summary",
+      title: "Where you stand",
+      description: "Review spending-ready cash, net worth, and liabilities at a glance.",
+    },
+    {
+      id: "financial-health",
+      title: "Financial health",
+      description: "See your health score, debt-to-income guidance, and savings split updated in real time.",
+    },
+    {
+      id: "goal-planner",
+      title: "Goal planner",
+      description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
+    },
+    {
+      id: "refer-a-friend",
+      title: "Refer & save",
+      description: "Share your unique link to earn three months at 50% off once a friend upgrades.",
+    },
+    {
+      id: "subscription-hunter",
+      title: "Subscription Hunter",
+      description: "AI groups repeat merchants and shows how often they bill you.",
+      mobileHint: "Swipe right to reveal more tools on mobile.",
+    },
+    {
+      id: "cashflow",
+      title: "Cashflow",
+      description: "Monitor break-even trends and monthly savings projections.",
+    },
+    {
+      id: "transactions",
+      title: "Transactions",
+      description: "Filter and search your latest activity without leaving the dashboard.",
+    },
   ];
 
   useEffect(() => {
@@ -136,11 +165,8 @@ const Dashboard: React.FC = () => {
     setConnecting(true);
 
     try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw new Error(sessionError.message);
-
-      const activeSession = data.session;
-      if (!activeSession?.access_token) {
+      // Use the AuthContext session (do NOT re-fetch session via supabase.auth.getSession()).
+      if (!session?.access_token) {
         window.location.href = "/login";
         return;
       }
@@ -148,10 +174,10 @@ const Dashboard: React.FC = () => {
       const response = await fetch("/api/create-consent-session", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${activeSession.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: activeSession.user.email }),
+        body: JSON.stringify({ email: session.user.email }),
       });
 
       const text = await response.text();
@@ -229,11 +255,17 @@ const Dashboard: React.FC = () => {
   // --------- NORMAL DASHBOARD ---------
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
+        subscriptionTotal,
+        region
+      )} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
+        monthlyStats.expenses,
+        region
+      )}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const pinnedCards = [
@@ -269,7 +301,11 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+        <PlanGate
+          feature="Upcoming bills"
+          teaser="Upgrade to predict upcoming bills and due dates."
+          dataTourId="upcoming-bills"
+        >
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -358,7 +394,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        <p className="text-center text-xs text-slate-400">
+          Last updated: {new Date(lastUpdated).toLocaleString()}
+        </p>
       )}
 
       <TutorialButton
