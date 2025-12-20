@@ -116,67 +116,117 @@ const Dashboard: React.FC = () => {
   }, [transactions]);
 
   const tourSteps: TourStep[] = [
-    {
-      id: "balance-summary",
-      title: "Where you stand",
-      description: "Review spending-ready cash, net worth, and liabilities at a glance.",
-    },
-    {
-      id: "financial-health",
-      title: "Financial health",
-      description: "See your health score, debt-to-income guidance, and savings split updated in real time.",
-    },
-    {
-      id: "goal-planner",
-      title: "Goal planner",
-      description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
-    },
-    {
-      id: "refer-a-friend",
-      title: "Refer & save",
-      description: "Share your unique link to earn three months at 50% off once a friend upgrades.",
-    },
-    {
-      id: "subscription-hunter",
-      title: "Subscription Hunter",
-      description: "AI groups repeat merchants and shows how often they bill you.",
-      mobileHint: "Swipe right to reveal more tools on mobile.",
-    },
-    {
-      id: "cashflow",
-      title: "Cashflow",
-      description: "Monitor break-even trends and monthly savings projections.",
-    },
-    {
-      id: "transactions",
-      title: "Transactions",
-      description: "Filter and search your latest activity without leaving the dashboard.",
-    },
+    { id: "balance-summary", title: "Where you stand", description: "Review spending-ready cash, net worth, and liabilities at a glance." },
+    { id: "financial-health", title: "Financial health", description: "See your health score, debt-to-income guidance, and savings split updated in real time." },
+    { id: "goal-planner", title: "Goal planner", description: "Create goals after funding them at your bank, then we track progress and celebrate contributions." },
+    { id: "refer-a-friend", title: "Refer & save", description: "Share your unique link to earn three months at 50% off once a friend upgrades." },
+    { id: "subscription-hunter", title: "Subscription Hunter", description: "AI groups repeat merchants and shows how often they bill you.", mobileHint: "Swipe right to reveal more tools on mobile." },
+    { id: "cashflow", title: "Cashflow", description: "Monitor break-even trends and monthly savings projections." },
+    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity without leaving the dashboard." },
   ];
+
+  useEffect(() => {
+    if (!authLoading && !session) {
+      window.location.href = "/login";
+    }
+  }, [authLoading, session]);
+
+  const handleConnectBank = async (): Promise<void> => {
+    setConnectError(null);
+    setConnecting(true);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+
+      const activeSession = data.session;
+      if (!activeSession?.access_token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch("/api/create-consent-session", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${activeSession.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: activeSession.user.email }),
+      });
+
+      const text = await response.text();
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok) {
+        const serverErr = typeof payload.error === "string" ? payload.error : null;
+        throw new Error(serverErr || text || "Unable to start bank connection.");
+      }
+
+      const authUrl = typeof payload.auth_url === "string" ? payload.auth_url : undefined;
+      const requestError = typeof payload.error === "string" ? payload.error : null;
+
+      if (authUrl) {
+        window.location.href = authUrl;
+        return;
+      }
+
+      throw new Error(requestError || "Missing auth URL from consent session.");
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : "Unable to connect bank right now.");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const ConnectBankCTA = (
+    <div className="flex flex-col items-center justify-center gap-3">
+      <button
+        type="button"
+        onClick={handleConnectBank}
+        disabled={connecting}
+        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-white dark:hover:border-white/60"
+      >
+        {connecting ? "Connecting..." : "Connect bank"}
+      </button>
+      {connectError && <p className="text-sm text-red-500 text-center">{connectError}</p>}
+    </div>
+  );
+
+  // --------- EARLY STATES (now include Connect Bank button) ---------
 
   if (dataLoading && accounts.length === 0) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-slate-500">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <p>Loading your financial data...</p>
+        {ConnectBankCTA}
       </div>
     );
   }
 
   if (error && accounts.length === 0) {
     return (
-      <div className="flex h-[60vh] items-center justify-center text-red-500">
-        <p>Failed to load data: {error}</p>
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <p className="text-red-500">Failed to load data: {error}</p>
+        {ConnectBankCTA}
       </div>
     );
   }
 
   if (!accounts.length) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-2 text-slate-500">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <p>No data yet. Connect your bank to see your dashboard.</p>
+        {ConnectBankCTA}
       </div>
     );
   }
+
+  // --------- NORMAL DASHBOARD ---------
 
   const subscriptionTeaser = subscriptionSummary.length
     ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
@@ -219,11 +269,7 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate
-          feature="Upcoming bills"
-          teaser="Upgrade to predict upcoming bills and due dates."
-          dataTourId="upcoming-bills"
-        >
+        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -237,59 +283,6 @@ const Dashboard: React.FC = () => {
       ),
     },
   ];
-
-  useEffect(() => {
-    if (!authLoading && !session) {
-      window.location.href = "/login";
-    }
-  }, [authLoading, session]);
-
-  const handleConnectBank = async (): Promise<void> => {
-    setConnectError(null);
-    setConnecting(true);
-
-    try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        throw new Error(sessionError.message);
-      }
-
-      const activeSession = data.session;
-      if (!activeSession?.access_token) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const response = await fetch("/api/create-consent-session", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${activeSession.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: activeSession.user.email }),
-      });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "Unable to start bank connection.");
-      }
-
-      const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      const authUrl = typeof payload.auth_url === "string" ? payload.auth_url : undefined;
-      const requestError = typeof payload.error === "string" ? payload.error : null;
-
-      if (authUrl) {
-        window.location.href = authUrl;
-        return;
-      }
-
-      throw new Error(requestError || "Missing auth URL from consent session.");
-    } catch (err) {
-      setConnectError(err instanceof Error ? err.message : "Unable to connect bank right now.");
-    } finally {
-      setConnecting(false);
-    }
-  };
 
   return (
     <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
