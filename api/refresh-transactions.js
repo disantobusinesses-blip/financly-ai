@@ -110,25 +110,17 @@ async function fiskilGet(pathWithQuery) {
  * - { items: [...] }
  * - { accounts: [...] }
  * - { transactions: [...] }
- * - { data: { accounts: [...] } } (etc)
+ * - { data: { accounts: [...] } } etc
  */
 function extractList(resp, keys = []) {
   if (Array.isArray(resp)) return resp;
 
-  const candidates = [
-    ...(keys || []),
-    "data",
-    "items",
-    "results",
-    "accounts",
-    "transactions",
-  ];
+  const candidates = [...(keys || []), "accounts", "transactions", "data", "items", "results"];
 
   // 1-level deep
   for (const k of candidates) {
     if (Array.isArray(resp?.[k])) return resp[k];
   }
-
   // 2-level deep
   for (const k of candidates) {
     if (Array.isArray(resp?.data?.[k])) return resp.data[k];
@@ -180,11 +172,8 @@ function normaliseAccount(a, appUserId) {
 }
 
 function normaliseTx(t, appUserId, fallbackAccountId) {
-  const accountId = String(
-    t?.account_id || t?.accountId || fallbackAccountId || ""
-  );
+  const accountId = String(t?.account_id || t?.accountId || fallbackAccountId || "");
 
-  // Keep date as ISO if possible
   const rawDate =
     t?.date ??
     t?.posted_at ??
@@ -219,6 +208,8 @@ function normaliseTx(t, appUserId, fallbackAccountId) {
   };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
@@ -242,12 +233,44 @@ export default async function handler(req, res) {
 
     const endUserId = profile.fiskil_user_id;
 
-    // --- Fetch accounts (handle multiple Fiskil shapes) ---
-    const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
-    const fiskilAccounts = extractList(accountsResp, ["accounts"])
-      .filter((a) => a && a.id);
+    // IMPORTANT:
+    // Bank data may not be available immediately after redirect.
+    // Poll accounts for a short window before declaring "pending".
+    const MAX_RETRIES = 8;
+    const WAIT_MS = 2500;
 
-    // --- Fetch transactions (prefer end_user scoped endpoint; fallback per-account) ---
+    let fiskilAccounts = [];
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const accountsResp = await fiskilGet(
+        `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`
+      );
+      fiskilAccounts = extractList(accountsResp, ["accounts"]).filter((a) => a && a.id);
+
+      if (fiskilAccounts.length) break;
+
+      console.log(`⏳ Fiskil accounts not ready (attempt ${attempt}/${MAX_RETRIES})`, {
+        appUserId,
+        endUserId,
+      });
+      await sleep(WAIT_MS);
+    }
+
+    if (!fiskilAccounts.length) {
+      console.log("✅ refresh-transactions: fetched 0 accounts and 0 transactions", {
+        appUserId,
+        endUserId,
+      });
+
+      // 202 = “Accepted but still processing” (frontend should retry)
+      return res.status(202).json({
+        success: false,
+        pending: true,
+        message: "Bank connection is finalising. Accounts are not available yet. Please retry shortly.",
+        retry_after_seconds: Math.ceil(WAIT_MS / 1000),
+      });
+    }
+
+    // Fetch transactions
     const fromQuery = profile.last_transactions_sync_at
       ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
       : "";
@@ -258,8 +281,7 @@ export default async function handler(req, res) {
         `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${fromQuery}`
       );
       fiskilTransactionsRaw = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
-    } catch (e) {
-      // fallback below if this endpoint isn't supported for the connector
+    } catch {
       fiskilTransactionsRaw = [];
     }
 
@@ -271,29 +293,22 @@ export default async function handler(req, res) {
 
       for (const acc of fiskilAccounts) {
         const accountId = acc.id;
-        const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
+        const txResp = await fiskilGet(
+          `/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`
+        );
         const txList = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
-        fiskilTransactionsRaw.push(...txList.map((t) => ({ ...t, account_id: t.account_id || accountId })));
+        fiskilTransactionsRaw.push(
+          ...txList.map((t) => ({ ...t, account_id: t.account_id || accountId }))
+        );
       }
     }
 
     const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
-    const transactionsRows = fiskilTransactionsRaw.map((t) => normaliseTx(t, appUserId, t?.account_id));
+    const transactionsRows = fiskilTransactionsRaw.map((t) =>
+      normaliseTx(t, appUserId, t?.account_id)
+    );
 
-    // If we got neither, return explicit counts (do NOT silently pretend success)
-    if (!accountsRows.length && !transactionsRows.length) {
-      console.log("✅ refresh-transactions: fetched 0 accounts and 0 transactions", { appUserId, endUserId });
-      return res.status(200).json({
-        success: true,
-        fetched_accounts: 0,
-        fetched_transactions: 0,
-        upserted_accounts: 0,
-        upserted_transactions: 0,
-        note: "Fiskil returned no accounts/transactions for this end_user_id.",
-      });
-    }
-
-    // --- Upsert into Supabase ---
+    // Upsert into Supabase
     if (accountsRows.length) {
       const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, {
         onConflict: "id",
@@ -312,7 +327,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- Update sync timestamps ---
     const nowIso = new Date().toISOString();
     const { error: updErr } = await supabaseAdmin
       .from("profiles")
@@ -334,6 +348,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
+      pending: false,
       fetched_accounts: accountsRows.length,
       fetched_transactions: transactionsRows.length,
       upserted_accounts: accountsRows.length,

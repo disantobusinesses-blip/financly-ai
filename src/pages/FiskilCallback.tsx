@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 const FiskilCallback: React.FC = () => {
   const [status, setStatus] = useState("Confirming your bank connection…");
   const [error, setError] = useState<string | null>(null);
@@ -16,11 +18,9 @@ const FiskilCallback: React.FC = () => {
         const accessToken = sessionData.session.access_token;
         const params = new URLSearchParams(window.location.search);
 
+        // If the redirect includes end_user_id, keep it.
         const endUserIdFromUrl =
-          params.get("end_user_id") ||
-          params.get("endUserId") ||
-          params.get("userId") ||
-          null;
+          params.get("end_user_id") || params.get("endUserId") || params.get("userId") || null;
 
         // Prefer profile value (source of truth)
         const { data: profileData, error: profileErr } = await supabase
@@ -39,7 +39,8 @@ const FiskilCallback: React.FC = () => {
           throw new Error("Missing bank user id. Please restart the bank connection from onboarding.");
         }
 
-        setStatus("Marking bank connected…");
+        // 1) Mark connected
+        setStatus("Finalising bank connection…");
         const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
@@ -54,21 +55,47 @@ const FiskilCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
 
-        setStatus("Syncing transactions…");
-        const refreshRes = await fetch("/api/refresh-transactions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+        // 2) Poll refresh-transactions until Fiskil data is available + imported
+        setStatus("Syncing your accounts and transactions…");
 
-        if (!refreshRes.ok) {
-          const text = await refreshRes.text();
-          throw new Error(text || "Bank connected, but syncing transactions failed.");
+        const MAX_POLLS = 20; // ~ up to 20 * (2.5s + request time) ~= ~1 min
+        for (let i = 1; i <= MAX_POLLS; i++) {
+          const r = await fetch("/api/refresh-transactions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          const text = await r.text();
+          let payload: any = null;
+          try {
+            payload = text ? JSON.parse(text) : null;
+          } catch {
+            payload = null;
+          }
+
+          if (r.status === 200 && payload?.success) {
+            setStatus("Done. Redirecting…");
+            window.location.replace("/app/dashboard?bank_connected=1");
+            return;
+          }
+
+          if (r.status === 202 && payload?.pending) {
+            setStatus(`Finalising bank connection… (${i}/${MAX_POLLS})`);
+            const waitSeconds =
+              typeof payload?.retry_after_seconds === "number" ? payload.retry_after_seconds : 3;
+            await sleep(waitSeconds * 1000);
+            continue;
+          }
+
+          // Any other status means real error
+          throw new Error(
+            payload?.error || payload?.message || text || `Unexpected response (${r.status})`
+          );
         }
 
-        setStatus("Done. Redirecting…");
-        window.location.replace("/app/dashboard?bank_connected=1");
+        throw new Error(
+          "Bank connected, but the bank data is still not available from Fiskil. Please wait 1–2 minutes and try again."
+        );
       } catch (e: any) {
         setError(e?.message || "Unable to confirm your bank connection.");
       }
@@ -81,7 +108,7 @@ const FiskilCallback: React.FC = () => {
     <div className="flex min-h-[70vh] items-center justify-center px-4 text-center text-white">
       <div className="max-w-md space-y-3 rounded-2xl border border-white/10 bg-white/5 p-6">
         <p className="text-lg font-semibold">
-          {error ? "Bank connection error" : "Confirming your account"}
+          {error ? "Bank connection error" : "Finalising connection"}
         </p>
         <p className="text-white/70">{error || status}</p>
 
