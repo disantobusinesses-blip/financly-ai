@@ -45,6 +45,7 @@ const BankCallback: React.FC = () => {
       }
 
       try {
+        // 1) Mark bank connected
         const res = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
@@ -59,8 +60,24 @@ const BankCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
 
+        // 2) Import accounts/transactions into Supabase
+        setStatus("Syncing your transactions...");
+
+        const importRes = await fetch("/api/refresh-transactions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+        });
+
+        if (!importRes.ok) {
+          const text = await importRes.text();
+          throw new Error(text || "Transaction sync failed");
+        }
+
+        // 3) Redirect to dashboard; query param can be used to show a loading screen
         setStatus("Connection confirmed. Redirecting...");
-        window.location.replace("/app/dashboard");
+        window.location.replace("/app/dashboard?bank_connected=1");
       } catch (err: any) {
         setError(err?.message || "Unable to confirm your bank connection.");
       }
