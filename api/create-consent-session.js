@@ -31,8 +31,6 @@ const originFromReq = (req) => {
 };
 
 const pickFrontendOrigin = (req, frontendWww, frontendNonWww) => {
-  // Prefer a configured frontend URL that matches the incoming host,
-  // so redirects land back on the same domain (www vs non-www).
   const reqOrigin = ensureHttpsOrigin(originFromReq(req));
   const reqHost = (() => {
     try {
@@ -64,7 +62,6 @@ const pickFrontendOrigin = (req, frontendWww, frontendNonWww) => {
   if (reqHost && reqHost === wwwHost && wwwOrigin) return wwwOrigin;
   if (reqHost && reqHost === nonWwwHost && nonWwwOrigin) return nonWwwOrigin;
 
-  // Fall back to env var priority, then request origin
   return wwwOrigin || nonWwwOrigin || reqOrigin;
 };
 
@@ -93,11 +90,9 @@ export default async function handler(req, res) {
     const base = normalizeBase(FISKIL_BASE_URL);
 
     const origin = pickFrontendOrigin(req, FRONTEND_URL, FRONTEND_URL_NON_WWW);
-    const redirect_uri = `${origin}/onboarding`;
-    const cancel_uri = `${origin}/onboarding`;
 
     // -------- Supabase user --------
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization || req.headers.Authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return json(res, 401, { error: "Missing Authorization header" });
     }
@@ -157,8 +152,6 @@ export default async function handler(req, res) {
     });
 
     const endUserJson = await safeJson(endUserRes);
-
-    // Accept Fiskil success shape
     const fiskilEndUserId = endUserJson?.end_user_id || endUserJson?.id;
 
     if (!endUserRes.ok || !fiskilEndUserId) {
@@ -171,6 +164,24 @@ export default async function handler(req, res) {
     }
 
     console.log("Checkpoint B2: end user created", fiskilEndUserId);
+
+    // Persist end_user_id early so refresh-transactions can work even if localStorage fails.
+    const nowIso = new Date().toISOString();
+    const { error: profUpdateErr } = await supabase
+      .from("profiles")
+      .update({
+        fiskil_user_id: fiskilEndUserId,
+        updated_at: nowIso,
+      })
+      .eq("id", user.id);
+
+    if (profUpdateErr) {
+      return json(res, 500, { error: "Failed to persist Fiskil end user id", details: profUpdateErr.message });
+    }
+
+    // Redirect back with end_user_id so onboarding can finalize robustly.
+    const redirect_uri = `${origin}/onboarding?end_user_id=${encodeURIComponent(fiskilEndUserId)}`;
+    const cancel_uri = `${origin}/onboarding`;
 
     // -------- STEP 3: auth session --------
     console.log("Checkpoint C: creating auth session", { redirect_uri, cancel_uri });

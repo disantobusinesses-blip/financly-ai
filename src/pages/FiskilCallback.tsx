@@ -1,89 +1,80 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-const BankCallback: React.FC = () => {
-  const [status, setStatus] = useState("Confirming your bank connection...");
+const FiskilCallback: React.FC = () => {
+  const [status, setStatus] = useState("Confirming your bank connection…");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const finalize = async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session) {
-        setError(sessionError?.message || "Please log in to finalise your connection.");
-        return;
-      }
-
-      const params = new URLSearchParams(window.location.search);
-
-      // Accept common variations.
-      // Your server stores this as profiles.fiskil_user_id (end user id).
-      const endUserIdFromUrl =
-        params.get("end_user_id") ||
-        params.get("endUserId") ||
-        params.get("userId") ||
-        null;
-
-      // Pull from profile as fallback (best source in your architecture)
-      const { data: profileData, error: profileErr } = await supabase
-        .from("profiles")
-        .select("fiskil_user_id")
-        .eq("id", sessionData.session.user.id)
-        .maybeSingle();
-
-      if (profileErr) {
-        setError(profileErr.message);
-        return;
-      }
-
-      const fiskilUserId =
-        (profileData as { fiskil_user_id?: string | null } | null)?.fiskil_user_id ||
-        endUserIdFromUrl;
-
-      if (!fiskilUserId) {
-        setError("Missing bank user id. Please restart the bank connection from onboarding.");
-        return;
-      }
-
+    const run = async () => {
       try {
-        // 1) Mark bank connected
-        const res = await fetch("/api/mark-bank-connected", {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
+          throw new Error(sessionError?.message || "Please log in to finalise your connection.");
+        }
+
+        const accessToken = sessionData.session.access_token;
+        const params = new URLSearchParams(window.location.search);
+
+        const endUserIdFromUrl =
+          params.get("end_user_id") ||
+          params.get("endUserId") ||
+          params.get("userId") ||
+          null;
+
+        // Prefer profile value (source of truth)
+        const { data: profileData, error: profileErr } = await supabase
+          .from("profiles")
+          .select("fiskil_user_id")
+          .eq("id", sessionData.session.user.id)
+          .maybeSingle();
+
+        if (profileErr) throw new Error(profileErr.message);
+
+        const fiskilUserId =
+          (profileData as { fiskil_user_id?: string | null } | null)?.fiskil_user_id ||
+          endUserIdFromUrl;
+
+        if (!fiskilUserId) {
+          throw new Error("Missing bank user id. Please restart the bank connection from onboarding.");
+        }
+
+        setStatus("Marking bank connected…");
+        const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ end_user_id: fiskilUserId }),
         });
 
-        if (!res.ok) {
-          const text = await res.text();
+        if (!markRes.ok) {
+          const text = await markRes.text();
           throw new Error(text || "Unable to update bank connection");
         }
 
-        // 2) Import accounts/transactions into Supabase
-        setStatus("Syncing your transactions...");
-
-        const importRes = await fetch("/api/refresh-transactions", {
+        setStatus("Syncing transactions…");
+        const refreshRes = await fetch("/api/refresh-transactions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${sessionData.session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         });
 
-        if (!importRes.ok) {
-          const text = await importRes.text();
-          throw new Error(text || "Transaction sync failed");
+        if (!refreshRes.ok) {
+          const text = await refreshRes.text();
+          throw new Error(text || "Bank connected, but syncing transactions failed.");
         }
 
-        // 3) Redirect to dashboard; query param can be used to show a loading screen
-        setStatus("Connection confirmed. Redirecting...");
+        setStatus("Done. Redirecting…");
         window.location.replace("/app/dashboard?bank_connected=1");
-      } catch (err: any) {
-        setError(err?.message || "Unable to confirm your bank connection.");
+      } catch (e: any) {
+        setError(e?.message || "Unable to confirm your bank connection.");
       }
     };
 
-    void finalize();
+    void run();
   }, []);
 
   return (
@@ -108,4 +99,4 @@ const BankCallback: React.FC = () => {
   );
 };
 
-export default BankCallback;
+export default FiskilCallback;

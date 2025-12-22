@@ -3,8 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// IMPORTANT:
-// Env FISKIL_BASE_URL should be an origin (e.g. https://api.fiskil.com).
 const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
 const toFiskilV1Base = (base) => {
   const b = normalizeBase(base || "https://api.fiskil.com");
@@ -105,45 +103,120 @@ async function fiskilGet(pathWithQuery) {
   return data;
 }
 
+/**
+ * Fiskil responses may look like:
+ * - [] (array)
+ * - { data: [...] }
+ * - { items: [...] }
+ * - { accounts: [...] }
+ * - { transactions: [...] }
+ * - { data: { accounts: [...] } } (etc)
+ */
+function extractList(resp, keys = []) {
+  if (Array.isArray(resp)) return resp;
+
+  const candidates = [
+    ...(keys || []),
+    "data",
+    "items",
+    "results",
+    "accounts",
+    "transactions",
+  ];
+
+  // 1-level deep
+  for (const k of candidates) {
+    if (Array.isArray(resp?.[k])) return resp[k];
+  }
+
+  // 2-level deep
+  for (const k of candidates) {
+    if (Array.isArray(resp?.data?.[k])) return resp.data[k];
+    if (Array.isArray(resp?.result?.[k])) return resp.result[k];
+  }
+
+  return [];
+}
+
+const parseAmount = (v) => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const m = v.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+    if (m?.[0]) return Number(m[0]) || 0;
+  }
+  if (v && typeof v === "object") {
+    const o = v;
+    return parseAmount(o.current ?? o.available ?? o.amount ?? o.value ?? o.balance ?? 0);
+  }
+  return 0;
+};
+
 function normaliseAccount(a, appUserId) {
   return {
     id: String(a?.id),
     user_id: appUserId,
-    name: a?.name ?? a?.display_name ?? a?.displayName ?? a?.product_name ?? a?.productName ?? "Account",
+    name:
+      a?.name ??
+      a?.display_name ??
+      a?.displayName ??
+      a?.product_name ??
+      a?.productName ??
+      "Account",
     type: a?.type ?? a?.account_type ?? a?.accountType ?? "checking",
     currency: a?.currency ?? a?.currency_code ?? a?.currencyCode ?? "AUD",
-    balance:
+    balance: parseAmount(
       a?.balance?.current ??
-      a?.balance?.available ??
-      a?.balance ??
-      a?.current_balance ??
-      a?.currentBalance ??
-      a?.available_balance ??
-      a?.availableBalance ??
-      0,
+        a?.balance?.available ??
+        a?.balance ??
+        a?.current_balance ??
+        a?.currentBalance ??
+        a?.available_balance ??
+        a?.availableBalance ??
+        0
+    ),
     raw: a,
     updated_at: new Date().toISOString(),
   };
 }
 
-function normaliseTx(t, appUserId, accountId) {
+function normaliseTx(t, appUserId, fallbackAccountId) {
+  const accountId = String(
+    t?.account_id || t?.accountId || fallbackAccountId || ""
+  );
+
+  // Keep date as ISO if possible
+  const rawDate =
+    t?.date ??
+    t?.posted_at ??
+    t?.postedAt ??
+    t?.timestamp ??
+    t?.created_at ??
+    t?.createdAt ??
+    null;
+
+  const isoDate = (() => {
+    if (!rawDate) return null;
+    const d = new Date(rawDate);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+    if (typeof rawDate === "string") return rawDate;
+    return null;
+  })();
+
   return {
     id: String(t?.id),
     user_id: appUserId,
-    account_id: String(accountId || t?.account_id || t?.accountId || ""),
-    amount: t?.amount ?? t?.value ?? t?.transaction_amount ?? t?.transactionAmount ?? null,
-    date: t?.date ?? t?.posted_at ?? t?.postedAt ?? t?.timestamp ?? t?.created_at ?? t?.createdAt ?? null,
-    description: t?.description ?? t?.narrative ?? t?.merchant_name ?? t?.merchantName ?? "Transaction",
+    account_id: accountId,
+    amount: parseAmount(t?.amount ?? t?.value ?? t?.transaction_amount ?? t?.transactionAmount ?? null),
+    date: isoDate,
+    description:
+      t?.description ??
+      t?.narrative ??
+      t?.merchant_name ??
+      t?.merchantName ??
+      "Transaction",
     category: t?.category ?? t?.category_name ?? t?.categoryName ?? null,
     raw: t,
   };
-}
-
-function asArray(resp) {
-  if (Array.isArray(resp)) return resp;
-  if (Array.isArray(resp?.data)) return resp.data;
-  if (Array.isArray(resp?.items)) return resp.items;
-  return [];
 }
 
 export default async function handler(req, res) {
@@ -169,59 +242,103 @@ export default async function handler(req, res) {
 
     const endUserId = profile.fiskil_user_id;
 
-    // 1) Fetch accounts for the end user
+    // --- Fetch accounts (handle multiple Fiskil shapes) ---
     const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
-    const fiskilAccounts = asArray(accountsResp).filter((a) => a && a.id);
+    const fiskilAccounts = extractList(accountsResp, ["accounts"])
+      .filter((a) => a && a.id);
 
-    if (!fiskilAccounts.length) {
-      return res.status(200).json({ success: true, imported_accounts: 0, imported_transactions: 0 });
-    }
-
-    // 2) Upsert accounts into Supabase
-    const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
-    const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, {
-      onConflict: "id",
-    });
-    if (upsertAccErr) return res.status(500).json({ error: upsertAccErr.message });
-
-    // 3) For each account, fetch transactions (optionally from last sync time)
-    const from = profile.last_transactions_sync_at
-      ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+    // --- Fetch transactions (prefer end_user scoped endpoint; fallback per-account) ---
+    const fromQuery = profile.last_transactions_sync_at
+      ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
       : "";
 
-    let allTransactions = [];
-    for (const acc of fiskilAccounts) {
-      const accountId = acc.id;
-      // Common Fiskil pattern: /banking/accounts/{account_id}/transactions
-      const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
-      const txList = asArray(txResp).filter((t) => t && t.id);
-      allTransactions.push(...txList.map((t) => normaliseTx(t, appUserId, accountId)));
+    let fiskilTransactionsRaw = [];
+    try {
+      const txResp = await fiskilGet(
+        `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${fromQuery}`
+      );
+      fiskilTransactionsRaw = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
+    } catch (e) {
+      // fallback below if this endpoint isn't supported for the connector
+      fiskilTransactionsRaw = [];
     }
 
-    // 4) Upsert transactions
-    if (allTransactions.length) {
-      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(allTransactions, {
+    // Fallback: per account
+    if (!fiskilTransactionsRaw.length && fiskilAccounts.length) {
+      const from = profile.last_transactions_sync_at
+        ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+        : "";
+
+      for (const acc of fiskilAccounts) {
+        const accountId = acc.id;
+        const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
+        const txList = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
+        fiskilTransactionsRaw.push(...txList.map((t) => ({ ...t, account_id: t.account_id || accountId })));
+      }
+    }
+
+    const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
+    const transactionsRows = fiskilTransactionsRaw.map((t) => normaliseTx(t, appUserId, t?.account_id));
+
+    // If we got neither, return explicit counts (do NOT silently pretend success)
+    if (!accountsRows.length && !transactionsRows.length) {
+      console.log("✅ refresh-transactions: fetched 0 accounts and 0 transactions", { appUserId, endUserId });
+      return res.status(200).json({
+        success: true,
+        fetched_accounts: 0,
+        fetched_transactions: 0,
+        upserted_accounts: 0,
+        upserted_transactions: 0,
+        note: "Fiskil returned no accounts/transactions for this end_user_id.",
+      });
+    }
+
+    // --- Upsert into Supabase ---
+    if (accountsRows.length) {
+      const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, {
         onConflict: "id",
       });
-      if (upsertTxErr) return res.status(500).json({ error: upsertTxErr.message });
+      if (upsertAccErr) {
+        return res.status(500).json({ error: "Accounts upsert failed", details: upsertAccErr.message });
+      }
     }
 
-    // 5) Update profile sync timestamp
+    if (transactionsRows.length) {
+      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(transactionsRows, {
+        onConflict: "id",
+      });
+      if (upsertTxErr) {
+        return res.status(500).json({ error: "Transactions upsert failed", details: upsertTxErr.message });
+      }
+    }
+
+    // --- Update sync timestamps ---
+    const nowIso = new Date().toISOString();
     const { error: updErr } = await supabaseAdmin
       .from("profiles")
       .update({
-        last_transactions_sync_at: new Date().toISOString(),
+        last_transactions_sync_at: nowIso,
         has_bank_connection: true,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
       })
       .eq("id", appUserId);
 
-    if (updErr) return res.status(500).json({ error: updErr.message });
+    if (updErr) return res.status(500).json({ error: "Profile update failed", details: updErr.message });
+
+    console.log("✅ refresh-transactions complete", {
+      appUserId,
+      endUserId,
+      fetched_accounts: accountsRows.length,
+      fetched_transactions: transactionsRows.length,
+    });
 
     return res.status(200).json({
       success: true,
-      imported_accounts: fiskilAccounts.length,
-      imported_transactions: allTransactions.length,
+      fetched_accounts: accountsRows.length,
+      fetched_transactions: transactionsRows.length,
+      upserted_accounts: accountsRows.length,
+      upserted_transactions: transactionsRows.length,
+      synced_at: nowIso,
     });
   } catch (err) {
     console.error("❌ /api/refresh-transactions error:", err);
