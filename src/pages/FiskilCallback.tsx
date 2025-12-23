@@ -30,14 +30,12 @@ const FiskilCallback: React.FC = () => {
         if (profileErr) throw new Error(profileErr.message);
 
         const fiskilUserId =
-          (profileData as { fiskil_user_id?: string | null } | null)?.fiskil_user_id ||
-          endUserIdFromUrl;
+          (profileData as { fiskil_user_id?: string | null } | null)?.fiskil_user_id || endUserIdFromUrl;
 
         if (!fiskilUserId) {
           throw new Error("Missing bank user id. Please restart the bank connection from onboarding.");
         }
 
-        // 1) Mark connected
         setStatus("Confirming connection…");
         const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
@@ -53,10 +51,10 @@ const FiskilCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
 
-        // 2) Poll refresh-transactions until data exists + imported
-        setStatus("Syncing accounts and transactions…");
+        setStatus("Waiting for bank data to sync…");
 
-        const MAX_POLLS = 50; // 50 * ~6s = ~5 minutes
+        // Poll refresh-transactions; it will return 202 until webhook marks sync completed.
+        const MAX_POLLS = 75; // ~75 * 8s ~= 10 minutes
         for (let i = 1; i <= MAX_POLLS; i++) {
           const r = await fetch("/api/refresh-transactions", {
             method: "POST",
@@ -78,20 +76,17 @@ const FiskilCallback: React.FC = () => {
           }
 
           if (r.status === 202 && payload?.pending) {
-            const waitSeconds =
-              typeof payload?.retry_after_seconds === "number" ? payload.retry_after_seconds : 6;
+            const waitSeconds = typeof payload?.retry_after_seconds === "number" ? payload.retry_after_seconds : 8;
             setStatus(`Finalising bank connection… (${i}/${MAX_POLLS})`);
             await sleep(waitSeconds * 1000);
             continue;
           }
 
-          throw new Error(
-            payload?.error || payload?.message || text || `Unexpected response (${r.status})`
-          );
+          throw new Error(payload?.error || payload?.message || text || `Unexpected response (${r.status})`);
         }
 
         throw new Error(
-          "Bank connected, but Fiskil still has no accounts for this user after several minutes. This usually means the consent flow didn’t actually complete."
+          "Bank connected, but the bank data never synced. This usually means Fiskil webhooks are not configured or the consent flow didn’t complete."
         );
       } catch (e: any) {
         setError(e?.message || "Unable to finalise your bank connection.");
@@ -104,9 +99,7 @@ const FiskilCallback: React.FC = () => {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 text-center text-white">
       <div className="max-w-md space-y-3 rounded-2xl border border-white/10 bg-white/5 p-6">
-        <p className="text-lg font-semibold">
-          {error ? "Bank connection error" : "Finalising connection"}
-        </p>
+        <p className="text-lg font-semibold">{error ? "Bank connection error" : "Finalising connection"}</p>
         <p className="text-white/70">{error || status}</p>
 
         {error && (

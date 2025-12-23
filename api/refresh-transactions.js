@@ -47,14 +47,8 @@ async function getFiskilToken() {
 
   const r = await fetch(`${FISKIL_BASE_URL}/token`, {
     method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json; charset=UTF-8",
-    },
-    body: JSON.stringify({
-      client_id: FISKIL_CLIENT_ID,
-      client_secret: FISKIL_CLIENT_SECRET,
-    }),
+    headers: { accept: "application/json", "content-type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({ client_id: FISKIL_CLIENT_ID, client_secret: FISKIL_CLIENT_SECRET }),
   });
 
   const text = await r.text();
@@ -82,10 +76,7 @@ async function fiskilGet(pathWithQuery) {
 
   const r = await fetch(url, {
     method: "GET",
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${token}`,
-    },
+    headers: { accept: "application/json", authorization: `Bearer ${token}` },
   });
 
   const text = await r.text();
@@ -96,37 +87,18 @@ async function fiskilGet(pathWithQuery) {
     data = text;
   }
 
-  if (!r.ok) {
-    throw new Error(`Fiskil GET ${pathWithQuery} failed (${r.status}): ${text}`);
-  }
-
+  if (!r.ok) throw new Error(`Fiskil GET ${pathWithQuery} failed (${r.status}): ${text}`);
   return data;
 }
 
-/**
- * Fiskil responses may look like:
- * - [] (array)
- * - { data: [...] }
- * - { items: [...] }
- * - { accounts: [...] }
- * - { transactions: [...] }
- * - { data: { accounts: [...] } } etc
- */
 function extractList(resp, keys = []) {
   if (Array.isArray(resp)) return resp;
-
   const candidates = [...(keys || []), "accounts", "transactions", "data", "items", "results"];
-
-  // 1-level deep
-  for (const k of candidates) {
-    if (Array.isArray(resp?.[k])) return resp[k];
-  }
-  // 2-level deep
+  for (const k of candidates) if (Array.isArray(resp?.[k])) return resp[k];
   for (const k of candidates) {
     if (Array.isArray(resp?.data?.[k])) return resp.data[k];
     if (Array.isArray(resp?.result?.[k])) return resp.result[k];
   }
-
   return [];
 }
 
@@ -147,13 +119,7 @@ function normaliseAccount(a, appUserId) {
   return {
     id: String(a?.id),
     user_id: appUserId,
-    name:
-      a?.name ??
-      a?.display_name ??
-      a?.displayName ??
-      a?.product_name ??
-      a?.productName ??
-      "Account",
+    name: a?.name ?? a?.display_name ?? a?.displayName ?? a?.product_name ?? a?.productName ?? "Account",
     type: a?.type ?? a?.account_type ?? a?.accountType ?? "checking",
     currency: a?.currency ?? a?.currency_code ?? a?.currencyCode ?? "AUD",
     balance: parseAmount(
@@ -173,15 +139,7 @@ function normaliseAccount(a, appUserId) {
 
 function normaliseTx(t, appUserId, fallbackAccountId) {
   const accountId = String(t?.account_id || t?.accountId || fallbackAccountId || "");
-
-  const rawDate =
-    t?.date ??
-    t?.posted_at ??
-    t?.postedAt ??
-    t?.timestamp ??
-    t?.created_at ??
-    t?.createdAt ??
-    null;
+  const rawDate = t?.date ?? t?.posted_at ?? t?.postedAt ?? t?.timestamp ?? t?.created_at ?? t?.createdAt ?? null;
 
   const isoDate = (() => {
     if (!rawDate) return null;
@@ -197,18 +155,11 @@ function normaliseTx(t, appUserId, fallbackAccountId) {
     account_id: accountId,
     amount: parseAmount(t?.amount ?? t?.value ?? t?.transaction_amount ?? t?.transactionAmount ?? null),
     date: isoDate,
-    description:
-      t?.description ??
-      t?.narrative ??
-      t?.merchant_name ??
-      t?.merchantName ??
-      "Transaction",
+    description: t?.description ?? t?.narrative ?? t?.merchant_name ?? t?.merchantName ?? "Transaction",
     category: t?.category ?? t?.category_name ?? t?.categoryName ?? null,
     raw: t,
   };
 }
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
@@ -224,7 +175,7 @@ export default async function handler(req, res) {
 
     const { data: profile, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id,last_transactions_sync_at")
+      .select("fiskil_user_id,last_transactions_sync_at,fiskil_sync_completed_at,fiskil_last_webhook_at,fiskil_last_webhook_event")
       .eq("id", appUserId)
       .maybeSingle();
 
@@ -233,98 +184,72 @@ export default async function handler(req, res) {
 
     const endUserId = profile.fiskil_user_id;
 
-    // IMPORTANT:
-    // Bank data may not be available immediately after redirect.
-    // Poll accounts for a short window before declaring "pending".
-    const MAX_RETRIES = 8;
-    const WAIT_MS = 2500;
-
-    let fiskilAccounts = [];
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const accountsResp = await fiskilGet(
-        `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`
-      );
-      fiskilAccounts = extractList(accountsResp, ["accounts"]).filter((a) => a && a.id);
-
-      if (fiskilAccounts.length) break;
-
-      console.log(`⏳ Fiskil accounts not ready (attempt ${attempt}/${MAX_RETRIES})`, {
+    // Gate on webhook sync completion (otherwise Fiskil will keep returning empty)
+    if (!profile?.fiskil_sync_completed_at) {
+      console.log("⏳ refresh-transactions pending: waiting for Fiskil sync webhook", {
         appUserId,
         endUserId,
-      });
-      await sleep(WAIT_MS);
-    }
-
-    if (!fiskilAccounts.length) {
-      console.log("✅ refresh-transactions: fetched 0 accounts and 0 transactions", {
-        appUserId,
-        endUserId,
+        lastWebhookAt: profile?.fiskil_last_webhook_at || null,
+        lastWebhookEvent: profile?.fiskil_last_webhook_event || null,
       });
 
-      // 202 = “Accepted but still processing” (frontend should retry)
       return res.status(202).json({
         success: false,
         pending: true,
-        message: "Bank connection is finalising. Accounts are not available yet. Please retry shortly.",
-        retry_after_seconds: Math.ceil(WAIT_MS / 1000),
+        reason: "awaiting_fiskil_sync_webhook",
+        message:
+          "Bank connection is finalising. Waiting for Fiskil sync webhook before importing transactions.",
+        retry_after_seconds: 8,
+      });
+    }
+
+    // Fetch accounts
+    const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
+    const fiskilAccounts = extractList(accountsResp, ["accounts"]).filter((a) => a && a.id);
+
+    if (!fiskilAccounts.length) {
+      console.log("⚠️ fiskil_sync_completed_at set but accounts still empty", { appUserId, endUserId });
+      return res.status(202).json({
+        success: false,
+        pending: true,
+        reason: "accounts_not_ready",
+        message: "Sync webhook received, but accounts are still not available. Please retry.",
+        retry_after_seconds: 10,
       });
     }
 
     // Fetch transactions
-    const fromQuery = profile.last_transactions_sync_at
-      ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
-      : "";
-
+    const fromQuery = profile.last_transactions_sync_at ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}` : "";
     let fiskilTransactionsRaw = [];
+
     try {
-      const txResp = await fiskilGet(
-        `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${fromQuery}`
-      );
+      const txResp = await fiskilGet(`/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${fromQuery}`);
       fiskilTransactionsRaw = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
     } catch {
       fiskilTransactionsRaw = [];
     }
 
-    // Fallback: per account
-    if (!fiskilTransactionsRaw.length && fiskilAccounts.length) {
-      const from = profile.last_transactions_sync_at
-        ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}`
-        : "";
-
+    if (!fiskilTransactionsRaw.length) {
+      const from = profile.last_transactions_sync_at ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}` : "";
       for (const acc of fiskilAccounts) {
         const accountId = acc.id;
-        const txResp = await fiskilGet(
-          `/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`
-        );
+        const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
         const txList = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
-        fiskilTransactionsRaw.push(
-          ...txList.map((t) => ({ ...t, account_id: t.account_id || accountId }))
-        );
+        fiskilTransactionsRaw.push(...txList.map((t) => ({ ...t, account_id: t.account_id || accountId })));
       }
     }
 
     const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
-    const transactionsRows = fiskilTransactionsRaw.map((t) =>
-      normaliseTx(t, appUserId, t?.account_id)
-    );
+    const transactionsRows = fiskilTransactionsRaw.map((t) => normaliseTx(t, appUserId, t?.account_id));
 
-    // Upsert into Supabase
     if (accountsRows.length) {
-      const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, {
-        onConflict: "id",
-      });
-      if (upsertAccErr) {
-        return res.status(500).json({ error: "Accounts upsert failed", details: upsertAccErr.message });
-      }
+      const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, { onConflict: "id" });
+      if (upsertAccErr) return res.status(500).json({ error: "Accounts upsert failed", details: upsertAccErr.message });
     }
 
     if (transactionsRows.length) {
-      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(transactionsRows, {
-        onConflict: "id",
-      });
-      if (upsertTxErr) {
-        return res.status(500).json({ error: "Transactions upsert failed", details: upsertTxErr.message });
-      }
+      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(transactionsRows, { onConflict: "id" });
+      if (upsertTxErr) return res.status(500).json({ error: "Transactions upsert failed", details: upsertTxErr.message });
     }
 
     const nowIso = new Date().toISOString();
