@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const FiskilCallback: React.FC = () => {
-  const [status, setStatus] = useState("Confirming your bank connection…");
+  const [status, setStatus] = useState("Finalising bank connection…");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,11 +18,9 @@ const FiskilCallback: React.FC = () => {
         const accessToken = sessionData.session.access_token;
         const params = new URLSearchParams(window.location.search);
 
-        // If the redirect includes end_user_id, keep it.
         const endUserIdFromUrl =
           params.get("end_user_id") || params.get("endUserId") || params.get("userId") || null;
 
-        // Prefer profile value (source of truth)
         const { data: profileData, error: profileErr } = await supabase
           .from("profiles")
           .select("fiskil_user_id")
@@ -40,7 +38,7 @@ const FiskilCallback: React.FC = () => {
         }
 
         // 1) Mark connected
-        setStatus("Finalising bank connection…");
+        setStatus("Confirming connection…");
         const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
@@ -55,10 +53,10 @@ const FiskilCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
 
-        // 2) Poll refresh-transactions until Fiskil data is available + imported
-        setStatus("Syncing your accounts and transactions…");
+        // 2) Poll refresh-transactions until data exists + imported
+        setStatus("Syncing accounts and transactions…");
 
-        const MAX_POLLS = 20; // ~ up to 20 * (2.5s + request time) ~= ~1 min
+        const MAX_POLLS = 50; // 50 * ~6s = ~5 minutes
         for (let i = 1; i <= MAX_POLLS; i++) {
           const r = await fetch("/api/refresh-transactions", {
             method: "POST",
@@ -80,24 +78,23 @@ const FiskilCallback: React.FC = () => {
           }
 
           if (r.status === 202 && payload?.pending) {
-            setStatus(`Finalising bank connection… (${i}/${MAX_POLLS})`);
             const waitSeconds =
-              typeof payload?.retry_after_seconds === "number" ? payload.retry_after_seconds : 3;
+              typeof payload?.retry_after_seconds === "number" ? payload.retry_after_seconds : 6;
+            setStatus(`Finalising bank connection… (${i}/${MAX_POLLS})`);
             await sleep(waitSeconds * 1000);
             continue;
           }
 
-          // Any other status means real error
           throw new Error(
             payload?.error || payload?.message || text || `Unexpected response (${r.status})`
           );
         }
 
         throw new Error(
-          "Bank connected, but the bank data is still not available from Fiskil. Please wait 1–2 minutes and try again."
+          "Bank connected, but Fiskil still has no accounts for this user after several minutes. This usually means the consent flow didn’t actually complete."
         );
       } catch (e: any) {
-        setError(e?.message || "Unable to confirm your bank connection.");
+        setError(e?.message || "Unable to finalise your bank connection.");
       }
     };
 
