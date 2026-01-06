@@ -31,7 +31,6 @@ export default async function handler(req, res) {
   if (!token) return res.status(401).json({ error: "Missing token" });
 
   try {
-    // Validate session + get user id safely
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
     if (userErr || !userData?.user?.id) {
       return res.status(401).json({ error: "Invalid token" });
@@ -39,21 +38,25 @@ export default async function handler(req, res) {
 
     const userId = userData.user.id;
 
-    // Accept new (Fiskil) and legacy (Basiq) payload keys
     const endUserId =
       req.body?.end_user_id ||
       req.body?.endUserId ||
-      req.body?.basiqUserId ||
+      req.body?.userId ||
       null;
 
+    if (!endUserId || typeof endUserId !== "string") {
+      return res.status(400).json({ error: "Missing end_user_id" });
+    }
+
+    const nowIso = new Date().toISOString();
     const { error: updateErr } = await supabaseAdmin
       .from("profiles")
       .update({
         has_bank_connection: true,
-        fiskil_user_id: endUserId, // store Fiskil end user id here
+        fiskil_user_id: endUserId,
         onboarding_step: "COMPLETE",
         is_onboarded: true,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
       })
       .eq("id", userId);
 

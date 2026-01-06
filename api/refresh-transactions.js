@@ -34,7 +34,6 @@ function getBearerToken(req) {
   return s.slice(7).trim();
 }
 
-// Fiskil token cache (per warm lambda instance)
 let cachedToken = null;
 let cachedTokenExpMs = 0;
 
@@ -91,13 +90,12 @@ async function fiskilGet(pathWithQuery) {
   return data;
 }
 
-function extractList(resp, keys = []) {
+function extractList(resp, preferredKey) {
   if (Array.isArray(resp)) return resp;
-  const candidates = [...(keys || []), "accounts", "transactions", "data", "items", "results"];
-  for (const k of candidates) if (Array.isArray(resp?.[k])) return resp[k];
-  for (const k of candidates) {
+  if (preferredKey && Array.isArray(resp?.[preferredKey])) return resp[preferredKey];
+  for (const k of ["accounts", "transactions", "data", "items", "results"]) {
+    if (Array.isArray(resp?.[k])) return resp[k];
     if (Array.isArray(resp?.data?.[k])) return resp.data[k];
-    if (Array.isArray(resp?.result?.[k])) return resp.result[k];
   }
   return [];
 }
@@ -139,7 +137,14 @@ function normaliseAccount(a, appUserId) {
 
 function normaliseTx(t, appUserId, fallbackAccountId) {
   const accountId = String(t?.account_id || t?.accountId || fallbackAccountId || "");
-  const rawDate = t?.date ?? t?.posted_at ?? t?.postedAt ?? t?.timestamp ?? t?.created_at ?? t?.createdAt ?? null;
+  const rawDate =
+    t?.date ??
+    t?.posted_at ??
+    t?.postedAt ??
+    t?.timestamp ??
+    t?.created_at ??
+    t?.createdAt ??
+    null;
 
   const isoDate = (() => {
     if (!rawDate) return null;
@@ -175,7 +180,7 @@ export default async function handler(req, res) {
 
     const { data: profile, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id,last_transactions_sync_at,fiskil_sync_completed_at,fiskil_last_webhook_at,fiskil_last_webhook_event")
+      .select("fiskil_user_id,last_transactions_sync_at")
       .eq("id", appUserId)
       .maybeSingle();
 
@@ -184,75 +189,68 @@ export default async function handler(req, res) {
 
     const endUserId = profile.fiskil_user_id;
 
-    // Gate on webhook sync completion (otherwise Fiskil will keep returning empty)
-    if (!profile?.fiskil_sync_completed_at) {
-      console.log("⏳ refresh-transactions pending: waiting for Fiskil sync webhook", {
-        appUserId,
-        endUserId,
-        lastWebhookAt: profile?.fiskil_last_webhook_at || null,
-        lastWebhookEvent: profile?.fiskil_last_webhook_event || null,
-      });
-
-      return res.status(202).json({
-        success: false,
-        pending: true,
-        reason: "awaiting_fiskil_sync_webhook",
-        message:
-          "Bank connection is finalising. Waiting for Fiskil sync webhook before importing transactions.",
-        retry_after_seconds: 8,
-      });
-    }
-
-    // Fetch accounts
+    // 1) Accounts
     const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
-    const fiskilAccounts = extractList(accountsResp, ["accounts"]).filter((a) => a && a.id);
+    const fiskilAccounts = extractList(accountsResp, "accounts").filter((a) => a && a.id);
 
     if (!fiskilAccounts.length) {
-      console.log("⚠️ fiskil_sync_completed_at set but accounts still empty", { appUserId, endUserId });
+      console.log("⏳ Fiskil accounts not ready", { appUserId, endUserId });
       return res.status(202).json({
         success: false,
         pending: true,
         reason: "accounts_not_ready",
-        message: "Sync webhook received, but accounts are still not available. Please retry.",
-        retry_after_seconds: 10,
+        message:
+          "Bank connection succeeded but accounts are not available yet. This is normal while Fiskil completes the initial sync.",
+        retry_after_seconds: 8,
       });
     }
 
-    // Fetch transactions
-    const fromQuery = profile.last_transactions_sync_at ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}` : "";
-    let fiskilTransactionsRaw = [];
+    // 2) Transactions
+    const fromQuery = profile.last_transactions_sync_at
+      ? `&from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+      : "";
 
+    let fiskilTransactions = [];
     try {
       const txResp = await fiskilGet(`/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}${fromQuery}`);
-      fiskilTransactionsRaw = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
+      fiskilTransactions = extractList(txResp, "transactions").filter((t) => t && t.id);
     } catch {
-      fiskilTransactionsRaw = [];
+      fiskilTransactions = [];
     }
 
-    if (!fiskilTransactionsRaw.length) {
-      const from = profile.last_transactions_sync_at ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}` : "";
+    if (!fiskilTransactions.length) {
+      // fallback per-account
+      const from = profile.last_transactions_sync_at
+        ? `?from=${encodeURIComponent(profile.last_transactions_sync_at)}`
+        : "";
       for (const acc of fiskilAccounts) {
         const accountId = acc.id;
         const txResp = await fiskilGet(`/banking/accounts/${encodeURIComponent(accountId)}/transactions${from}`);
-        const txList = extractList(txResp, ["transactions"]).filter((t) => t && t.id);
-        fiskilTransactionsRaw.push(...txList.map((t) => ({ ...t, account_id: t.account_id || accountId })));
+        const txList = extractList(txResp, "transactions").filter((t) => t && t.id);
+        fiskilTransactions.push(...txList.map((t) => ({ ...t, account_id: t.account_id || accountId })));
       }
     }
 
     const accountsRows = fiskilAccounts.map((a) => normaliseAccount(a, appUserId));
-    const transactionsRows = fiskilTransactionsRaw.map((t) => normaliseTx(t, appUserId, t?.account_id));
+    const transactionsRows = fiskilTransactions.map((t) => normaliseTx(t, appUserId, t?.account_id));
+
+    // Upsert
+    const nowIso = new Date().toISOString();
 
     if (accountsRows.length) {
-      const { error: upsertAccErr } = await supabaseAdmin.from("accounts").upsert(accountsRows, { onConflict: "id" });
+      const { error: upsertAccErr } = await supabaseAdmin
+        .from("accounts")
+        .upsert(accountsRows, { onConflict: "id" });
       if (upsertAccErr) return res.status(500).json({ error: "Accounts upsert failed", details: upsertAccErr.message });
     }
 
     if (transactionsRows.length) {
-      const { error: upsertTxErr } = await supabaseAdmin.from("transactions").upsert(transactionsRows, { onConflict: "id" });
+      const { error: upsertTxErr } = await supabaseAdmin
+        .from("transactions")
+        .upsert(transactionsRows, { onConflict: "id" });
       if (upsertTxErr) return res.status(500).json({ error: "Transactions upsert failed", details: upsertTxErr.message });
     }
 
-    const nowIso = new Date().toISOString();
     const { error: updErr } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -276,8 +274,6 @@ export default async function handler(req, res) {
       pending: false,
       fetched_accounts: accountsRows.length,
       fetched_transactions: transactionsRows.length,
-      upserted_accounts: accountsRows.length,
-      upserted_transactions: transactionsRows.length,
       synced_at: nowIso,
     });
   } catch (err) {
