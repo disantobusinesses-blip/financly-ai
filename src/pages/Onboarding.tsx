@@ -68,11 +68,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       }
 
       setSessionToken(data.session.access_token);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("country")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
 
       const params = new URLSearchParams(window.location.search);
       const endUserFromUrl =
@@ -81,7 +76,8 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       if (endUserFromUrl) {
         BankingService.setStoredEndUserId(endUserFromUrl);
         BankingService.setConnectionStatus("pending");
-        window.history.replaceState({}, "", "/Onboarding");
+        // Fix casing: route is /onboarding
+        window.history.replaceState({}, "", "/onboarding");
       }
 
       const storedEndUserId = BankingService.getStoredEndUserId();
@@ -135,11 +131,11 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       <div className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
         <p className="text-sm uppercase tracking-[0.2em] text-white/50">Connect your bank</p>
         <h1 className="text-3xl font-black uppercase tracking-[0.22em]">MyAiBank</h1>
+
         <div className="space-y-2">
           <p className="text-xl font-semibold">Secure bank connection</p>
           <p className="text-white/70">
-            We will redirect you to Fiskil to securely link your accounts, then confirm the
-            connection back here.
+            We will redirect you to Fiskil to securely link your accounts, then confirm the connection back here.
           </p>
         </div>
 
