@@ -28,14 +28,12 @@ const Dashboard: React.FC = () => {
   const { user, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
-  // Hook calls /api/fiskil-data internally (Fiskil-only)
   const {
     accounts,
     transactions,
     loading: dataLoading,
     error,
     lastUpdated,
-    syncStatus,
     syncing,
     syncProgress,
     syncMessage,
@@ -47,15 +45,8 @@ const Dashboard: React.FC = () => {
     [accounts]
   );
 
-  const {
-    alerts,
-    insights,
-    forecast,
-    loading: aiLoading,
-    error: aiError,
-    disclaimer,
-    generatedAt,
-  } = useAIInsights(user?.id, region, accounts, transactions, totalBalance);
+  const { alerts, insights, forecast, loading: aiLoading, error: aiError, disclaimer, generatedAt } =
+    useAIInsights(user?.id, region, accounts, transactions, totalBalance);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -145,42 +136,18 @@ const Dashboard: React.FC = () => {
   }, [transactions]);
 
   const tourSteps: TourStep[] = [
-    {
-      id: "balance-summary",
-      title: "Where you stand",
-      description: "Review spending-ready cash, net worth, and liabilities at a glance.",
-    },
-    {
-      id: "financial-health",
-      title: "Financial health",
-      description: "See your health score, debt-to-income guidance, and savings split updated in real time.",
-    },
-    {
-      id: "goal-planner",
-      title: "Goal planner",
-      description: "Create goals after funding them at your bank, then we track progress and celebrate contributions.",
-    },
-    {
-      id: "refer-a-friend",
-      title: "Refer & save",
-      description: "Share your unique link to earn three months at 50% off once a friend upgrades.",
-    },
+    { id: "balance-summary", title: "Where you stand", description: "Review key balances at a glance." },
+    { id: "financial-health", title: "Financial health", description: "See your health score and guidance." },
+    { id: "goal-planner", title: "Goal planner", description: "Track progress across your goals." },
+    { id: "refer-a-friend", title: "Refer & save", description: "Share your link to unlock discounts." },
     {
       id: "subscription-hunter",
       title: "Subscription Hunter",
       description: "AI groups repeat merchants and shows how often they bill you.",
       mobileHint: "Swipe right to reveal more tools on mobile.",
     },
-    {
-      id: "cashflow",
-      title: "Cashflow",
-      description: "Monitor break-even trends and monthly savings projections.",
-    },
-    {
-      id: "transactions",
-      title: "Transactions",
-      description: "Filter and search your latest activity without leaving the dashboard.",
-    },
+    { id: "cashflow", title: "Cashflow", description: "Monitor break-even trends and savings projections." },
+    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity." },
   ];
 
   useEffect(() => {
@@ -252,8 +219,8 @@ const Dashboard: React.FC = () => {
   );
 
   const showSyncOverlay = Boolean(syncing) && accounts.length === 0;
-  const overlayTitle = syncStatus?.has_bank_connection ? "Connection successful" : "Syncing your bank data";
-  const overlayMessage = syncMessage || "Syncing your financial data. This may take a moment…";
+  const overlayTitle = "Connection successful";
+  const overlayMessage = syncMessage || "Waiting for bank data…";
 
   if (dataLoading && accounts.length === 0) {
     return (
