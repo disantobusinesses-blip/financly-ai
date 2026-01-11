@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { BankingService, initiateBankConnection } from "../services/BankingService";
 
@@ -9,55 +9,10 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [connectingBank, setConnectingBank] = useState(false);
-  const [finalizing, setFinalizing] = useState(false);
-  const [pendingEndUserId, setPendingEndUserId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
     BankingService.getConnectionStatus() as ConnectionStatus
   );
   const [sessionToken, setSessionToken] = useState<string | null>(null);
-
-  const finalizeConnection = useCallback(
-    async (endUserId: string, tokenOverride?: string) => {
-      setError(null);
-      setFinalizing(true);
-      setStatus("Finalising your bank connection...");
-
-      try {
-        const accessToken = tokenOverride || sessionToken;
-        if (!accessToken) {
-          throw new Error("Please log in to finish onboarding.");
-        }
-
-        const markRes = await fetch("/api/mark-bank-connected", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ end_user_id: endUserId }),
-        });
-
-        if (!markRes.ok) {
-          const text = await markRes.text();
-          throw new Error(text || "Unable to finalise bank connection.");
-        }
-
-        BankingService.setConnectionStatus("connected");
-        setConnectionStatus("connected");
-        setStatus("Bank connected! Redirecting...");
-        onComplete?.();
-
-        setTimeout(() => {
-          window.location.replace("/app/dashboard");
-        }, 600);
-      } catch (err: any) {
-        setError(err?.message || "Unable to finalise your bank connection.");
-      } finally {
-        setFinalizing(false);
-      }
-    },
-    [onComplete, sessionToken]
-  );
 
   useEffect(() => {
     const init = async () => {
@@ -69,39 +24,23 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
       setSessionToken(data.session.access_token);
 
-      const params = new URLSearchParams(window.location.search);
-      const endUserFromUrl =
-        params.get("end_user_id") || params.get("endUserId") || params.get("userId") || null;
-
-      if (endUserFromUrl) {
-        BankingService.setStoredEndUserId(endUserFromUrl);
-        BankingService.setConnectionStatus("pending");
-        // Fix casing: route is /onboarding
-        window.history.replaceState({}, "", "/onboarding");
-      }
-
-      const storedEndUserId = BankingService.getStoredEndUserId();
+      // If already marked as connected locally, allow user to continue.
       const storedStatus = BankingService.getConnectionStatus() as ConnectionStatus;
-
-      setPendingEndUserId(storedEndUserId);
       setConnectionStatus(storedStatus);
-
-      if (storedStatus === "pending" && storedEndUserId) {
-        await finalizeConnection(storedEndUserId, data.session.access_token);
-      }
 
       setLoading(false);
     };
 
     void init();
-  }, [finalizeConnection]);
+  }, []);
 
   const handleConnectBank = async () => {
     setError(null);
     setConnectingBank(true);
 
     try {
-      const token = sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
+      const token =
+        sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
       if (!token) {
         throw new Error("Please log in to connect your bank.");
       }
@@ -111,9 +50,8 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       BankingService.setStoredEndUserId(endUserId);
       BankingService.setConnectionStatus("pending");
 
-      setPendingEndUserId(endUserId);
       setConnectionStatus("pending");
-      setStatus("Redirecting to securely connect your bank...");
+      setStatus("Redirecting to securely connect your bank…");
       window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err?.message || "Unable to start bank connection.");
@@ -123,7 +61,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
   };
 
   if (loading) {
-    return <div className="px-4 py-24 text-center text-white">Loading onboarding...</div>;
+    return <div className="px-4 py-24 text-center text-white">Loading onboarding…</div>;
   }
 
   return (
@@ -135,36 +73,43 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         <div className="space-y-2">
           <p className="text-xl font-semibold">Secure bank connection</p>
           <p className="text-white/70">
-            We will redirect you to Fiskil to securely link your accounts, then confirm the connection back here.
+            Connect once. We’ll pull your accounts and transactions, then your dashboard will populate.
           </p>
         </div>
 
         {status && <p className="rounded-xl bg-white/5 px-4 py-3 text-white/80">{status}</p>}
         {error && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-red-200">{error}</p>}
 
-        {connectionStatus === "pending" && pendingEndUserId ? (
+        {connectionStatus === "connected" ? (
           <div className="space-y-4">
-            <p className="text-white/80">You returned from Fiskil. Finalise your connection to continue.</p>
+            <p className="text-white/80">Bank already connected.</p>
             <button
               type="button"
-              onClick={() => void finalizeConnection(pendingEndUserId)}
-              className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white disabled:opacity-60"
-              disabled={finalizing}
+              onClick={() => {
+                onComplete?.();
+                window.location.replace("/app/dashboard");
+              }}
+              className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white"
             >
-              {finalizing ? "Finalising connection..." : "Complete connection"}
+              Go to dashboard
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-white/70">Start by connecting your bank.</p>
             <button
               type="button"
               onClick={handleConnectBank}
               className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white disabled:opacity-60"
               disabled={connectingBank}
             >
-              {connectingBank ? "Starting connection..." : "Connect your bank"}
+              {connectingBank ? "Starting connection…" : "Connect your bank"}
             </button>
+
+            {connectionStatus === "pending" && (
+              <p className="text-sm text-white/60">
+                Connection started. If you completed Fiskil and returned, it will finalise on the callback page.
+              </p>
+            )}
           </div>
         )}
       </div>

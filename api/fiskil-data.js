@@ -9,196 +9,171 @@ const toFiskilV1Base = (base) => {
   return /\/v1$/i.test(resolved) ? resolved : `${resolved}/v1`;
 };
 
-const FISKIL_V1_BASE = toFiskilV1Base(process.env.FISKIL_BASE_URL);
+const FISKIL_BASE_URL = toFiskilV1Base(process.env.FISKIL_BASE_URL);
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
-function mustEnv(name, value) {
-  if (!value) throw new Error(`Missing env var: ${name}`);
-  return value;
+function json(res, status, body) {
+  res.status(status);
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(body));
 }
 
-const supabaseAdmin = (() => {
-  mustEnv("SUPABASE_URL", SUPABASE_URL);
-  mustEnv("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY);
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-})();
-
-function getBearerToken(req) {
-  const h = req.headers?.authorization || req.headers?.Authorization;
-  if (!h) return null;
-  const s = String(h);
-  if (!s.toLowerCase().startsWith("bearer ")) return null;
-  return s.slice(7).trim();
-}
-
-// Fiskil token cache (per warm lambda)
-let cachedToken = null;
-let cachedTokenExpMs = 0;
-
-async function getFiskilToken() {
-  mustEnv("FISKIL_CLIENT_ID", FISKIL_CLIENT_ID);
-  mustEnv("FISKIL_CLIENT_SECRET", FISKIL_CLIENT_SECRET);
-
-  const now = Date.now();
-  if (cachedToken && now < cachedTokenExpMs - 15_000) return cachedToken;
-
-  const r = await fetch(`${FISKIL_V1_BASE}/token`, {
+async function getFiskilAccessToken() {
+  const tokenRes = await fetch(`${FISKIL_BASE_URL}/oauth/token`, {
     method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json; charset=UTF-8",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       client_id: FISKIL_CLIENT_ID,
       client_secret: FISKIL_CLIENT_SECRET,
+      grant_type: "client_credentials",
     }),
   });
 
-  const text = await r.text();
-  let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
+  if (!tokenRes.ok) {
+    const text = await tokenRes.text();
+    throw new Error(`Fiskil token error: ${text || tokenRes.status}`);
   }
 
-  if (!r.ok) throw new Error(`Fiskil token failed (${r.status}): ${text}`);
-
-  const token = data?.token;
-  const expiresIn = Number(data?.expires_in ?? 600);
-  if (!token) throw new Error(`Fiskil token missing in response: ${text}`);
-
-  cachedToken = token;
-  cachedTokenExpMs = now + expiresIn * 1000;
-  return cachedToken;
+  const tokenData = await tokenRes.json();
+  if (!tokenData?.access_token) throw new Error("Fiskil token missing access_token");
+  return tokenData.access_token;
 }
 
-async function fiskilGet(pathWithQuery) {
-  const token = await getFiskilToken();
-  const url = `${FISKIL_V1_BASE}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
-
+async function fiskilGet(path, token) {
+  const url = `${FISKIL_BASE_URL}${path}`;
   const r = await fetch(url, {
     method: "GET",
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
 
-  const text = await r.text();
-  let body = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = text;
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`Fiskil GET ${path} failed: ${text || r.status}`);
   }
 
-  return { ok: r.ok, status: r.status, body, rawText: text };
+  return r.json();
 }
 
-function asArray(resp) {
-  if (Array.isArray(resp)) return resp;
-  if (Array.isArray(resp?.data)) return resp.data;
-  if (Array.isArray(resp?.items)) return resp.items;
-  return [];
-}
+function computeSyncStatus({ connected, accountCount, txCount }) {
+  if (!connected) {
+    return { stage: "no_connection", progress: 0, message: "Bank not connected yet." };
+  }
 
-function sampleAccount(raw) {
-  return {
-    id: raw?.id ?? null,
-    name: raw?.name ?? raw?.accountName ?? raw?.displayName ?? null,
-    type: raw?.type?.text ?? raw?.type ?? raw?.accountType ?? null,
-    balance: raw?.balance?.current ?? raw?.balance ?? raw?.amount ?? null,
-    currency: raw?.currency ?? null,
-  };
-}
+  if (accountCount === 0) {
+    return {
+      stage: "awaiting_accounts",
+      progress: 35,
+      message: "Waiting for bank accounts to be available from Fiskil…",
+    };
+  }
 
-function sampleTransaction(raw) {
-  return {
-    id: raw?.id ?? null,
-    account_id: raw?.account_id ?? raw?.accountId ?? null,
-    description: raw?.description ?? raw?.merchant?.name ?? null,
-    amount: raw?.amount ?? null,
-    date: raw?.date ?? raw?.postedAt ?? raw?.transactionDate ?? null,
-  };
-}
+  if (txCount === 0) {
+    return {
+      stage: "awaiting_transactions",
+      progress: 60,
+      message: "Accounts found. Waiting for transactions to be available…",
+    };
+  }
 
-function buildSamples(items, mapper) {
-  const list = Array.isArray(items) ? items.slice(0, 2) : [];
-  return list.map(mapper);
+  return { stage: "ready", progress: 100, message: "Bank data loaded." };
 }
 
 export default async function handler(req, res) {
   try {
-    const jwt = getBearerToken(req);
-    if (!jwt) return res.status(401).json({ error: "Missing auth" });
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return json(res, 500, { error: "Missing Supabase env vars" });
+    }
+    if (!FISKIL_BASE_URL || !FISKIL_CLIENT_ID || !FISKIL_CLIENT_SECRET) {
+      return json(res, 500, { error: "Missing Fiskil env vars" });
+    }
 
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
-    if (userErr || !userData?.user?.id) {
-      return res.status(401).json({ error: "Invalid session" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json(res, 401, { error: "Missing Authorization header" });
+    }
+
+    const accessToken = authHeader.slice("Bearer ".length);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Validate user
+    const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
+    if (userErr || !userData?.user) {
+      return json(res, 401, { error: "Invalid session" });
     }
 
     const appUserId = userData.user.id;
 
-    const { data: profile, error: profErr } = await supabaseAdmin
+    // Load Fiskil end_user_id from profile
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("fiskil_user_id,has_bank_connection")
+      .select("fiskil_user_id, bank_connected")
       .eq("id", appUserId)
       .maybeSingle();
 
-    if (profErr) return res.status(500).json({ error: profErr.message });
+    if (profileErr) {
+      return json(res, 500, { error: profileErr.message });
+    }
 
-    if (!profile?.fiskil_user_id) {
-      return res.status(200).json({
+    const endUserId = profile?.fiskil_user_id || null;
+    const connected = Boolean(profile?.bank_connected && endUserId);
+
+    if (!connected) {
+      const syncStatus = computeSyncStatus({ connected: false, accountCount: 0, txCount: 0 });
+      return json(res, 200, {
         connected: false,
-        end_user_id: null,
         accounts: [],
         transactions: [],
-        last_updated: null,
-        source: "fiskil",
-        debug: {
-          fiskil_base_url: FISKIL_V1_BASE,
-          endpoints: { accounts: null, transactions: null },
-          status: { accounts: null, transactions: null },
-          samples: { accounts: [], transactions: [] },
-        },
+        last_updated: new Date().toISOString(),
+        syncStatus,
+        debug: { appUserId, endUserId },
       });
     }
 
-    const endUserId = profile.fiskil_user_id;
-    const accountsPath = `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`;
-    const transactionsPath = `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}`;
+    // Fetch from Fiskil: accounts first, then transactions per account
+    const fiskilToken = await getFiskilAccessToken();
 
-    const accountsResp = await fiskilGet(accountsPath);
-    const txResp = await fiskilGet(transactionsPath);
+    const accountsPayload = await fiskilGet(
+      `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`,
+      fiskilToken
+    );
 
-    const accounts = accountsResp.ok ? asArray(accountsResp.body).filter((a) => a && a.id) : [];
-    const transactions = txResp.ok ? asArray(txResp.body).filter((t) => t && t.id) : [];
+    const accounts = Array.isArray(accountsPayload?.data) ? accountsPayload.data : [];
+    const accountIds = accounts.map((a) => a?.id).filter(Boolean);
 
-    return res.status(200).json({
+    let allTransactions = [];
+    for (const accountId of accountIds) {
+      try {
+        const txPayload = await fiskilGet(`/banking/accounts/${accountId}/transactions`, fiskilToken);
+        const tx = Array.isArray(txPayload?.data) ? txPayload.data : [];
+        allTransactions = allTransactions.concat(tx);
+      } catch (e) {
+        // If one account fails, still return what we have for the others
+        console.warn("Fiskil transactions fetch failed for account", accountId, String(e?.message || e));
+      }
+    }
+
+    const syncStatus = computeSyncStatus({
       connected: true,
-      end_user_id: endUserId,
+      accountCount: accounts.length,
+      txCount: allTransactions.length,
+    });
+
+    return json(res, 200, {
+      connected: true,
       accounts,
-      transactions,
+      transactions: allTransactions,
       last_updated: new Date().toISOString(),
-      source: "fiskil",
+      syncStatus,
       debug: {
-        fiskil_base_url: FISKIL_V1_BASE,
-        endpoints: { accounts: accountsPath, transactions: transactionsPath },
-        status: { accounts: accountsResp.status, transactions: txResp.status },
-        samples: {
-          accounts: buildSamples(accountsResp.body, sampleAccount),
-          transactions: buildSamples(txResp.body, sampleTransaction),
-        },
+        appUserId,
+        endUserId,
+        accountCount: accounts.length,
+        txCount: allTransactions.length,
       },
     });
-  } catch (error) {
-    return res.status(500).json({
-      error: "Fiskil data error",
-      details: String(error?.message || error),
-    });
+  } catch (err) {
+    console.error("fiskil-data error:", err);
+    return json(res, 500, { error: err?.message || "Unknown server error" });
   }
 }

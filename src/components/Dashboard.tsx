@@ -34,6 +34,8 @@ const Dashboard: React.FC = () => {
     lastUpdated,
     connected,
     debugInfo,
+    syncStatus,
+    refresh,
   } = useFiskilData(user?.id);
 
   const [connecting, setConnecting] = useState(false);
@@ -63,8 +65,7 @@ const Dashboard: React.FC = () => {
 
       const slides = el.querySelectorAll<HTMLElement>("[data-tool-slide]");
       const style = window.getComputedStyle(el);
-      const gapCandidate =
-        style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
+      const gapCandidate = style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
       const parsedGap = gapCandidate ? parseFloat(gapCandidate) : 0;
       const gap = Number.isNaN(parsedGap) ? 0 : parsedGap;
       const slideWidth = slides.length > 0 ? slides[0].clientWidth : el.clientWidth;
@@ -213,13 +214,19 @@ const Dashboard: React.FC = () => {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <SyncingOverlay
-          open={dataLoading}
-          title="Loading bank data"
-          message="Fetching accounts and transactions from Fiskil…"
-          progress={35}
+          open
+          title={syncStatus.stage === "awaiting_transactions" ? "Loading transactions" : "Loading bank data"}
+          message={syncStatus.message || "Fetching accounts and transactions from Fiskil…"}
+          progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 10}
           details={debugBlock || undefined}
         />
-        <p>Loading bank data…</p>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white"
+        >
+          Refresh bank data
+        </button>
         {!connected && ConnectBankCTA}
       </div>
     );
@@ -242,18 +249,43 @@ const Dashboard: React.FC = () => {
   if (!hasData) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
-        <p>No data yet. Connect your bank to see your dashboard.</p>
-        {ConnectBankCTA}
+        <SyncingOverlay
+          open={connected}
+          title="Connection successful"
+          message={syncStatus.message || "Waiting for bank data…"}
+          progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 35}
+          details={debugBlock || undefined}
+        />
+        {!connected ? (
+          <>
+            <p>No data yet. Connect your bank to see your dashboard.</p>
+            {ConnectBankCTA}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white"
+          >
+            Refresh bank data
+          </button>
+        )}
       </div>
     );
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
+        subscriptionTotal,
+        region
+      )} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
+        monthlyStats.expenses,
+        region
+      )}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const pinnedCards = [
@@ -281,7 +313,11 @@ const Dashboard: React.FC = () => {
     {
       key: "spending-forecast",
       element: (
-        <PlanGate feature="Spending forecast" teaser="Upgrade to view AI cashflow scenarios." dataTourId="forecast">
+        <PlanGate
+          feature="Spending forecast"
+          teaser="Upgrade to view AI cashflow scenarios."
+          dataTourId="forecast"
+        >
           <SpendingForecast transactions={transactions} region={region} />
         </PlanGate>
       ),
@@ -289,7 +325,11 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+        <PlanGate
+          feature="Upcoming bills"
+          teaser="Upgrade to predict upcoming bills and due dates."
+          dataTourId="upcoming-bills"
+        >
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -315,6 +355,15 @@ const Dashboard: React.FC = () => {
         >
           {connecting ? "Connecting..." : "Connect bank"}
         </button>
+
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="self-end rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/15 disabled:opacity-60"
+        >
+          Refresh bank data
+        </button>
+
         {connectError && <p className="text-sm text-red-500 sm:text-right">{connectError}</p>}
       </div>
 

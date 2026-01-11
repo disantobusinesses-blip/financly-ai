@@ -1,227 +1,212 @@
 // src/hooks/useFiskilData.ts
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Account, AccountType, Transaction } from "../types";
 
 const ACCOUNT_TYPE_VALUES = new Set(Object.values(AccountType));
 
-const MAX_EMPTY_RETRIES = 10;
-const RETRY_DELAY_MS = 3000;
+// How often we poll while waiting for Fiskil to return accounts/transactions.
+const POLL_MS = 4000;
 
-const parseAmount = (value: unknown): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const m = value.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
-    if (m?.[0]) return Number(m[0]) || 0;
-  }
-  if (value && typeof value === "object") {
-    const v: any = value;
-    return parseAmount(v.current ?? v.available ?? v.amount ?? v.value ?? v.balance ?? 0);
-  }
-  return 0;
-};
+export type SyncStage =
+  | "no_connection"
+  | "awaiting_accounts"
+  | "awaiting_transactions"
+  | "ready"
+  | "error";
 
-const mapAccountType = (rawType: unknown, name: string): AccountType => {
-  if (ACCOUNT_TYPE_VALUES.has(rawType as AccountType)) return rawType as AccountType;
-  const src = `${rawType || name}`.toLowerCase();
-  if (src.includes("savings")) return AccountType.SAVINGS;
-  if (src.includes("credit")) return AccountType.CREDIT_CARD;
-  if (src.includes("loan") || src.includes("mortgage")) return AccountType.LOAN;
-  return AccountType.CHECKING;
-};
-
-const normalizeAccount = (raw: any): Account => {
-  const name = String(raw?.name || raw?.accountName || raw?.displayName || "Account").trim();
-  const type = mapAccountType(raw?.type?.text || raw?.type || raw?.accountType, name);
-  let balance = parseAmount(raw?.balance?.current ?? raw?.balance ?? raw?.amount ?? 0);
-
-  if ((type === AccountType.CREDIT_CARD || type === AccountType.LOAN) && balance > 0) {
-    balance = -Math.abs(balance);
-  }
-
-  return {
-    id: String(raw?.id || raw?.accountId),
-    name,
-    type,
-    balance,
-    currency: raw?.currency || "AUD",
-  };
-};
-
-const normalizeTransaction = (raw: any): Transaction => {
-  const date = new Date(
-    raw?.date || raw?.postedAt || raw?.transactionDate || raw?.createdAt || Date.now()
-  ).toISOString();
-
-  return {
-    id: String(raw?.id || `${raw?.description}-${date}`),
-    accountId: String(raw?.account_id || raw?.accountId || ""),
-    description: String(raw?.description || raw?.merchant?.name || "Transaction"),
-    amount: parseAmount(raw?.amount),
-    date,
-    category: String(raw?.category || "Other"),
-  };
-};
-
-type FiskilDebug = {
-  fiskil_base_url?: string;
-  endpoints?: { accounts?: string | null; transactions?: string | null };
-  status?: { accounts?: number | null; transactions?: number | null };
-  samples?: { accounts?: Record<string, unknown>[]; transactions?: Record<string, unknown>[] };
-};
-
-type FiskilDataPayload = {
-  connected?: boolean;
-  end_user_id?: string | null;
-  accounts?: any[];
-  transactions?: any[];
-  last_updated?: string | null;
-  source?: string;
-  debug?: FiskilDebug;
-  error?: string;
-};
+export interface SyncStatus {
+  stage: SyncStage;
+  progress: number;
+  message: string;
+}
 
 export interface FiskilDataResult {
+  connected: boolean;
   accounts: Account[];
   transactions: Transaction[];
-  loading: boolean;
-  error: string | null;
-  mode: "live";
   lastUpdated: string | null;
-  connected: boolean;
-  debugInfo: FiskilDebug | null;
+  syncStatus: SyncStatus;
+  debugInfo?: any;
 }
 
-async function safeJson(res: Response): Promise<any> {
-  const text = await res.text();
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    return { raw: text };
-  }
-}
-
-function shouldRetryEmpty(accounts: Account[], transactions: Transaction[]): boolean {
-  return accounts.length === 0 && transactions.length === 0;
-}
-
-export function useFiskilData(identityKey?: string): FiskilDataResult {
+export function useFiskilData(userId: string | null | undefined) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<FiskilDebug | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    stage: "no_connection",
+    progress: 0,
+    message: "Bank not connected yet.",
+  });
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    let retryTimeout: number | null = null;
+  const mountedRef = useRef(true);
+  const pollTimerRef = useRef<number | null>(null);
 
-    const fetchData = async (attempt: number) => {
-      try {
-        const session = (await supabase.auth.getSession()).data.session;
-        const jwt = session?.access_token;
+  const normalizeAccountType = (raw: any): AccountType => {
+    if (ACCOUNT_TYPE_VALUES.has(raw)) return raw as AccountType;
+    const lower = String(raw ?? "").toLowerCase();
+    if (lower.includes("credit")) return AccountType.CREDIT_CARD;
+    if (lower.includes("loan")) return AccountType.LOAN;
+    return AccountType.CHECKING;
+  };
 
-        if (!jwt) {
-          if (!cancelled) {
-            setConnected(false);
-            setAccounts([]);
-            setTransactions([]);
-            setError("Please log in to view your bank data.");
-            setLoading(false);
-          }
-          return;
+  const normalizeAccounts = (rawAccounts: any[]): Account[] =>
+    rawAccounts.map((acc) => ({
+      id: String(acc.id),
+      name: String(acc.name ?? acc.display_name ?? acc.provider_name ?? "Bank Account"),
+      institution: String(acc.institution ?? acc.provider_name ?? acc.provider?.name ?? "Bank"),
+      balance: Number(acc.balance ?? acc.current_balance ?? 0),
+      currency: String(acc.currency ?? "AUD"),
+      type: normalizeAccountType(acc.type),
+      lastUpdated: acc.last_updated ?? acc.updated_at ?? new Date().toISOString(),
+    }));
+
+  const normalizeTransactions = (rawTx: any[]): Transaction[] =>
+    rawTx.map((tx) => ({
+      id: String(tx.id),
+      accountId: String(tx.account_id ?? tx.accountId ?? ""),
+      date: String(tx.date ?? tx.posted_at ?? tx.created_at ?? new Date().toISOString()),
+      description: String(tx.description ?? tx.merchant ?? tx.narrative ?? "Transaction"),
+      amount: Number(tx.amount ?? 0),
+      category: String(tx.category ?? "Uncategorized"),
+      type: tx.amount < 0 ? "debit" : "credit",
+      merchant: tx.merchant ?? null,
+      reference: tx.reference ?? null,
+      isPending: Boolean(tx.is_pending ?? tx.pending ?? false),
+    }));
+
+  const clearPolling = () => {
+    if (pollTimerRef.current) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  };
+
+  const schedulePoll = (fn: () => void) => {
+    clearPolling();
+    pollTimerRef.current = window.setTimeout(fn, POLL_MS) as unknown as number;
+  };
+
+  const fetchOnce = useCallback(async (): Promise<FiskilDataResult> => {
+    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+    if (sessionErr || !sessionData.session) {
+      throw new Error("Not authenticated");
+    }
+
+    const res = await fetch("/api/fiskil-data", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Failed to fetch Fiskil data");
+    }
+
+    const data = await res.json();
+
+    const rawAccounts = Array.isArray(data.accounts) ? data.accounts : [];
+    const rawTransactions = Array.isArray(data.transactions) ? data.transactions : [];
+    const nextConnected = Boolean(data.connected);
+
+    const nextSyncStatus: SyncStatus = data?.syncStatus?.stage
+      ? {
+          stage: data.syncStatus.stage,
+          progress: Number(data.syncStatus.progress ?? 0),
+          message: String(data.syncStatus.message ?? ""),
         }
+      : nextConnected
+      ? rawAccounts.length === 0
+        ? { stage: "awaiting_accounts", progress: 35, message: "Waiting for bank accounts…" }
+        : rawTransactions.length === 0
+        ? { stage: "awaiting_transactions", progress: 60, message: "Waiting for transactions…" }
+        : { stage: "ready", progress: 100, message: "Bank data loaded." }
+      : { stage: "no_connection", progress: 0, message: "Bank not connected yet." };
 
-        const res = await fetch("/api/fiskil-data", {
-          headers: { Authorization: `Bearer ${jwt}` },
-          cache: "no-store",
-        });
-
-        const payload = (await safeJson(res)) as FiskilDataPayload;
-
-        if (!res.ok) {
-          const msg = typeof payload?.error === "string" ? payload.error : "Failed to load bank data";
-          throw new Error(msg);
-        }
-
-        const accRaw = Array.isArray(payload.accounts) ? payload.accounts : [];
-        const txRaw = Array.isArray(payload.transactions) ? payload.transactions : [];
-        const acc = accRaw.map(normalizeAccount);
-        const tx = txRaw.map(normalizeTransaction);
-        const isConnected = Boolean(payload.connected);
-
-        if (!cancelled) {
-          setConnected(isConnected);
-          setAccounts(acc);
-          setTransactions(tx);
-          setLastUpdated(payload.last_updated || null);
-          setDebugInfo(payload.debug || null);
-          setError(null);
-        }
-
-        if (!isConnected) {
-          if (!cancelled) {
-            setError("No connected bank account yet.");
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (shouldRetryEmpty(acc, tx)) {
-          if (attempt < MAX_EMPTY_RETRIES) {
-            retryTimeout = window.setTimeout(() => {
-              void fetchData(attempt + 1);
-            }, RETRY_DELAY_MS);
-            return;
-          }
-
-          if (!cancelled) {
-            setError(
-              "No transactions returned from Fiskil yet. Try reconnecting or wait 1–2 minutes."
-            );
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (!cancelled) {
-          setLoading(false);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || "Failed to load bank data");
-          setLoading(false);
-        }
-      }
+    return {
+      connected: nextConnected,
+      accounts: normalizeAccounts(rawAccounts),
+      transactions: normalizeTransactions(rawTransactions),
+      lastUpdated: data.last_updated ?? null,
+      syncStatus: nextSyncStatus,
+      debugInfo: data.debug ?? null,
     };
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!mountedRef.current) return;
 
     setLoading(true);
     setError(null);
-    setAccounts([]);
-    setTransactions([]);
-    setDebugInfo(null);
-    setLastUpdated(null);
 
-    void fetchData(1);
+    try {
+      const data = await fetchOnce();
+      if (!mountedRef.current) return;
+
+      setConnected(data.connected);
+      setSyncStatus(data.syncStatus);
+      setLastUpdated(data.lastUpdated);
+      setDebugInfo(data.debugInfo);
+
+      // Only overwrite visible data if we actually have some.
+      if (data.accounts.length) setAccounts(data.accounts);
+      if (data.transactions.length) setTransactions(data.transactions);
+
+      // Keep polling while we're still waiting for accounts/tx.
+      if (data.syncStatus.stage === "awaiting_accounts" || data.syncStatus.stage === "awaiting_transactions") {
+        schedulePoll(() => void refresh());
+      } else {
+        clearPolling();
+      }
+    } catch (e: any) {
+      if (!mountedRef.current) return;
+      setError(e?.message || "Failed to load bank data");
+      setSyncStatus({ stage: "error", progress: 0, message: "Error loading bank data." });
+      clearPolling();
+    } finally {
+      if (!mountedRef.current) return;
+      setLoading(false);
+    }
+  }, [fetchOnce]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    if (!userId) {
+      setLoading(false);
+      setConnected(false);
+      setAccounts([]);
+      setTransactions([]);
+      setLastUpdated(null);
+      setSyncStatus({ stage: "no_connection", progress: 0, message: "Bank not connected yet." });
+      return () => {
+        mountedRef.current = false;
+        clearPolling();
+      };
+    }
+
+    void refresh();
 
     return () => {
-      cancelled = true;
-      if (retryTimeout) {
-        window.clearTimeout(retryTimeout);
-      }
+      mountedRef.current = false;
+      clearPolling();
     };
-  }, [identityKey]);
+  }, [userId, refresh]);
 
   return {
     accounts,
     transactions,
     loading,
     error,
-    mode: "live",
     lastUpdated,
     connected,
+    syncStatus,
     debugInfo,
+    refresh,
   };
 }
