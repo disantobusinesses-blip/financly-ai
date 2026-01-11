@@ -44,17 +44,16 @@ const SyncingOverlay: React.FC<SyncingOverlayProps> = ({
           <div
             className="h-2 rounded-full bg-primary transition-[width] duration-300"
             style={{ width: `${pct}%` }}
-            aria-label="Sync progress"
+            role="progressbar"
             aria-valuenow={pct}
             aria-valuemin={0}
             aria-valuemax={100}
-            role="progressbar"
           />
         </div>
         <div className="mt-2 text-xs text-white/60">{pct}%</div>
 
         {details && (
-          <pre className="mt-4 max-h-40 overflow-auto rounded-xl bg-black/30 p-3 text-left text-xs text-white/70">
+          <pre className="mt-4 max-h-40 overflow-auto rounded-xl bg-black/30 p-3 text-left text-[11px] leading-snug text-white/70">
             {details}
           </pre>
         )}
