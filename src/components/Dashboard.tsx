@@ -17,8 +17,6 @@ import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
-import AIInsightsPanel from "./AIInsightsPanel";
-import { useAIInsights } from "../hooks/useAIInsights";
 import SyncingOverlay from "./SyncingOverlay";
 
 const TOUR_KEY = "myaibank_tour_seen";
@@ -34,19 +32,9 @@ const Dashboard: React.FC = () => {
     loading: dataLoading,
     error,
     lastUpdated,
-    syncing,
-    syncProgress,
-    syncMessage,
-    syncDetails,
+    connected,
+    debugInfo,
   } = useFiskilData(user?.id);
-
-  const totalBalance = useMemo(
-    () => accounts.reduce((sum, account) => sum + (account.balance || 0), 0),
-    [accounts]
-  );
-
-  const { alerts, insights, forecast, loading: aiLoading, error: aiError, disclaimer, generatedAt } =
-    useAIInsights(user?.id, region, accounts, transactions, totalBalance);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -91,12 +79,12 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const seenTour = localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
-    if (!seenTour && accounts.length > 0) {
+    if (!seenTour && (accounts.length > 0 || transactions.length > 0)) {
       setTourOpen(true);
       localStorage.setItem(TOUR_KEY, "1");
       localStorage.removeItem(LEGACY_TOUR_KEY);
     }
-  }, [accounts.length, user]);
+  }, [accounts.length, transactions.length, user]);
 
   useEffect(() => {
     updateRailScrollState();
@@ -218,52 +206,42 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  const showSyncOverlay = Boolean(syncing) && accounts.length === 0;
-  const overlayTitle = "Connection successful";
-  const overlayMessage = syncMessage || "Waiting for bank data…";
+  const hasData = accounts.length > 0 || transactions.length > 0;
+  const debugBlock = debugInfo ? JSON.stringify(debugInfo, null, 2) : null;
 
-  if (dataLoading && accounts.length === 0) {
+  if (dataLoading && !hasData) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
+          open={dataLoading}
+          title="Loading bank data"
+          message="Fetching accounts and transactions from Fiskil…"
+          progress={35}
+          details={debugBlock || undefined}
         />
-        <p>Loading your financial data...</p>
+        <p>Loading bank data…</p>
+        {!connected && ConnectBankCTA}
+      </div>
+    );
+  }
+
+  if (error && !hasData) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <p className="text-red-500">{error}</p>
+        {debugBlock && (
+          <pre className="mt-2 max-h-56 w-full max-w-2xl overflow-auto rounded-xl bg-slate-950/80 p-4 text-xs text-slate-100">
+            {debugBlock}
+          </pre>
+        )}
         {ConnectBankCTA}
       </div>
     );
   }
 
-  if (error && accounts.length === 0) {
+  if (!hasData) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
-        <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
-        />
-        <p className="text-red-500">Failed to load data: {error}</p>
-        {ConnectBankCTA}
-      </div>
-    );
-  }
-
-  if (!accounts.length) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
-        <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
-        />
         <p>No data yet. Connect your bank to see your dashboard.</p>
         {ConnectBankCTA}
       </div>
@@ -340,23 +318,10 @@ const Dashboard: React.FC = () => {
         {connectError && <p className="text-sm text-red-500 sm:text-right">{connectError}</p>}
       </div>
 
-      {error && accounts.length > 0 && (
+      {error && hasData && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
         </div>
-      )}
-
-      {accounts.length > 0 && (
-        <AIInsightsPanel
-          loading={aiLoading}
-          error={aiError}
-          insights={insights}
-          alerts={alerts}
-          forecast={forecast}
-          disclaimer={disclaimer}
-          generatedAt={generatedAt}
-          region={region}
-        />
       )}
 
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />

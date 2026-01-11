@@ -31,9 +31,8 @@ const usePath = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, profile, session, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { path, navigate } = usePath();
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,29 +51,6 @@ const AppContent: React.FC = () => {
     </>
   );
 
-  const handleRefreshTransactions = async () => {
-    if (!session?.access_token) return;
-    setRefreshing(true);
-    try {
-      const res = await fetch("/api/refresh-transactions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Unable to refresh transactions");
-      }
-      localStorage.removeItem("accountsCache");
-      localStorage.removeItem("transactionsCache");
-      navigate(window.location.pathname);
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
-      alert("Unable to refresh transactions right now.");
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   if (path === "/signup") {
     return (
@@ -177,18 +153,6 @@ const AppContent: React.FC = () => {
           onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
         />
         <main className="px-4 pb-16 pt-6 md:px-8">
-          {profile?.has_bank_connection && (
-            <div className="mb-4 flex justify-end">
-              <button
-                type="button"
-                onClick={handleRefreshTransactions}
-                disabled={refreshing}
-                className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/60 disabled:opacity-60"
-              >
-                {refreshing ? "Refreshing transactions..." : "Refresh transactions"}
-              </button>
-            </div>
-          )}
           <Dashboard />
         </main>
       </div>

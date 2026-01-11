@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { BankingService, initiateBankConnection } from "../services/BankingService";
-import type { User } from "../types";
 
 type ConnectionStatus = "pending" | "connected" | null;
 
@@ -16,57 +15,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     BankingService.getConnectionStatus() as ConnectionStatus
   );
   const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [region, setRegion] = useState<User["region"]>("AU");
-
-  const warmAIWithLatestData = useCallback(
-    async (accessToken: string) => {
-      if (!sessionUserId) return;
-
-      const dataRes = await fetch("/api/fiskil-data", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      });
-
-      const payload = await dataRes.json();
-      if (!dataRes.ok) {
-        throw new Error(payload?.error || "Unable to fetch bank data for AI");
-      }
-
-      const accounts = Array.isArray(payload.accounts) ? payload.accounts : [];
-      const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
-      const totalBalance = accounts.reduce(
-        (sum: number, account: any) => sum + (Number(account?.balance) || 0),
-        0
-      );
-      const now = new Date();
-
-      const aiRes = await fetch("/api/analyze-finances", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: sessionUserId,
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
-          region,
-          accounts,
-          transactions,
-          totalBalance,
-          forceRefresh: true,
-        }),
-      });
-
-      if (!aiRes.ok) {
-        const text = await aiRes.text();
-        throw new Error(text || "Unable to warm AI analysis");
-      }
-    },
-    [region, sessionUserId]
-  );
 
   const finalizeConnection = useCallback(
     async (endUserId: string, tokenOverride?: string) => {
@@ -80,7 +28,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           throw new Error("Please log in to finish onboarding.");
         }
 
-        // 1) Mark bank connected (stores fiskil_user_id / has_bank_connection)
         const markRes = await fetch("/api/mark-bank-connected", {
           method: "POST",
           headers: {
@@ -95,35 +42,13 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
           throw new Error(text || "Unable to finalise bank connection.");
         }
 
-        // 2) Pull transactions NOW so the dashboard has data immediately
-        setStatus("Syncing your transactions...");
-        const refreshRes = await fetch("/api/refresh-transactions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!refreshRes.ok) {
-          const text = await refreshRes.text();
-          throw new Error(text || "Bank connected, but we couldn’t sync transactions yet.");
-        }
-
-        // 3) Send synced data to AI so the dashboard shows insights immediately
-        try {
-          setStatus("Asking AI to personalise your dashboard...");
-          await warmAIWithLatestData(accessToken);
-        } catch (aiErr: any) {
-          console.error("⚠️ AI warm-up failed", aiErr);
-        }
-
         BankingService.setConnectionStatus("connected");
         setConnectionStatus("connected");
         setStatus("Bank connected! Redirecting...");
         onComplete?.();
 
         setTimeout(() => {
-          window.location.replace("/dashboard");
+          window.location.replace("/app/dashboard");
         }, 600);
       } catch (err: any) {
         setError(err?.message || "Unable to finalise your bank connection.");
@@ -131,7 +56,7 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
         setFinalizing(false);
       }
     },
-    [onComplete, sessionToken, warmAIWithLatestData]
+    [onComplete, sessionToken]
   );
 
   useEffect(() => {
@@ -143,18 +68,11 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
       }
 
       setSessionToken(data.session.access_token);
-      setSessionUserId(data.session.user.id);
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("country")
         .eq("id", data.session.user.id)
         .maybeSingle();
-
-      const country = (profile as { country?: string } | null)?.country;
-      if (country === "AU" || country === "US") {
-        setRegion(country);
-      }
 
       const params = new URLSearchParams(window.location.search);
       const endUserFromUrl =
@@ -194,7 +112,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
       const { redirectUrl, endUserId } = await initiateBankConnection(token);
 
-      // Store for when we return (Fiskil may not include end_user_id in the redirect)
       BankingService.setStoredEndUserId(endUserId);
       BankingService.setConnectionStatus("pending");
 

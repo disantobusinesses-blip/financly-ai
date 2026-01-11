@@ -1,9 +1,12 @@
 // src/hooks/useFiskilData.ts
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { Account, AccountType, Transaction } from "../types";
 
 const ACCOUNT_TYPE_VALUES = new Set(Object.values(AccountType));
+
+const MAX_EMPTY_RETRIES = 10;
+const RETRY_DELAY_MS = 3000;
 
 const parseAmount = (value: unknown): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -60,15 +63,22 @@ const normalizeTransaction = (raw: any): Transaction => {
   };
 };
 
-type FiskilMeta = { accounts_status?: number; transactions_status?: number };
+type FiskilDebug = {
+  fiskil_base_url?: string;
+  endpoints?: { accounts?: string | null; transactions?: string | null };
+  status?: { accounts?: number | null; transactions?: number | null };
+  samples?: { accounts?: Record<string, unknown>[]; transactions?: Record<string, unknown>[] };
+};
+
 type FiskilDataPayload = {
   connected?: boolean;
-  end_user_id?: string;
+  end_user_id?: string | null;
   accounts?: any[];
   transactions?: any[];
   last_updated?: string | null;
   source?: string;
-  fiskil?: FiskilMeta;
+  debug?: FiskilDebug;
+  error?: string;
 };
 
 export interface FiskilDataResult {
@@ -78,14 +88,9 @@ export interface FiskilDataResult {
   error: string | null;
   mode: "live";
   lastUpdated: string | null;
-
-  syncing: boolean;
-  syncProgress: number;
-  syncMessage: string;
-  syncDetails: string | null;
+  connected: boolean;
+  debugInfo: FiskilDebug | null;
 }
-
-const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 async function safeJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -96,11 +101,8 @@ async function safeJson(res: Response): Promise<any> {
   }
 }
 
-function deriveProgress(args: { connected: boolean; a: number; t: number }): { syncing: boolean; p: number; msg: string } {
-  if (!args.connected) return { syncing: false, p: 0, msg: "" };
-  if (args.t > 0) return { syncing: false, p: 100, msg: "Transactions loaded. Loading dashboard…" };
-  if (args.a > 0) return { syncing: true, p: 75, msg: "Accounts loaded. Waiting for transactions…" };
-  return { syncing: true, p: 35, msg: "Connection confirmed. Waiting for bank data…" };
+function shouldRetryEmpty(accounts: Account[], transactions: Transaction[]): boolean {
+  return accounts.length === 0 && transactions.length === 0;
 }
 
 export function useFiskilData(identityKey?: string): FiskilDataResult {
@@ -109,29 +111,29 @@ export function useFiskilData(identityKey?: string): FiskilDataResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
   const [connected, setConnected] = useState(false);
-  const [syncDetails, setSyncDetails] = useState<string | null>(null);
-
-  const pollTimerRef = useRef<number | null>(null);
-  const pollStartRef = useRef<number>(0);
-
-  const derived = useMemo(() => {
-    return deriveProgress({ connected, a: accounts.length, t: transactions.length });
-  }, [connected, accounts.length, transactions.length]);
+  const [debugInfo, setDebugInfo] = useState<FiskilDebug | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimeout: number | null = null;
 
-    const stopPolling = () => {
-      if (pollTimerRef.current) {
-        window.clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-    };
-
-    const fetchOnce = async (jwt: string) => {
+    const fetchData = async (attempt: number) => {
       try {
+        const session = (await supabase.auth.getSession()).data.session;
+        const jwt = session?.access_token;
+
+        if (!jwt) {
+          if (!cancelled) {
+            setConnected(false);
+            setAccounts([]);
+            setTransactions([]);
+            setError("Please log in to view your bank data.");
+            setLoading(false);
+          }
+          return;
+        }
+
         const res = await fetch("/api/fiskil-data", {
           headers: { Authorization: `Bearer ${jwt}` },
           cache: "no-store",
@@ -139,116 +141,77 @@ export function useFiskilData(identityKey?: string): FiskilDataResult {
 
         const payload = (await safeJson(res)) as FiskilDataPayload;
 
-        // If not connected, show CTA state
-        if (!res.ok && res.status !== 202) {
-          const msg = typeof (payload as any)?.error === "string" ? (payload as any).error : "Failed to load bank data";
-          if (msg.toLowerCase().includes("no connected bank")) {
-            if (!cancelled) {
-              setConnected(false);
-              setAccounts([]);
-              setTransactions([]);
-              setError("No connected bank account yet.");
-              setSyncDetails(null);
-            }
-            return;
-          }
+        if (!res.ok) {
+          const msg = typeof payload?.error === "string" ? payload.error : "Failed to load bank data";
           throw new Error(msg);
         }
 
         const accRaw = Array.isArray(payload.accounts) ? payload.accounts : [];
         const txRaw = Array.isArray(payload.transactions) ? payload.transactions : [];
-
         const acc = accRaw.map(normalizeAccount);
         const tx = txRaw.map(normalizeTransaction);
-
         const isConnected = Boolean(payload.connected);
-        const eu = payload.end_user_id || "unknown";
-        const aStatus = payload.fiskil?.accounts_status;
-        const tStatus = payload.fiskil?.transactions_status;
 
         if (!cancelled) {
           setConnected(isConnected);
           setAccounts(acc);
           setTransactions(tx);
-          setLastUpdated(payload.last_updated || new Date().toISOString());
+          setLastUpdated(payload.last_updated || null);
+          setDebugInfo(payload.debug || null);
           setError(null);
-
-          setSyncDetails(
-            `end_user_id=${eu} | fiskil accounts=${acc.length} (status ${aStatus}) | transactions=${tx.length} (status ${tStatus}) | last_updated=${payload.last_updated || "null"}`
-          );
         }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || "Failed to load bank data");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
 
-    const startPolling = async () => {
-      setLoading(true);
-      setError(null);
-
-      const session = (await supabase.auth.getSession()).data.session;
-      const jwt = session?.access_token;
-
-      if (!jwt) {
-        if (!cancelled) {
-          setConnected(false);
-          setAccounts([]);
-          setTransactions([]);
-          setError("Please log in to view your bank data.");
-          setLoading(false);
-        }
-        return;
-      }
-
-      // Immediate fetch
-      await fetchOnce(jwt);
-
-      // If we already have tx, stop.
-      if (transactions.length > 0) {
-        stopPolling();
-        return;
-      }
-
-      // Poll for max 90 seconds, every 4s
-      if (pollTimerRef.current) return;
-      pollStartRef.current = Date.now();
-
-      pollTimerRef.current = window.setInterval(async () => {
-        if (cancelled) return;
-
-        const elapsed = Date.now() - pollStartRef.current;
-        if (elapsed > 90_000) {
-          stopPolling();
+        if (!isConnected) {
           if (!cancelled) {
-            setError("Bank data is taking too long. Please try again in 1–2 minutes.");
+            setError("No connected bank account yet.");
+            setLoading(false);
           }
           return;
         }
 
-        const s = (await supabase.auth.getSession()).data.session;
-        const jwt2 = s?.access_token;
-        if (!jwt2) return;
+        if (shouldRetryEmpty(acc, tx)) {
+          if (attempt < MAX_EMPTY_RETRIES) {
+            retryTimeout = window.setTimeout(() => {
+              void fetchData(attempt + 1);
+            }, RETRY_DELAY_MS);
+            return;
+          }
 
-        await fetchOnce(jwt2);
-
-        // Stop once we have transactions
-        if (!cancelled && (transactions.length > 0)) {
-          stopPolling();
+          if (!cancelled) {
+            setError(
+              "No transactions returned from Fiskil yet. Try reconnecting or wait 1–2 minutes."
+            );
+            setLoading(false);
+          }
+          return;
         }
-      }, 4000);
+
+        if (!cancelled) {
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e?.message || "Failed to load bank data");
+          setLoading(false);
+        }
+      }
     };
 
-    void startPolling();
+    setLoading(true);
+    setError(null);
+    setAccounts([]);
+    setTransactions([]);
+    setDebugInfo(null);
+    setLastUpdated(null);
+
+    void fetchData(1);
 
     return () => {
       cancelled = true;
-      stopPolling();
+      if (retryTimeout) {
+        window.clearTimeout(retryTimeout);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identityKey]);
 
   return {
@@ -258,10 +221,7 @@ export function useFiskilData(identityKey?: string): FiskilDataResult {
     error,
     mode: "live",
     lastUpdated,
-
-    syncing: derived.syncing,
-    syncProgress: clamp(derived.p, 0, 100),
-    syncMessage: derived.msg,
-    syncDetails,
+    connected,
+    debugInfo,
   };
 }

@@ -106,6 +106,31 @@ function asArray(resp) {
   return [];
 }
 
+function sampleAccount(raw) {
+  return {
+    id: raw?.id ?? null,
+    name: raw?.name ?? raw?.accountName ?? raw?.displayName ?? null,
+    type: raw?.type?.text ?? raw?.type ?? raw?.accountType ?? null,
+    balance: raw?.balance?.current ?? raw?.balance ?? raw?.amount ?? null,
+    currency: raw?.currency ?? null,
+  };
+}
+
+function sampleTransaction(raw) {
+  return {
+    id: raw?.id ?? null,
+    account_id: raw?.account_id ?? raw?.accountId ?? null,
+    description: raw?.description ?? raw?.merchant?.name ?? null,
+    amount: raw?.amount ?? null,
+    date: raw?.date ?? raw?.postedAt ?? raw?.transactionDate ?? null,
+  };
+}
+
+function buildSamples(items, mapper) {
+  const list = Array.isArray(items) ? items.slice(0, 2) : [];
+  return list.map(mapper);
+}
+
 export default async function handler(req, res) {
   try {
     const jwt = getBearerToken(req);
@@ -118,7 +143,6 @@ export default async function handler(req, res) {
 
     const appUserId = userData.user.id;
 
-    // We still use Supabase only to find the connected end_user_id
     const { data: profile, error: profErr } = await supabaseAdmin
       .from("profiles")
       .select("fiskil_user_id,has_bank_connection")
@@ -128,31 +152,31 @@ export default async function handler(req, res) {
     if (profErr) return res.status(500).json({ error: profErr.message });
 
     if (!profile?.fiskil_user_id) {
-      return res.status(400).json({ error: "No connected bank" });
-    }
-
-    const endUserId = profile.fiskil_user_id;
-
-    const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
-    const txResp = await fiskilGet(`/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}`);
-
-    // If Fiskil is still syncing and returns non-200s, treat as "not ready" (keeps UI polling)
-    if (!accountsResp.ok || !txResp.ok) {
-      return res.status(202).json({
-        connected: true,
-        end_user_id: endUserId,
+      return res.status(200).json({
+        connected: false,
+        end_user_id: null,
         accounts: [],
         transactions: [],
         last_updated: null,
-        fiskil: {
-          accounts_status: accountsResp.status,
-          transactions_status: txResp.status,
+        source: "fiskil",
+        debug: {
+          fiskil_base_url: FISKIL_V1_BASE,
+          endpoints: { accounts: null, transactions: null },
+          status: { accounts: null, transactions: null },
+          samples: { accounts: [], transactions: [] },
         },
       });
     }
 
-    const accounts = asArray(accountsResp.body).filter((a) => a && a.id);
-    const transactions = asArray(txResp.body).filter((t) => t && t.id);
+    const endUserId = profile.fiskil_user_id;
+    const accountsPath = `/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`;
+    const transactionsPath = `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}`;
+
+    const accountsResp = await fiskilGet(accountsPath);
+    const txResp = await fiskilGet(transactionsPath);
+
+    const accounts = accountsResp.ok ? asArray(accountsResp.body).filter((a) => a && a.id) : [];
+    const transactions = txResp.ok ? asArray(txResp.body).filter((t) => t && t.id) : [];
 
     return res.status(200).json({
       connected: true,
@@ -161,9 +185,14 @@ export default async function handler(req, res) {
       transactions,
       last_updated: new Date().toISOString(),
       source: "fiskil",
-      fiskil: {
-        accounts_status: accountsResp.status,
-        transactions_status: txResp.status,
+      debug: {
+        fiskil_base_url: FISKIL_V1_BASE,
+        endpoints: { accounts: accountsPath, transactions: transactionsPath },
+        status: { accounts: accountsResp.status, transactions: txResp.status },
+        samples: {
+          accounts: buildSamples(accountsResp.body, sampleAccount),
+          transactions: buildSamples(txResp.body, sampleTransaction),
+        },
       },
     });
   } catch (error) {
