@@ -2,14 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
-const toFiskilV1Base = (base) => {
-  const resolved = normalizeBase(base || "https://api.fiskil.com");
-  return /\/v1$/i.test(resolved) ? resolved : `${resolved}/v1`;
-};
-
-const FISKIL_V1_BASE = toFiskilV1Base(process.env.FISKIL_BASE_URL);
+const FISKIL_BASE_URL = process.env.FISKIL_BASE_URL;
 const FISKIL_CLIENT_ID = process.env.FISKIL_CLIENT_ID;
 const FISKIL_CLIENT_SECRET = process.env.FISKIL_CLIENT_SECRET;
 
@@ -26,6 +19,14 @@ const supabaseAdmin = (() => {
   });
 })();
 
+const normalizeBase = (url) => String(url || "").replace(/\/$/, "");
+const toFiskilV1Base = (base) => {
+  const resolved = normalizeBase(base || "https://api.fiskil.com");
+  return /\/v1$/i.test(resolved) ? resolved : `${resolved}/v1`;
+};
+
+const FISKIL_V1_BASE = toFiskilV1Base(FISKIL_BASE_URL);
+
 function getBearerToken(req) {
   const h = req.headers?.authorization || req.headers?.Authorization;
   if (!h) return null;
@@ -34,7 +35,6 @@ function getBearerToken(req) {
   return s.slice(7).trim();
 }
 
-// Fiskil token cache (per warm lambda)
 let cachedToken = null;
 let cachedTokenExpMs = 0;
 
@@ -89,24 +89,21 @@ async function fiskilGet(pathWithQuery) {
   });
 
   const text = await r.text();
-  let body = null;
+  let data = null;
   try {
-    body = text ? JSON.parse(text) : null;
+    data = text ? JSON.parse(text) : null;
   } catch {
-    body = text;
+    data = text;
   }
 
-  return { ok: r.ok, status: r.status, body, rawText: text };
-}
-
-function asArray(resp) {
-  if (Array.isArray(resp)) return resp;
-  if (Array.isArray(resp?.data)) return resp.data;
-  if (Array.isArray(resp?.items)) return resp.items;
-  return [];
+  return { status: r.status, body: data };
 }
 
 export default async function handler(req, res) {
+  if (req.method !== "GET" && req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
   try {
     const jwt = getBearerToken(req);
     if (!jwt) return res.status(401).json({ error: "Missing auth" });
@@ -117,59 +114,41 @@ export default async function handler(req, res) {
     }
 
     const appUserId = userData.user.id;
-
-    // We still use Supabase only to find the connected end_user_id
     const { data: profile, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("fiskil_user_id,has_bank_connection")
+      .select("fiskil_user_id")
       .eq("id", appUserId)
       .maybeSingle();
 
     if (profErr) return res.status(500).json({ error: profErr.message });
-
     if (!profile?.fiskil_user_id) {
-      return res.status(400).json({ error: "No connected bank" });
+      return res.status(400).json({ error: "No connected bank: missing profiles.fiskil_user_id" });
     }
 
     const endUserId = profile.fiskil_user_id;
 
     const accountsResp = await fiskilGet(`/banking/accounts?end_user_id=${encodeURIComponent(endUserId)}`);
-    const txResp = await fiskilGet(`/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}`);
+    const transactionsResp = await fiskilGet(
+      `/banking/transactions?end_user_id=${encodeURIComponent(endUserId)}`
+    );
 
-    // If Fiskil is still syncing and returns non-200s, treat as "not ready" (keeps UI polling)
-    if (!accountsResp.ok || !txResp.ok) {
-      return res.status(202).json({
-        connected: true,
-        end_user_id: endUserId,
-        accounts: [],
-        transactions: [],
-        last_updated: null,
-        fiskil: {
-          accounts_status: accountsResp.status,
-          transactions_status: txResp.status,
-        },
-      });
-    }
-
-    const accounts = asArray(accountsResp.body).filter((a) => a && a.id);
-    const transactions = asArray(txResp.body).filter((t) => t && t.id);
+    console.log("✅ /api/debug-fiskil-direct", {
+      appUserId,
+      endUserId,
+      accountsStatus: accountsResp.status,
+      transactionsStatus: transactionsResp.status,
+    });
 
     return res.status(200).json({
-      connected: true,
+      fiskil_base_url: FISKIL_V1_BASE,
       end_user_id: endUserId,
-      accounts,
-      transactions,
-      last_updated: new Date().toISOString(),
-      source: "fiskil",
-      fiskil: {
-        accounts_status: accountsResp.status,
-        transactions_status: txResp.status,
-      },
+      accounts_status: accountsResp.status,
+      accounts_body: accountsResp.body,
+      transactions_status: transactionsResp.status,
+      transactions_body: transactionsResp.body,
     });
-  } catch (error) {
-    return res.status(500).json({
-      error: "Fiskil data error",
-      details: String(error?.message || error),
-    });
+  } catch (err) {
+    console.error("❌ /api/debug-fiskil-direct error:", err);
+    return res.status(500).json({ error: "Unable to debug Fiskil direct", details: String(err?.message || err) });
   }
 }
