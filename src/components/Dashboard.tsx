@@ -17,6 +17,9 @@ import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
+import AIInsightsPanel from "./AIInsightsPanel";
+import { useAIInsights } from "../hooks/useAIInsights";
+import SyncingOverlay from "./SyncingOverlay";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
@@ -26,7 +29,33 @@ const Dashboard: React.FC = () => {
   const region = user?.region ?? "AU";
 
   // Hook calls /api/fiskil-data internally (Fiskil-only)
-  const { accounts, transactions, loading: dataLoading, error, lastUpdated } = useFiskilData(user?.id);
+  const {
+    accounts,
+    transactions,
+    loading: dataLoading,
+    error,
+    lastUpdated,
+    syncStatus,
+    syncing,
+    syncProgress,
+    syncMessage,
+    syncDetails,
+  } = useFiskilData(user?.id);
+
+  const totalBalance = useMemo(
+    () => accounts.reduce((sum, account) => sum + (account.balance || 0), 0),
+    [accounts]
+  );
+
+  const {
+    alerts,
+    insights,
+    forecast,
+    loading: aiLoading,
+    error: aiError,
+    disclaimer,
+    generatedAt,
+  } = useAIInsights(user?.id, region, accounts, transactions, totalBalance);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -165,7 +194,6 @@ const Dashboard: React.FC = () => {
     setConnecting(true);
 
     try {
-      // Use the AuthContext session (do NOT re-fetch session via supabase.auth.getSession()).
       if (!session?.access_token) {
         window.location.href = "/login";
         return;
@@ -223,11 +251,20 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  // --------- EARLY STATES (now include Connect Bank button) ---------
+  const showSyncOverlay = Boolean(syncing) && accounts.length === 0;
+  const overlayTitle = syncStatus?.has_bank_connection ? "Connection successful" : "Syncing your bank data";
+  const overlayMessage = syncMessage || "Syncing your financial data. This may take a moment…";
 
   if (dataLoading && accounts.length === 0) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <SyncingOverlay
+          open={showSyncOverlay}
+          title={overlayTitle}
+          message={overlayMessage}
+          progress={syncProgress}
+          details={syncDetails || undefined}
+        />
         <p>Loading your financial data...</p>
         {ConnectBankCTA}
       </div>
@@ -237,6 +274,13 @@ const Dashboard: React.FC = () => {
   if (error && accounts.length === 0) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <SyncingOverlay
+          open={showSyncOverlay}
+          title={overlayTitle}
+          message={overlayMessage}
+          progress={syncProgress}
+          details={syncDetails || undefined}
+        />
         <p className="text-red-500">Failed to load data: {error}</p>
         {ConnectBankCTA}
       </div>
@@ -246,26 +290,25 @@ const Dashboard: React.FC = () => {
   if (!accounts.length) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <SyncingOverlay
+          open={showSyncOverlay}
+          title={overlayTitle}
+          message={overlayMessage}
+          progress={syncProgress}
+          details={syncDetails || undefined}
+        />
         <p>No data yet. Connect your bank to see your dashboard.</p>
         {ConnectBankCTA}
       </div>
     );
   }
 
-  // --------- NORMAL DASHBOARD ---------
-
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
-        subscriptionTotal,
-        region
-      )} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
-        monthlyStats.expenses,
-        region
-      )}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const pinnedCards = [
@@ -301,11 +344,7 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate
-          feature="Upcoming bills"
-          teaser="Upgrade to predict upcoming bills and due dates."
-          dataTourId="upcoming-bills"
-        >
+        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -338,6 +377,19 @@ const Dashboard: React.FC = () => {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
         </div>
+      )}
+
+      {accounts.length > 0 && (
+        <AIInsightsPanel
+          loading={aiLoading}
+          error={aiError}
+          insights={insights}
+          alerts={alerts}
+          forecast={forecast}
+          disclaimer={disclaimer}
+          generatedAt={generatedAt}
+          region={region}
+        />
       )}
 
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
@@ -394,9 +446,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">
-          Last updated: {new Date(lastUpdated).toLocaleString()}
-        </p>
+        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
       )}
 
       <TutorialButton
