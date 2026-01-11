@@ -13,20 +13,27 @@ import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
 import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
+import FiskilCallbackPage from "./pages/FiskilCallback";
 
 const usePath = () => {
-  const [path, setPath] = useState(window.location.pathname);
+  const getPathname = () => (typeof window !== "undefined" ? window.location.pathname : "/");
+  const [path, setPath] = useState(getPathname());
+
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const handler = () => setPath(window.location.pathname);
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
   }, []);
+
   const navigate = (next: string) => {
+    if (typeof window === "undefined") return;
     if (next !== window.location.pathname) {
       window.history.pushState({}, "", next);
       setPath(next);
     }
   };
+
   return { path, navigate };
 };
 
@@ -35,6 +42,7 @@ const AppContent: React.FC = () => {
   const { path, navigate } = usePath();
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const handleScroll = () => {
       const offset = Math.min(0, window.scrollY * -0.15);
       document.documentElement.style.setProperty("--scroll-offset", `${offset}px`);
@@ -50,7 +58,6 @@ const AppContent: React.FC = () => {
       <div className="scroll-light" aria-hidden="true" />
     </>
   );
-
 
   if (path === "/signup") {
     return (
@@ -121,7 +128,15 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // NOTE: removed /basiq/callback route (migration to Fiskil + onboarding-only connect)
+  // Fiskil callback (after bank connection)
+  if (path === "/fiskil/callback") {
+    return (
+      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+        {backgroundLayers}
+        <FiskilCallbackPage />
+      </div>
+    );
+  }
 
   if (path === "/subscription/success") {
     if (!user && !loading) {
