@@ -17,8 +17,6 @@ import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
-import AIInsightsPanel from "./AIInsightsPanel";
-import { useAIInsights } from "../hooks/useAIInsights";
 import SyncingOverlay from "./SyncingOverlay";
 
 const TOUR_KEY = "myaibank_tour_seen";
@@ -34,19 +32,11 @@ const Dashboard: React.FC = () => {
     loading: dataLoading,
     error,
     lastUpdated,
-    syncing,
-    syncProgress,
-    syncMessage,
-    syncDetails,
+    connected,
+    debugInfo,
+    syncStatus,
+    refresh,
   } = useFiskilData(user?.id);
-
-  const totalBalance = useMemo(
-    () => accounts.reduce((sum, account) => sum + (account.balance || 0), 0),
-    [accounts]
-  );
-
-  const { alerts, insights, forecast, loading: aiLoading, error: aiError, disclaimer, generatedAt } =
-    useAIInsights(user?.id, region, accounts, transactions, totalBalance);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -75,8 +65,7 @@ const Dashboard: React.FC = () => {
 
       const slides = el.querySelectorAll<HTMLElement>("[data-tool-slide]");
       const style = window.getComputedStyle(el);
-      const gapCandidate =
-        style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
+      const gapCandidate = style.columnGap && style.columnGap !== "normal" ? style.columnGap : style.gap;
       const parsedGap = gapCandidate ? parseFloat(gapCandidate) : 0;
       const gap = Number.isNaN(parsedGap) ? 0 : parsedGap;
       const slideWidth = slides.length > 0 ? slides[0].clientWidth : el.clientWidth;
@@ -91,12 +80,12 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const seenTour = localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
-    if (!seenTour && accounts.length > 0) {
+    if (!seenTour && (accounts.length > 0 || transactions.length > 0)) {
       setTourOpen(true);
       localStorage.setItem(TOUR_KEY, "1");
       localStorage.removeItem(LEGACY_TOUR_KEY);
     }
-  }, [accounts.length, user]);
+  }, [accounts.length, transactions.length, user]);
 
   useEffect(() => {
     updateRailScrollState();
@@ -218,64 +207,85 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  const showSyncOverlay = Boolean(syncing) && accounts.length === 0;
-  const overlayTitle = "Connection successful";
-  const overlayMessage = syncMessage || "Waiting for bank data…";
+  const hasData = accounts.length > 0 || transactions.length > 0;
+  const debugBlock = debugInfo ? JSON.stringify(debugInfo, null, 2) : null;
 
-  if (dataLoading && accounts.length === 0) {
+  if (dataLoading && !hasData) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
+          open
+          title={syncStatus.stage === "awaiting_transactions" ? "Loading transactions" : "Loading bank data"}
+          message={syncStatus.message || "Fetching accounts and transactions from Fiskil…"}
+          progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 10}
+          details={debugBlock || undefined}
         />
-        <p>Loading your financial data...</p>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white"
+        >
+          Refresh bank data
+        </button>
+        {!connected && ConnectBankCTA}
+      </div>
+    );
+  }
+
+  if (error && !hasData) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <p className="text-red-500">{error}</p>
+        {debugBlock && (
+          <pre className="mt-2 max-h-56 w-full max-w-2xl overflow-auto rounded-xl bg-slate-950/80 p-4 text-xs text-slate-100">
+            {debugBlock}
+          </pre>
+        )}
         {ConnectBankCTA}
       </div>
     );
   }
 
-  if (error && accounts.length === 0) {
+  if (!hasData) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
         <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
+          open={connected}
+          title="Connection successful"
+          message={syncStatus.message || "Waiting for bank data…"}
+          progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 35}
+          details={debugBlock || undefined}
         />
-        <p className="text-red-500">Failed to load data: {error}</p>
-        {ConnectBankCTA}
-      </div>
-    );
-  }
-
-  if (!accounts.length) {
-    return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-slate-500">
-        <SyncingOverlay
-          open={showSyncOverlay}
-          title={overlayTitle}
-          message={overlayMessage}
-          progress={syncProgress}
-          details={syncDetails || undefined}
-        />
-        <p>No data yet. Connect your bank to see your dashboard.</p>
-        {ConnectBankCTA}
+        {!connected ? (
+          <>
+            <p>No data yet. Connect your bank to see your dashboard.</p>
+            {ConnectBankCTA}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white"
+          >
+            Refresh bank data
+          </button>
+        )}
       </div>
     );
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
+        subscriptionTotal,
+        region
+      )} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
+        monthlyStats.expenses,
+        region
+      )}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const pinnedCards = [
@@ -303,7 +313,11 @@ const Dashboard: React.FC = () => {
     {
       key: "spending-forecast",
       element: (
-        <PlanGate feature="Spending forecast" teaser="Upgrade to view AI cashflow scenarios." dataTourId="forecast">
+        <PlanGate
+          feature="Spending forecast"
+          teaser="Upgrade to view AI cashflow scenarios."
+          dataTourId="forecast"
+        >
           <SpendingForecast transactions={transactions} region={region} />
         </PlanGate>
       ),
@@ -311,7 +325,11 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+        <PlanGate
+          feature="Upcoming bills"
+          teaser="Upgrade to predict upcoming bills and due dates."
+          dataTourId="upcoming-bills"
+        >
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -337,26 +355,22 @@ const Dashboard: React.FC = () => {
         >
           {connecting ? "Connecting..." : "Connect bank"}
         </button>
+
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="self-end rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/15 disabled:opacity-60"
+        >
+          Refresh bank data
+        </button>
+
         {connectError && <p className="text-sm text-red-500 sm:text-right">{connectError}</p>}
       </div>
 
-      {error && accounts.length > 0 && (
+      {error && hasData && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
           {error}
         </div>
-      )}
-
-      {accounts.length > 0 && (
-        <AIInsightsPanel
-          loading={aiLoading}
-          error={aiError}
-          insights={insights}
-          alerts={alerts}
-          forecast={forecast}
-          disclaimer={disclaimer}
-          generatedAt={generatedAt}
-          region={region}
-        />
       )}
 
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
