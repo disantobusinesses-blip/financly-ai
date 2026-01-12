@@ -14,6 +14,7 @@ import LoginPage from "./pages/Login";
 import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
 import FiskilCallbackPage from "./pages/FiskilCallback";
+import ProfilePage from "./pages/Profile";
 
 const usePath = () => {
   const [path, setPath] = useState(window.location.pathname);
@@ -54,7 +55,7 @@ const AppContent: React.FC = () => {
 
   if (path === "/signup") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SignupPage />
@@ -68,7 +69,7 @@ const AppContent: React.FC = () => {
       return null;
     }
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <OnboardingPage />
@@ -78,7 +79,7 @@ const AppContent: React.FC = () => {
 
   if (path === "/fiskil/callback") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <FiskilCallbackPage />
       </div>
@@ -87,7 +88,7 @@ const AppContent: React.FC = () => {
 
   if (path === "/login") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <LoginPage onSuccess={() => navigate("/dashboard")} />
@@ -101,7 +102,7 @@ const AppContent: React.FC = () => {
       return null;
     }
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SubscribePage />
@@ -111,7 +112,7 @@ const AppContent: React.FC = () => {
 
   if (path === "/auth/callback") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <AuthCallbackPage />
       </div>
@@ -124,7 +125,7 @@ const AppContent: React.FC = () => {
       return null;
     }
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <SubscriptionSuccessPage onComplete={() => navigate("/app/dashboard")} />
       </div>
@@ -141,7 +142,7 @@ const AppContent: React.FC = () => {
       return null;
     }
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-6 md:px-8">
@@ -151,9 +152,29 @@ const AppContent: React.FC = () => {
     );
   }
 
+  if (path === "/app/profile") {
+    if (!user && !loading) {
+      navigate("/login");
+      return null;
+    }
+    if (user && profile && !profile.is_onboarded) {
+      navigate("/onboarding");
+      return null;
+    }
+    return (
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
+        {backgroundLayers}
+        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <main className="px-4 pb-16 pt-6 md:px-8">
+          <ProfilePage />
+        </main>
+      </div>
+    );
+  }
+
   if (path === "/what-we-do") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="what-we-do" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
@@ -165,7 +186,7 @@ const AppContent: React.FC = () => {
 
   if (path === "/sandbox") {
     return (
-      <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
         <Header activeView="sandbox" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
@@ -181,7 +202,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-[100dvh] min-h-screen bg-slate-950 text-white">
+    <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
       <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
       <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} />
