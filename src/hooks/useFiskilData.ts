@@ -98,7 +98,7 @@ export function useFiskilData(userId: string | null | undefined) {
       throw new Error("Not authenticated");
     }
 
-    const res = await fetch("/api/fiskil-data", {
+    const res = await fetch("/api/fiskil-data?debug=1&sample=1", {
       method: "GET",
       headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
     });
