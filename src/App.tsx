@@ -205,7 +205,11 @@ const AppContent: React.FC = () => {
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
       <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-      <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} />
+      <WelcomeScreen
+        onGetStarted={() => navigate("/signup")}
+        onLogin={() => navigate("/login")}
+        onDashboard={user ? () => navigate("/app/dashboard") : undefined}
+      />
     </div>
   );
 };

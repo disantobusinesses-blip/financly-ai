@@ -62,9 +62,10 @@ const AnimatedNumber: React.FC<{ value: number; format?: (value: number) => stri
 interface WelcomeScreenProps {
   onGetStarted: () => void;
   onLogin: () => void;
+  onDashboard?: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin, onDashboard }) => {
   const { email, setEmail, status, submit, reset } = useNewsletterSignup();
   const [frequency, setFrequency] = useState<Frequency>("monthly");
   const [income, setIncome] = useState(5000);
@@ -123,12 +124,21 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted, onLogin }) 
               >
                 Get Started
               </button>
-              <button
-                onClick={onLogin}
-                className="hover-zoom rounded-2xl border border-white/40 px-6 py-3 text-lg font-semibold text-white"
-              >
-                Login
-              </button>
+              {onDashboard ? (
+                <button
+                  onClick={onDashboard}
+                  className="hover-zoom rounded-2xl border border-white/40 px-6 py-3 text-lg font-semibold text-white"
+                >
+                  Go to dashboard
+                </button>
+              ) : (
+                <button
+                  onClick={onLogin}
+                  className="hover-zoom rounded-2xl border border-white/40 px-6 py-3 text-lg font-semibold text-white"
+                >
+                  Login
+                </button>
+              )}
             </div>
           </div>
 
