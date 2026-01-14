@@ -18,6 +18,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
 import SyncingOverlay from "./SyncingOverlay";
+import MascotAssistant from "./MascotAssistant";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
@@ -405,6 +406,12 @@ const Dashboard: React.FC = () => {
       />
 
       <LegalFooter />
+      <MascotAssistant
+        accounts={accounts}
+        transactions={transactions}
+        region={region}
+        lastUpdated={lastUpdated}
+      />
     </div>
   );
 };

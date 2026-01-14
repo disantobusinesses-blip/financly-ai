@@ -174,3 +174,47 @@ body::after {
 .interactive-primary:active::after {
   opacity: 0.35;
 }
+
+.mascot-avatar {
+  position: relative;
+  overflow: hidden;
+}
+
+.mascot-avatar::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  opacity: 0;
+  transform: translateX(-60%);
+  animation: mascot-shimmer 6s ease-in-out infinite;
+}
+
+.mascot-bob {
+  animation: mascot-bob 3.5s ease-in-out infinite;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mascot-shimmer {
+  0%,
+  75% {
+    opacity: 0;
+    transform: translateX(-60%);
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(60%);
+  }
+}
