@@ -417,7 +417,7 @@ const Dashboard: React.FC = () => {
         accounts={accounts}
         transactions={transactions}
         region={region}
-        lastUpdated={lastUpdated}
+        lastUpdated={lastUpdated ?? undefined}
       />
     </div>
   );
