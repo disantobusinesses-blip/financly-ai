@@ -1,22 +1,22 @@
-export const TERMS_CONTENT = `Terms and conditions
+export const TERMS_CONTENT = `Terms of Use
 
-Last Updated: November 19th 2025
+Last Updated: January 14, 2026
 
-These Terms and Conditions (“Terms”) govern your use of the MyAiBank website, platform, and services (“Services”). By accessing or using MyAiBank, you agree to these Terms.
+These Terms of Use (“Terms”) govern your access to and use of the MyAiBank website, platform, and related services (“Services”). By accessing or using MyAiBank, you agree to these Terms.
 
 MyAiBank is operated under ABN 38 693 023 371 (“we”, “us”, “our”).
 
 ⸻
 
-1. General Use
+1. Eligibility
 
-You must be at least 18 years old to use the Services. By using MyAiBank, you confirm that you meet this requirement and that the information you provide is true and accurate.
+You must be at least 18 years old to use the Services. By using MyAiBank, you confirm that you meet this requirement and that the information you provide is accurate.
 
 ⸻
 
-2. Nature of Services
+2. What MyAiBank Provides
 
-MyAiBank provides AI-assisted budgeting, financial organisation, transaction insights, subscription tracking, and general money-management tools.
+MyAiBank provides AI-assisted budgeting, transaction insights, subscription tracking, and general money-management tools.
 
 MyAiBank does NOT:
 • provide financial advice
@@ -24,25 +24,24 @@ MyAiBank does NOT:
 • provide credit assistance
 • act as a bank or ADI
 
-All content provided is general in nature and for information purposes only.
-
-⸻——————
-
-3. Subscription & Payments
-
-MyAiBank operates on a subscription model. Subscription fees, billing periods, and payment terms are displayed at checkout.
-
-By subscribing, you authorise us to charge your selected payment method on a recurring basis.
-
-You may cancel at any time. Cancellation takes effect at the end of the current billing cycle. No partial refunds are provided. And no refunds after free-trial period ends.
+All content is general in nature and for information purposes only.
 
 ⸻
 
-4. User Responsibilities
+3. Subscriptions & Billing
+
+MyAiBank operates on a subscription model. Pricing, billing periods, and payment terms are displayed at checkout.
+By subscribing, you authorise us to charge your selected payment method on a recurring basis.
+
+You may cancel at any time. Cancellation takes effect at the end of the current billing cycle. No partial refunds are provided after a free-trial period ends.
+
+⸻
+
+4. Your Responsibilities
 
 You agree not to:
 • misuse or attempt to reverse-engineer the platform
-• use the Service for unlawful purposes
+• use the Services for unlawful purposes
 • share login credentials with others
 
 You are responsible for maintaining the security of your login information.
@@ -51,8 +50,8 @@ You are responsible for maintaining the security of your login information.
 
 5. Third-Party Services
 
-MyAiBank integrates with third-party providers, including but not limited to:
-• Open banking providers such as Basiq
+MyAiBank integrates with third-party providers, including:
+• Open banking providers such as Fiskil
 • Payment processors such as Stripe
 • Email and communication platforms
 
@@ -74,7 +73,7 @@ To the maximum extent permitted by law, MyAiBank is not liable for:
 • errors in imported transactions
 • service interruptions
 
-The Service is provided on an “as-is” and “as-available” basis.
+The Services are provided on an “as-is” and “as-available” basis.
 
 ⸻
 
@@ -82,7 +81,6 @@ The Service is provided on an “as-is” and “as-available” basis.
 
 The platform provides general financial insights only.
 It does not constitute professional, legal, financial, investment, accounting, or taxation advice.
-
 Users should seek independent professional advice where required.
 
 ⸻
@@ -105,11 +103,11 @@ We may update these Terms at any time. Continued use of the Services indicates a
 For support or queries, contact us at:
 support@myaibank.ai`;
 
-export const PRIVACY_CONTENT = `PRIVACY POLICY
+export const PRIVACY_CONTENT = `Privacy Policy
 
 ABN 38 693 023 371
 
-Last Updated: November 19th 2025
+Last Updated: January 14, 2026
 
 This Privacy Policy explains how AI CAPITAL HOLDINGS PTY LTD, ABN 38 693 023 371, trading as MyAiBank (“we”, “us”, “our”), collects, uses, stores, and protects your personal information.
 We comply with the Privacy Act 1988 (Cth) and the Australian Privacy Principles (APPs).
@@ -131,7 +129,7 @@ We may collect:
 
 1.2 Financial Information
 
-If you choose to link your bank accounts through a secure third-party open banking provider (such as Basiq), we may receive:
+If you choose to link your bank accounts through a secure third-party open banking provider (such as Fiskil), we may receive:
 • Transaction histories
 • Account balances
 • Merchant details
@@ -181,7 +179,7 @@ We use your information to:
 • Personalise your dashboard
 • Detect spending categories and subscriptions
 • Process payments and manage subscriptions
-• Communicate updates, service changes or support messages
+• Communicate updates, service changes, or support messages
 • Ensure platform security and performance
 • Improve features and user experience
 
@@ -192,14 +190,13 @@ We do NOT sell your personal information.
 4. Sharing Your Information
 
 We may share your information with trusted third parties essential to our operations, including:
-• Open banking provider
+• Open banking provider (Fiskil)
 • Payment processor (Stripe)
 • Email service provider
 • Analytics tools (GA4)
 • Cloud hosting providers
 
 Third parties are required to maintain privacy protections and may only use your information to deliver their contracted services.
-
 We may also disclose information where required by law.
 
 ⸻
@@ -214,7 +211,6 @@ We take reasonable steps to protect your personal information from:
 • disclosure
 
 This includes encryption, secure hosting, authentication controls, and continuous security monitoring.
-
 No online service is 100% secure, but we follow industry best practices to minimise risk.
 
 ⸻

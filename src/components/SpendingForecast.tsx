@@ -1,10 +1,12 @@
 import React, { useMemo } from "react";
-import { Transaction, User } from "../types";
+import { Account, Transaction, User } from "../types";
 import { formatCurrency } from "../utils/currency";
+import { computeAccountOverview } from "../utils/metrics";
 import Card from "./Card";
 import MonthlyDelta from "./MonthlyDelta";
 
 interface SpendingForecastProps {
+  accounts: Account[];
   transactions: Transaction[];
   region: User["region"];
 }
@@ -27,37 +29,34 @@ const buildMonthlyNet = (transactions: Transaction[]) => {
   return Array.from(totals.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 };
 
-const buildProjection = (monthlyNet: ReturnType<typeof buildMonthlyNet>): ProjectionPoint[] => {
+const buildProjection = (
+  monthlyNet: ReturnType<typeof buildMonthlyNet>,
+  startingBalance: number
+): ProjectionPoint[] => {
   if (monthlyNet.length === 0) return [];
   const recent = monthlyNet.slice(-3);
-  const savingsPerMonth = Math.max(
-    0,
-    Math.round(
-      recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1)
-    )
+  const savingsPerMonth = Math.round(
+    recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1)
   );
   const now = new Date();
 
   return Array.from({ length: 6 }).map((_, index) => {
     const future = new Date(now.getFullYear(), now.getMonth() + index + 1, 1);
     const label = future.toLocaleString(undefined, { month: "short", year: "numeric" });
-    const projected = savingsPerMonth * (index + 1);
+    const projected = startingBalance + savingsPerMonth * (index + 1);
     return { month: label, projected };
   });
 };
 
-const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, region }) => {
+const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transactions, region }) => {
   const monthlyNet = useMemo(() => buildMonthlyNet(transactions), [transactions]);
-  const projection = useMemo(() => buildProjection(monthlyNet), [monthlyNet]);
+  const overview = useMemo(() => computeAccountOverview(accounts), [accounts]);
+  const startingBalance = overview.spendingAvailable;
+  const projection = useMemo(() => buildProjection(monthlyNet, startingBalance), [monthlyNet, startingBalance]);
   const savingsPerMonth = useMemo(() => {
     if (monthlyNet.length === 0) return 0;
     const recent = monthlyNet.slice(-3);
-    return Math.max(
-      0,
-      Math.round(
-        recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1)
-      )
-    );
+    return Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
   }, [monthlyNet]);
 
   const { currentNet, previousNet } = useMemo(() => {
@@ -71,19 +70,24 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, regio
 
   if (projection.length === 0) {
     return (
-      <Card title="Spending forecast">
+      <Card title="Account forecast">
         <p className="text-sm text-white/70">Connect your accounts and build a month of history to model six months ahead.</p>
       </Card>
     );
   }
 
-  const sixMonthTotal = projection[projection.length - 1]?.projected ?? 0;
+  const sixMonthTotal = projection[projection.length - 1]?.projected ?? startingBalance;
+  const maxProjected = Math.max(
+    ...projection.map((point) => Math.max(0, point.projected)),
+    Math.max(0, startingBalance)
+  );
 
   return (
-    <Card title="Spending forecast">
+    <Card title="Account forecast">
       <div className="space-y-3">
         <p className="text-sm text-white/70">
-          We analyse the last three months of net cashflow. At your current pace you&apos;re saving {formatCurrency(savingsPerMonth, region, {
+          We start from your current cash balance and layer on your average monthly net. At this pace you add{" "}
+          {formatCurrency(savingsPerMonth, region, {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
           })} per month.
@@ -105,21 +109,26 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ transactions, regio
           />
         </div>
       </div>
-      <div className="mt-5 space-y-3">
-        {projection.map((point) => (
-          <div
-            key={point.month}
-            className="flex items-center justify-between rounded-2xl bg-black/40 px-4 py-3 text-sm text-white/80"
-          >
-            <span className="uppercase tracking-[0.3em] text-white/60">{point.month}</span>
-            <span className="text-lg font-semibold text-primary-light">
-              {formatCurrency(point.projected, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </span>
-          </div>
-        ))}
+      <div className="mt-5">
+        <div className="flex h-28 items-end gap-2 rounded-2xl bg-black/40 px-4 py-4">
+          {projection.map((point, index) => {
+            const safeProjected = Math.max(0, point.projected);
+            const height = maxProjected ? Math.max(10, (safeProjected / maxProjected) * 100) : 0;
+            return (
+              <div key={point.month} className="flex flex-1 flex-col items-center gap-2">
+                <div
+                  className="forecast-bar w-full rounded-full bg-[#1F0051]"
+                  style={{ height: `${height}%`, animationDelay: `${index * 0.1}s` }}
+                />
+                <span className="text-[0.6rem] uppercase tracking-[0.3em] text-white/50">{point.month}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <p className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/80">
-        Stay consistent and you&apos;ll bank about {formatCurrency(sixMonthTotal, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} over the next six months. Increase monthly savings to accelerate this curve.
+        If you keep this cadence, your cash balance could reach{" "}
+        {formatCurrency(sixMonthTotal, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} in six months.
       </p>
     </Card>
   );
