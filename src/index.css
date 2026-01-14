@@ -174,3 +174,92 @@ body::after {
 .interactive-primary:active::after {
   opacity: 0.35;
 }
+
+.mascot-avatar {
+  position: relative;
+  overflow: hidden;
+}
+
+.mascot-avatar::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  opacity: 0;
+  transform: translateX(-60%);
+  animation: mascot-shimmer 6s ease-in-out infinite;
+}
+
+.mascot-bob {
+  animation: mascot-bob 3.5s ease-in-out infinite;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mascot-shimmer {
+  0%,
+  75% {
+    opacity: 0;
+    transform: translateX(-60%);
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(60%);
+  }
+}
+
+.forecast-bar {
+  transform: scaleY(0);
+  transform-origin: bottom;
+  opacity: 0.4;
+  animation: forecast-grow 0.7s ease forwards;
+}
+
+@keyframes forecast-grow {
+  from {
+    transform: scaleY(0);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.connect-loading-track {
+  position: relative;
+  width: 70%;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.connect-loading-bar {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-60%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #ffffff, transparent);
+  animation: connect-loading 1.2s ease-in-out infinite;
+}
+
+@keyframes connect-loading {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(60%);
+  }
+}

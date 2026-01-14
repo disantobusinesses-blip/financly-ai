@@ -11,20 +11,20 @@ const LegalModal: React.FC<LegalModalProps> = ({ title, body, isOpen, onClose })
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="relative w-full max-w-4xl max-h-[80vh] overflow-hidden rounded-2xl bg-white text-slate-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl border border-white/10 bg-black text-white shadow-2xl">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+          className="absolute right-4 top-4 text-white/60 transition hover:text-white"
           aria-label="Close legal modal"
         >
           ✕
         </button>
-        <div className="border-b border-slate-200 px-6 py-4 dark:border-neutral-800">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Scroll to review the full document.</p>
+        <div className="border-b border-white/10 px-6 py-4">
+          <h2 className="text-xl font-semibold tracking-wide">{title}</h2>
+          <p className="text-xs text-white/60">Scroll to review the full document.</p>
         </div>
-        <div className="custom-scrollbar max-h-[65vh] overflow-y-auto px-6 py-5 text-sm leading-relaxed whitespace-pre-line">
+        <div className="custom-scrollbar max-h-[70vh] overflow-y-auto px-6 py-6 text-sm leading-relaxed text-white/85 whitespace-pre-line">
           {body}
         </div>
       </div>

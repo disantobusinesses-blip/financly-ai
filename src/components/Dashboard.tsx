@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import FinancialHealthCard from "./FinancialHealthCard";
-import GoalPlanner from "./GoalPlanner";
 import BalanceSummary from "./BalanceSummary";
-import ReferAFriendCard from "./ReferAFriendCard";
 import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
 import CashflowMini from "./CashflowMini";
 import UpcomingBills from "./UpcomingBills";
@@ -18,6 +16,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Transaction } from "../types";
 import SyncingOverlay from "./SyncingOverlay";
+import MascotAssistant from "./MascotAssistant";
+import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
@@ -82,9 +82,7 @@ const Dashboard: React.FC = () => {
 
   const tourSteps: TourStep[] = [
     { id: "balance-summary", title: "Where you stand", description: "Review key balances at a glance." },
-    { id: "financial-health", title: "Financial health", description: "See your health score and guidance." },
-    { id: "goal-planner", title: "Goal planner", description: "Track progress across your goals." },
-    { id: "refer-a-friend", title: "Refer & save", description: "Share your link to unlock discounts." },
+    { id: "financial-health", title: "Cashflow precision", description: "Track income vs outgoings each month." },
     {
       id: "subscription-hunter",
       title: "Subscription Hunter",
@@ -155,9 +153,16 @@ const Dashboard: React.FC = () => {
         type="button"
         onClick={handleConnectBank}
         disabled={connecting}
-        className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+        className="relative overflow-hidden rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {connecting ? "Connecting..." : "Connect bank"}
+        <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
+        {connecting && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="connect-loading-track">
+              <span className="connect-loading-bar" />
+            </span>
+          </span>
+        )}
       </button>
       {connectError && <p className="text-sm text-red-500 text-center">{connectError}</p>}
     </div>
@@ -275,11 +280,6 @@ const Dashboard: React.FC = () => {
       )}.`
     : "Link your accounts to calculate monthly cashflow.";
 
-  const pinnedCards = [
-    { key: "goal-planner", element: <GoalPlanner accounts={accounts} transactions={transactions} /> },
-    { key: "refer", element: <ReferAFriendCard /> },
-  ];
-
   const featureCards = [
     {
       key: "subscription-hunter",
@@ -301,11 +301,11 @@ const Dashboard: React.FC = () => {
       key: "spending-forecast",
       element: (
         <PlanGate
-          feature="Spending forecast"
-          teaser="Upgrade to view AI cashflow scenarios."
+          feature="Account forecast"
+          teaser="Upgrade to view account-level forecasts."
           dataTourId="forecast"
         >
-          <SpendingForecast transactions={transactions} region={region} />
+          <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
         </PlanGate>
       ),
     },
@@ -332,7 +332,7 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
+    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
@@ -344,9 +344,16 @@ const Dashboard: React.FC = () => {
             type="button"
             onClick={handleConnectBank}
             disabled={connecting}
-            className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative overflow-hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {connecting ? "Connecting..." : "Connect bank"}
+            <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
+            {connecting && (
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="connect-loading-track">
+                  <span className="connect-loading-bar" />
+                </span>
+              </span>
+            )}
           </button>
 
           <button
@@ -368,7 +375,8 @@ const Dashboard: React.FC = () => {
       )}
 
       <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
-      <FinancialHealthCard accounts={accounts} transactions={transactions} region={region} />
+      <SpendingCategoriesWidget transactions={transactions} region={region} />
+      <FinancialHealthCard transactions={transactions} region={region} />
 
       <section className="flex flex-col gap-4" data-tour-id="tool-carousel">
         <div className="flex items-center justify-between">
@@ -378,7 +386,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         <div className="tool-tiles">
-          {[...pinnedCards, ...featureCards].map(({ key, element }) => (
+          {featureCards.map(({ key, element }) => (
             <ToolTile key={key}>{element}</ToolTile>
           ))}
         </div>
@@ -405,6 +413,12 @@ const Dashboard: React.FC = () => {
       />
 
       <LegalFooter />
+      <MascotAssistant
+        accounts={accounts}
+        transactions={transactions}
+        region={region}
+        lastUpdated={lastUpdated}
+      />
     </div>
   );
 };
