@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { BankingService } from "../services/BankingService";
 
 const BankCallback: React.FC = () => {
   const [status, setStatus] = useState("Confirming your bank connection...");
   const [error, setError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     const finalize = async () => {
@@ -59,8 +61,9 @@ const BankCallback: React.FC = () => {
           throw new Error(text || "Unable to update bank connection");
         }
 
-        setStatus("Connection confirmed. Redirecting...");
-        window.location.replace("/app/dashboard");
+        BankingService.setConnectionStatus("connected");
+        setStatus("Connection confirmed. You can now view your dashboard.");
+        setConfirmed(true);
       } catch (err: any) {
         setError(err?.message || "Unable to confirm your bank connection.");
       }
@@ -84,6 +87,16 @@ const BankCallback: React.FC = () => {
             className="interactive-primary mt-4 w-full rounded-xl bg-primary px-4 py-2 font-semibold text-white"
           >
             Return to onboarding
+          </button>
+        )}
+
+        {!error && confirmed && (
+          <button
+            type="button"
+            onClick={() => window.location.replace("/app/dashboard")}
+            className="interactive-primary mt-4 w-full rounded-xl bg-primary px-4 py-2 font-semibold text-white"
+          >
+            Go to dashboard
           </button>
         )}
       </div>

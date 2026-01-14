@@ -37,21 +37,21 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/85 px-4 py-4 text-white backdrop-blur">
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/80 px-4 py-4 text-white backdrop-blur">
       <div className="flex items-center gap-3">
         {user && (
           <button
             onClick={() => setMenuOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold uppercase tracking-[0.3em] hover:border-white/50"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
           >
             ☰
           </button>
         )}
         <button
           onClick={() => onNavigate("dashboard")}
-          className="flex h-11 items-center gap-3 rounded-xl bg-white/10 px-4 text-lg font-black tracking-[0.18em] text-white transition hover:bg-white/20"
+          className="flex h-11 items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 text-lg font-semibold tracking-[0.2em] text-white transition hover:border-white/30 hover:bg-white/10"
         >
-          <span className="text-xl uppercase">MyAiBank</span>
+          <span className="text-base uppercase">MyAiBank</span>
         </button>
       </div>
 
@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         <div className="flex w-full flex-col items-stretch gap-2 text-right sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <button
             onClick={() => onNavigate("dashboard")}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.2em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "dashboard" ? "text-white" : "text-white/60"
             }`}
           >
@@ -73,7 +73,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </button>
           <button
             onClick={() => onNavigate("what-we-do")}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.2em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "what-we-do" ? "text-white" : "text-white/60"
             }`}
           >
@@ -81,7 +81,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
           </button>
           <button
             onClick={() => onNavigate("sandbox")}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.3em] sm:px-0 sm:py-0 sm:text-right ${
+            className={`rounded-xl px-3 py-2 text-sm font-semibold uppercase tracking-[0.2em] sm:px-0 sm:py-0 sm:text-right ${
               activeView === "sandbox" ? "text-white" : "text-white/60"
             }`}
           >
@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       )}
 
       {menuOpen && user && (
-        <div className="fixed inset-0 z-40 flex bg-black" onClick={() => setMenuOpen(false)}>
+        <div className="fixed inset-0 z-40 flex bg-black/80 backdrop-blur" onClick={() => setMenuOpen(false)}>
           <div
             className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10"
             onClick={(e) => e.stopPropagation()}
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
               </span>
             </div>
 
-            <nav className="space-y-4 text-sm font-semibold text-white/80">
+            <nav className="space-y-3 text-sm font-semibold text-white/80">
               <button
                 onClick={() => {
                   onNavigate("dashboard");
