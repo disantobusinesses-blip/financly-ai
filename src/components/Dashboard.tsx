@@ -414,10 +414,7 @@ const Dashboard: React.FC = () => {
 
       <LegalFooter />
       <MascotAssistant
-        accounts={accounts}
-        transactions={transactions}
         region={region}
-        lastUpdated={lastUpdated ?? undefined}
       />
     </div>
   );
