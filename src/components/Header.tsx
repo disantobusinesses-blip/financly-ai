@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       <div className="flex items-center gap-3">
         {user && (
           <button
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setMenuOpen((prev) => !prev)}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 text-base font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
           >
             ☰
@@ -90,72 +90,73 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
         </div>
       )}
 
-      {menuOpen && user && (
-        <div className="fixed inset-0 z-40 flex bg-black/80 backdrop-blur" onClick={() => setMenuOpen(false)}>
+      {user && (
+        <div
+          className={`fixed inset-0 z-40 transition ${
+            menuOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
           <div
-            className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10"
-            onClick={(e) => e.stopPropagation()}
+            className={`absolute inset-0 bg-black/40 transition-opacity ${
+              menuOpen ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            className={`absolute left-0 top-0 h-full w-full transform bg-black text-white shadow-2xl transition-transform duration-300 ${
+              menuOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-6 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
-                Quick links
-              </p>
-              <p className="text-lg font-semibold text-white">
-                {user.displayName} {user.avatar}
-              </p>
-              <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
-                {statusChip}
-              </span>
-            </div>
+            <div className="flex h-full flex-col px-5 py-6">
+              <div className="mb-6 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+                  Quick links
+                </p>
+                <p className="text-lg font-semibold text-white">
+                  {user.displayName} {user.avatar}
+                </p>
+                <span className="inline-flex rounded-full border border-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
+                  {statusChip}
+                </span>
+              </div>
 
-            <nav className="space-y-3 text-sm font-semibold text-white/80">
-              <button
-                onClick={() => {
-                  onNavigate("dashboard");
-                  setMenuOpen(false);
-                }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "dashboard" ? "bg-white/10 text-white" : ""
-                }`}
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  onNavigate("what-we-do");
-                  setMenuOpen(false);
-                }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "what-we-do" ? "bg-white/10 text-white" : ""
-                }`}
-              >
-                What we do
-              </button>
-              <button
-                onClick={() => {
-                  onNavigate("sandbox");
-                  setMenuOpen(false);
-                }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "sandbox" ? "bg-white/10 text-white" : ""
-                }`}
-              >
-                Sandbox preview
-              </button>
-            </nav>
+              <nav className="overflow-hidden rounded-2xl border border-white/10 text-sm font-semibold">
+                <a
+                  href="/connect-bank"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full border-b border-white/10 px-4 py-4 text-left text-white transition hover:bg-white/10"
+                >
+                  Connect bank
+                </a>
+                <a
+                  href="/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full border-b border-white/10 px-4 py-4 text-left text-white transition hover:bg-white/10"
+                >
+                  My dashboard
+                </a>
+                <a
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-4 py-4 text-left text-white transition hover:bg-white/10"
+                >
+                  Profile
+                </a>
+              </nav>
 
-            <button
-              onClick={handleLogout}
-              className="mt-8 inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:text-white"
-            >
-              Logout
-            </button>
+              <button
+                onClick={handleLogout}
+                className="mt-6 inline-flex w-full items-center justify-center rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:border-white/40"
+              >
+                Logout
+              </button>
 
-            <div className="mt-6 space-y-3 text-xs text-white/60">
-              <p>Need support? hello@myaibank.ai</p>
+              <div className="mt-auto pt-6 text-xs text-white/60">
+                <p>Need support? hello@myaibank.ai</p>
+              </div>
             </div>
           </div>
-          <div className="flex-1" />
         </div>
       )}
     </header>
