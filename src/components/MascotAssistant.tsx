@@ -1,103 +1,185 @@
-import React, { useMemo, useRef, useState } from "react";
-import type { Account, Transaction } from "../types";
-import { buildFinanceContext } from "../utils/financeContext";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  variant?: "error";
 };
 
 type MascotAssistantProps = {
-  accounts: Account[];
-  transactions: Transaction[];
   region: string;
-  lastUpdated?: string;
 };
 
 const QUICK_CHIPS = [
-  "Spending last 30 days",
-  "Top categories",
-  "Subscriptions",
-  "Biggest expenses",
-  "How can I save more?",
+  { label: "Spending last 30 days", prompt: "Calculate my spending in the last 30 days." },
+  { label: "Top categories", prompt: "Show my top spending categories from recent transactions." },
+  { label: "Subscriptions", prompt: "List my recurring subscriptions and their monthly cost." },
+  { label: "Biggest expenses", prompt: "What are my biggest expenses recently?" },
+  { label: "How can I save more?", prompt: "Give me basic budgeting tips based on my recent spending." },
 ];
 
-const MascotAssistant: React.FC<MascotAssistantProps> = ({
-  accounts,
-  transactions,
-  region,
-  lastUpdated,
-}) => {
+const STORAGE_KEY = "myaibank_mascot_messages_v1";
+
+function safeParseJson(text: string): any | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function extractAssistantText(payload: any): string | null {
+  if (!payload) return null;
+
+  // Common shapes
+  const direct =
+    payload.answer ??
+    payload.content ??
+    payload.message ??
+    payload.reply ??
+    payload.response ??
+    payload.text;
+
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  // Nested shapes
+  const nested =
+    payload?.data?.answer ??
+    payload?.data?.message ??
+    payload?.data?.content ??
+    payload?.result?.answer ??
+    payload?.result?.message;
+
+  if (typeof nested === "string" && nested.trim()) return nested.trim();
+
+  return null;
+}
+
+const MascotAssistant: React.FC<MascotAssistantProps> = ({ region }) => {
+  const { session } = useAuth();
+
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
-  const financeContext = useMemo(
-    () => buildFinanceContext(accounts, transactions, region, lastUpdated),
-    [accounts, transactions, region, lastUpdated]
-  );
+  const abortRef = useRef<AbortController | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const quickChips = useMemo(() => QUICK_CHIPS, []);
 
   const appendMessage = (next: Message) => {
     setMessages((prev) => [...prev, next]);
   };
 
-  const handleSend = async (message: string) => {
+  // Restore messages (prevents remount wiping chat history)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = safeParseJson(raw);
+      if (Array.isArray(parsed)) setMessages(parsed);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Persist messages
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // ignore
+    }
+  }, [messages]);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [messages, thinking, open]);
+
+  const handleSend = async (message: string, quickAction?: string) => {
     const trimmed = message.trim();
     if (!trimmed) return;
+    if (thinking) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const userMessage: Message = {
-      id: `${Date.now()}-user`,
+    const now = Date.now();
+
+    appendMessage({
+      id: `${now}-user`,
       role: "user",
       content: trimmed,
-    };
+    });
 
-    appendMessage(userMessage);
     setInput("");
     setThinking(true);
 
     try {
-      const response = await fetch("/api/ai/chat", {
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        appendMessage({
+          id: `${Date.now()}-assistant-error`,
+          role: "assistant",
+          variant: "error",
+          content: "Please sign in to ask about your MyAiBank finances.",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/mascot-chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         signal: controller.signal,
         body: JSON.stringify({
           message: trimmed,
-          financeContext,
+          quickAction,
+          context: { region },
         }),
       });
 
-      const payload = await response.json();
+      const rawText = await response.text();
+      const payload = rawText ? safeParseJson(rawText) : null;
+
       if (!response.ok) {
-        throw new Error(payload?.error?.message || "Unable to reach the assistant.");
+        const errMsg =
+          (payload && (payload.error || payload.message)) ||
+          rawText ||
+          "Unable to reach the assistant.";
+        throw new Error(typeof errMsg === "string" ? errMsg : "Unable to reach the assistant.");
       }
+
+      const assistantText =
+        extractAssistantText(payload) ||
+        (rawText && rawText.trim()) ||
+        "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.";
 
       appendMessage({
         id: `${Date.now()}-assistant`,
         role: "assistant",
-        content:
-          typeof payload.reply === "string"
-            ? payload.reply
-            : "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.",
+        content: assistantText,
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        return;
-      }
+      if (error instanceof DOMException && error.name === "AbortError") return;
+
       appendMessage({
         id: `${Date.now()}-assistant-error`,
         role: "assistant",
+        variant: "error",
         content:
-          "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.",
+          error instanceof Error
+            ? error.message
+            : "Sorry, I couldn't reach MyAiBank right now. Please try again.",
       });
     } finally {
       setThinking(false);
@@ -155,7 +237,9 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
                 className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                   message.role === "user"
                     ? "ml-auto bg-[#1F0051] text-white"
-                    : "bg-white/10 text-white/90"
+                    : message.variant === "error"
+                      ? "bg-rose-500/20 text-rose-100"
+                      : "bg-white/10 text-white/90"
                 }`}
               >
                 {message.content}
@@ -167,17 +251,20 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
                 Thinking…
               </div>
             )}
+
+            <div ref={bottomRef} />
           </div>
 
           <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3">
-            {QUICK_CHIPS.map((chip) => (
+            {quickChips.map((chip) => (
               <button
-                key={chip}
+                key={chip.label}
                 type="button"
-                onClick={() => handleSend(chip)}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/70 transition hover:border-white/30 hover:text-white"
+                onClick={() => handleSend(chip.prompt, chip.label)}
+                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={thinking}
               >
-                {chip}
+                {chip.label}
               </button>
             ))}
           </div>
@@ -194,10 +281,12 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask about your spending…"
               className="flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
+              disabled={thinking}
             />
             <button
               type="submit"
-              className="rounded-full bg-[#1F0051] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#2a0a6c]"
+              className="rounded-full bg-[#1F0051] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#2a0a6c] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={thinking || !input.trim()}
             >
               Send
             </button>
