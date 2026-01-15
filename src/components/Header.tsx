@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 interface HeaderProps {
@@ -9,6 +9,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
   const { user, logout, remainingBasicDays } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const statusChip = (() => {
     if (!user) return "";
@@ -35,6 +36,22 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       console.error("Logout error:", err);
     }
   };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleOutside = (event: MouseEvent | TouchEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [menuOpen]);
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/80 px-4 py-4 text-white backdrop-blur">
@@ -91,71 +108,64 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate }) => {
       )}
 
       {menuOpen && user && (
-        <div className="fixed inset-0 z-40 flex bg-black/80 backdrop-blur" onClick={() => setMenuOpen(false)}>
+        <div className="fixed inset-0 z-40 flex items-start justify-end px-4 py-4">
           <div
-            className="h-full w-64 bg-black p-6 shadow-2xl ring-1 ring-white/10"
-            onClick={(e) => e.stopPropagation()}
+            ref={menuRef}
+            className="w-full max-w-xs rounded-2xl border border-slate-200 bg-white p-4 text-[#0b0b10] shadow-lg"
           >
-            <div className="mb-6 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+            <div className="mb-4 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
                 Quick links
               </p>
-              <p className="text-lg font-semibold text-white">
+              <p className="text-lg font-semibold text-[#0b0b10]">
                 {user.displayName} {user.avatar}
               </p>
-              <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white/70">
+              <span className="inline-flex rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-slate-600">
                 {statusChip}
               </span>
             </div>
 
-            <nav className="space-y-3 text-sm font-semibold text-white/80">
-              <button
+            <nav className="overflow-hidden rounded-xl border border-slate-200 text-sm font-semibold">
+              <a
+                href="/connect-bank"
                 onClick={() => {
-                  onNavigate("dashboard");
                   setMenuOpen(false);
                 }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "dashboard" ? "bg-white/10 text-white" : ""
-                }`}
+                className="block w-full border-b border-slate-200 px-4 py-3 text-left text-[#0b0b10] transition hover:bg-slate-50"
               >
-                Dashboard
-              </button>
-              <button
+                Connect bank
+              </a>
+              <a
+                href="/dashboard"
                 onClick={() => {
-                  onNavigate("what-we-do");
                   setMenuOpen(false);
                 }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "what-we-do" ? "bg-white/10 text-white" : ""
-                }`}
+                className="block w-full border-b border-slate-200 px-4 py-3 text-left text-[#0b0b10] transition hover:bg-slate-50"
               >
-                What we do
-              </button>
-              <button
+                My dashboard
+              </a>
+              <a
+                href="/profile"
                 onClick={() => {
-                  onNavigate("sandbox");
                   setMenuOpen(false);
                 }}
-                className={`block w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 ${
-                  activeView === "sandbox" ? "bg-white/10 text-white" : ""
-                }`}
+                className="block w-full px-4 py-3 text-left text-[#0b0b10] transition hover:bg-slate-50"
               >
-                Sandbox preview
-              </button>
+                Profile
+              </a>
             </nav>
 
             <button
               onClick={handleLogout}
-              className="mt-8 inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:text-white"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-[#0b0b10] transition hover:border-slate-300"
             >
               Logout
             </button>
 
-            <div className="mt-6 space-y-3 text-xs text-white/60">
+            <div className="mt-4 space-y-3 text-xs text-slate-500">
               <p>Need support? hello@myaibank.ai</p>
             </div>
           </div>
-          <div className="flex-1" />
         </div>
       )}
     </header>

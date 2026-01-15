@@ -1,34 +1,29 @@
-import React, { useMemo, useRef, useState } from "react";
-import type { Account, Transaction } from "../types";
-import { buildFinanceContext } from "../utils/financeContext";
+import React, { useRef, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  variant?: "error";
 };
 
 type MascotAssistantProps = {
-  accounts: Account[];
-  transactions: Transaction[];
   region: string;
-  lastUpdated?: string;
 };
 
 const QUICK_CHIPS = [
-  "Spending last 30 days",
-  "Top categories",
-  "Subscriptions",
-  "Biggest expenses",
-  "How can I save more?",
+  { label: "Spending last 30 days", prompt: "Calculate my spending in the last 30 days." },
+  { label: "Top categories", prompt: "Show my top spending categories from recent transactions." },
+  { label: "Subscriptions", prompt: "List my recurring subscriptions and their monthly cost." },
+  { label: "Biggest expenses", prompt: "What are my biggest expenses recently?" },
+  { label: "How can I save more?", prompt: "Give me basic budgeting tips based on my recent spending." },
 ];
 
 const MascotAssistant: React.FC<MascotAssistantProps> = ({
-  accounts,
-  transactions,
   region,
-  lastUpdated,
 }) => {
+  const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -36,18 +31,14 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
   const [imageError, setImageError] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const financeContext = useMemo(
-    () => buildFinanceContext(accounts, transactions, region, lastUpdated),
-    [accounts, transactions, region, lastUpdated]
-  );
-
   const appendMessage = (next: Message) => {
     setMessages((prev) => [...prev, next]);
   };
 
-  const handleSend = async (message: string) => {
+  const handleSend = async (message: string, quickAction?: string) => {
     const trimmed = message.trim();
     if (!trimmed) return;
+    if (thinking) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -64,29 +55,42 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
     setThinking(true);
 
     try {
-      const response = await fetch("/api/ai/chat", {
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        appendMessage({
+          id: `${Date.now()}-assistant-error`,
+          role: "assistant",
+          variant: "error",
+          content: "Please sign in to ask about your MyAiBank finances.",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/mascot-chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         signal: controller.signal,
         body: JSON.stringify({
           message: trimmed,
-          financeContext,
+          quickAction,
+          context: { region },
         }),
       });
 
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload?.error?.message || "Unable to reach the assistant.");
+        throw new Error(payload?.error || "Unable to reach the assistant.");
       }
 
       appendMessage({
         id: `${Date.now()}-assistant`,
         role: "assistant",
         content:
-          typeof payload.reply === "string"
-            ? payload.reply
+          typeof payload.answer === "string"
+            ? payload.answer
             : "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.",
       });
     } catch (error) {
@@ -96,8 +100,11 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
       appendMessage({
         id: `${Date.now()}-assistant-error`,
         role: "assistant",
+        variant: "error",
         content:
-          "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.",
+          error instanceof Error
+            ? error.message
+            : "Sorry, I couldn't reach MyAiBank right now. Please try again.",
       });
     } finally {
       setThinking(false);
@@ -155,6 +162,8 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
                 className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                   message.role === "user"
                     ? "ml-auto bg-[#1F0051] text-white"
+                    : message.variant === "error"
+                      ? "bg-rose-500/20 text-rose-100"
                     : "bg-white/10 text-white/90"
                 }`}
               >
@@ -172,12 +181,13 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
           <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3">
             {QUICK_CHIPS.map((chip) => (
               <button
-                key={chip}
+                key={chip.label}
                 type="button"
-                onClick={() => handleSend(chip)}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/70 transition hover:border-white/30 hover:text-white"
+                onClick={() => handleSend(chip.prompt, chip.label)}
+                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={thinking}
               >
-                {chip}
+                {chip.label}
               </button>
             ))}
           </div>
@@ -194,10 +204,12 @@ const MascotAssistant: React.FC<MascotAssistantProps> = ({
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask about your spending…"
               className="flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
+              disabled={thinking}
             />
             <button
               type="submit"
-              className="rounded-full bg-[#1F0051] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#2a0a6c]"
+              className="rounded-full bg-[#1F0051] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#2a0a6c] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={thinking || !input.trim()}
             >
               Send
             </button>
