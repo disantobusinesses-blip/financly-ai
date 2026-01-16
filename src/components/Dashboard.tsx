@@ -99,6 +99,7 @@ const Dashboard: React.FC = () => {
     }
   }, [authLoading, session]);
 
+  // DO NOT CHANGE: stable consent session route
   const handleConnectBank = async (): Promise<void> => {
     setConnectError(null);
     setConnecting(true);
@@ -147,27 +148,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const ConnectBankCTA = (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <button
-        type="button"
-        onClick={handleConnectBank}
-        disabled={connecting}
-        className="relative overflow-hidden rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
-        {connecting && (
-          <span className="absolute inset-0 flex items-center justify-center">
-            <span className="connect-loading-track">
-              <span className="connect-loading-bar" />
-            </span>
-          </span>
-        )}
-      </button>
-      {connectError && <p className="text-sm text-red-500 text-center">{connectError}</p>}
-    </div>
-  );
-
   const hasData = accounts.length > 0 || transactions.length > 0;
   const debugBlock = debugInfo ? JSON.stringify(debugInfo, null, 2) : null;
   const connectionPending =
@@ -177,26 +157,45 @@ const Dashboard: React.FC = () => {
     user && profile?.is_onboarded ? (
       <a
         href="/app/profile"
-        className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
       >
         My profile
       </a>
     ) : null;
 
-  const DashboardHeader = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-        <h1 className="text-2xl font-semibold text-white">Overview</h1>
+  const SectionShell: React.FC<{ children: React.ReactNode; tourId?: string }> = ({ children, tourId }) => (
+    <section
+      data-tour-id={tourId}
+      className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur"
+    >
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
+        <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
       </div>
-      <div className="flex items-center gap-2">{profileLink}</div>
-    </div>
+      <div className="relative p-5 sm:p-6">{children}</div>
+    </section>
   );
 
   if (dataLoading && !hasData) {
     return (
       <div className="flex flex-col gap-8">
-        {DashboardHeader}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+            <h1 className="text-2xl font-semibold text-white">Overview</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {profileLink}
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+            >
+              Refresh bank data
+            </button>
+          </div>
+        </div>
+
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <SyncingOverlay
             open
@@ -205,14 +204,34 @@ const Dashboard: React.FC = () => {
             progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 10}
             details={debugBlock || undefined}
           />
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
-          >
-            Refresh bank data
-          </button>
-          {!connectionPending && ConnectBankCTA}
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Refresh bank data
+            </button>
+
+            {!connectionPending && (
+              <button
+                type="button"
+                onClick={handleConnectBank}
+                disabled={connecting}
+                className="relative overflow-hidden rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
+                {connecting && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="connect-loading-track">
+                      <span className="connect-loading-bar" />
+                    </span>
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -221,7 +240,26 @@ const Dashboard: React.FC = () => {
   if (error && !hasData) {
     return (
       <div className="flex flex-col gap-8">
-        {DashboardHeader}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+            <h1 className="text-2xl font-semibold text-white">Overview</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {profileLink}
+            {!connectionPending && (
+              <button
+                type="button"
+                onClick={handleConnectBank}
+                disabled={connecting}
+                className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:opacity-60"
+              >
+                Connect bank
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <p className="text-red-400">{error}</p>
           {debugBlock && (
@@ -229,7 +267,6 @@ const Dashboard: React.FC = () => {
               {debugBlock}
             </pre>
           )}
-          {!connectionPending && ConnectBankCTA}
         </div>
       </div>
     );
@@ -238,7 +275,23 @@ const Dashboard: React.FC = () => {
   if (!hasData) {
     return (
       <div className="flex flex-col gap-8">
-        {DashboardHeader}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+            <h1 className="text-2xl font-semibold text-white">Overview</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {profileLink}
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+            >
+              Refresh bank data
+            </button>
+          </div>
+        </div>
+
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <SyncingOverlay
             open={connectionPending}
@@ -250,7 +303,14 @@ const Dashboard: React.FC = () => {
           {!connectionPending ? (
             <>
               <p>No data yet. Connect your bank to see your dashboard.</p>
-              {ConnectBankCTA}
+              <button
+                type="button"
+                onClick={handleConnectBank}
+                disabled={connecting}
+                className="interactive-primary rounded-2xl bg-[#1F0051] px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {connecting ? "Starting…" : "Connect bank"}
+              </button>
             </>
           ) : (
             <button
@@ -267,17 +327,11 @@ const Dashboard: React.FC = () => {
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
-        subscriptionTotal,
-        region
-      )} you can save on.`
+    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
-        monthlyStats.expenses,
-        region
-      )}.`
+    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
     : "Link your accounts to calculate monthly cashflow.";
 
   const featureCards = [
@@ -300,11 +354,7 @@ const Dashboard: React.FC = () => {
     {
       key: "spending-forecast",
       element: (
-        <PlanGate
-          feature="Account forecast"
-          teaser="Upgrade to view account-level forecasts."
-          dataTourId="forecast"
-        >
+        <PlanGate feature="Account forecast" teaser="Upgrade to view account-level forecasts." dataTourId="forecast">
           <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
         </PlanGate>
       ),
@@ -312,11 +362,7 @@ const Dashboard: React.FC = () => {
     {
       key: "upcoming-bills",
       element: (
-        <PlanGate
-          feature="Upcoming bills"
-          teaser="Upgrade to predict upcoming bills and due dates."
-          dataTourId="upcoming-bills"
-        >
+        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
           <UpcomingBills accounts={accounts} />
         </PlanGate>
       ),
@@ -332,19 +378,21 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
+    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-12 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
           <h1 className="text-2xl font-semibold text-white">Overview</h1>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {profileLink}
+
           <button
             type="button"
             onClick={handleConnectBank}
             disabled={connecting}
-            className="relative overflow-hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative overflow-hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
             {connecting && (
@@ -374,9 +422,17 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
-      <SpendingCategoriesWidget transactions={transactions} region={region} />
-      <FinancialHealthCard transactions={transactions} region={region} />
+      <SectionShell tourId="balance-summary">
+        <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
+      </SectionShell>
+
+      <SectionShell>
+        <SpendingCategoriesWidget transactions={transactions} region={region} />
+      </SectionShell>
+
+      <SectionShell tourId="financial-health">
+        <FinancialHealthCard transactions={transactions} region={region} />
+      </SectionShell>
 
       <section className="flex flex-col gap-4" data-tour-id="tool-carousel">
         <div className="flex items-center justify-between">
@@ -385,9 +441,14 @@ const Dashboard: React.FC = () => {
             <h2 className="text-lg font-semibold text-white">Build your plan</h2>
           </div>
         </div>
+
         <div className="tool-tiles">
           {featureCards.map(({ key, element }) => (
-            <ToolTile key={key}>{element}</ToolTile>
+            <ToolTile key={key}>
+              <div className="hover-zoom rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur">
+                <div className="p-5 sm:p-6">{element}</div>
+              </div>
+            </ToolTile>
           ))}
         </div>
       </section>
@@ -413,9 +474,8 @@ const Dashboard: React.FC = () => {
       />
 
       <LegalFooter />
-      <MascotAssistant
-        region={region}
-      />
+
+      <MascotAssistant region={region} />
     </div>
   );
 };
