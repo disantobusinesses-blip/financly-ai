@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Helovatica", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Helvetica", "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
   --accent: #1f0051;
   --surface: #0b0b0f;
@@ -175,9 +175,12 @@ body::after {
   opacity: 0.35;
 }
 
+/* Mascot micro-animations (premium, lightweight) */
 .mascot-avatar {
   position: relative;
   overflow: hidden;
+  animation: mascot-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
 }
 
 .mascot-avatar::after {
@@ -192,6 +195,13 @@ body::after {
 
 .mascot-bob {
   animation: mascot-bob 3.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Hover: pause bob and lift slightly so it feels responsive */
+.mascot-avatar:hover .mascot-bob {
+  animation-play-state: paused;
+  transform: translateY(-6px) scale(1.02);
 }
 
 @keyframes mascot-bob {
@@ -216,6 +226,18 @@ body::after {
   100% {
     opacity: 0;
     transform: translateX(60%);
+  }
+}
+
+@keyframes mascot-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(31, 0, 81, 0);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(31, 0, 81, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(31, 0, 81, 0);
   }
 }
 
@@ -261,5 +283,16 @@ body::after {
   }
   100% {
     transform: translateX(60%);
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mascot-bob,
+  .mascot-avatar,
+  .mascot-avatar::after,
+  .forecast-bar,
+  .connect-loading-bar {
+    animation: none !important;
   }
 }
