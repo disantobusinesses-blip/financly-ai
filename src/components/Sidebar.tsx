@@ -1,226 +1,167 @@
-import React, { useEffect, useState } from "react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import Header from "./components/Header";
-import Dashboard from "./components/Dashboard";
-import WelcomeScreen from "./components/WelcomeScreen";
-import SandboxShowcase from "./components/SandboxShowcase";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import WhatWeDo from "./components/WhatWeDo";
-import OnboardingPage from "./pages/Onboarding";
-import SubscribePage from "./pages/Subscribe";
-import SubscriptionSuccessPage from "./pages/SubscriptionSuccess";
-import LoginPage from "./pages/Login";
-import AuthCallbackPage from "./pages/AuthCallback";
-import SignupPage from "./pages/Signup";
-import FiskilCallbackPage from "./pages/FiskilCallback";
-import ProfilePage from "./pages/Profile";
+import React, { useMemo, useState } from "react";
+import {
+  Bars3Icon,
+  XMarkIcon,
+  HomeIcon,
+  DocumentChartBarIcon,
+  ChartBarIcon,
+  BanknotesIcon,
+  ArrowUpRightIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "../contexts/AuthContext";
 
-const usePath = () => {
-  const [path, setPath] = useState(window.location.pathname);
-  useEffect(() => {
-    const handler = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
-  }, []);
-  const navigate = (next: string) => {
-    if (next !== window.location.pathname) {
-      window.history.pushState({}, "", next);
-      setPath(next);
+export type SidebarItem = "overview" | "transactions" | "budget" | "reports" | "upgrade";
+
+type SidebarProps = {
+  activeItem?: SidebarItem;
+  onNavigate: (item: SidebarItem) => void;
+};
+
+export default function Sidebar({ activeItem = "overview", onNavigate }: SidebarProps) {
+  const { logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const items = useMemo(
+    () =>
+      [
+        { id: "overview" as const, label: "Overview", icon: HomeIcon },
+        { id: "transactions" as const, label: "Transactions", icon: DocumentChartBarIcon },
+        { id: "budget" as const, label: "Budget", icon: ChartBarIcon },
+        { id: "reports" as const, label: "Reports", icon: BanknotesIcon },
+        { id: "upgrade" as const, label: "Upgrade", icon: ArrowUpRightIcon },
+      ] as const,
+    []
+  );
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // ignore
+    } finally {
+      window.location.href = "/login";
     }
   };
-  return { path, navigate };
-};
 
-const AppContent: React.FC = () => {
-  const { user, profile, loading } = useAuth();
-  const { path, navigate } = usePath();
+  const NavButton = ({
+    id,
+    label,
+    Icon,
+  }: {
+    id: SidebarItem;
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+  }) => {
+    const isActive = activeItem === id;
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const offset = Math.min(0, window.scrollY * -0.15);
-      document.documentElement.style.setProperty("--scroll-offset", `${offset}px`);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate(id);
+          setIsOpen(false);
+        }}
+        className={[
+          "group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
+          "border",
+          isActive
+            ? "border-[#1F0051]/60 bg-[#1F0051]/25 text-white shadow-[0_0_0_1px_rgba(31,0,81,0.35)]"
+            : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "flex h-9 w-9 items-center justify-center rounded-xl border transition",
+            isActive ? "border-[#1F0051]/60 bg-[#14002f]" : "border-white/10 bg-black/30 group-hover:border-white/20",
+          ].join(" ")}
+        >
+          <Icon className={["h-5 w-5", isActive ? "text-white" : "text-white/70 group-hover:text-white"].join(" ")} />
+        </span>
 
-  const backgroundLayers = (
-    <>
-      <div className="floating-particles" aria-hidden="true" />
-      <div className="scroll-light" aria-hidden="true" />
-    </>
+        <span className="flex-1">{label}</span>
+
+        {id === "upgrade" && (
+          <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-white/70">
+            Pro
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const Shell = ({ mobile }: { mobile?: boolean }) => (
+    <aside
+      className={[
+        "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/50 backdrop-blur",
+        mobile ? "h-full w-80 max-w-[86vw]" : "hidden lg:block lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-72",
+      ].join(" ")}
+    >
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/30 blur-3xl" />
+        <div className="absolute -right-28 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      </div>
+
+      <div className="relative flex h-full flex-col p-5">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/40">
+            <span className="h-5 w-5 rounded-full border-2 border-[#1F0051] bg-[#14002f]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/50">MyAiBank</p>
+            <p className="truncate text-sm font-semibold text-white/90">Dashboard</p>
+          </div>
+        </div>
+
+        <nav className="space-y-2">
+          {items.map((it) => (
+            <NavButton key={it.id} id={it.id} label={it.label} Icon={it.icon} />
+          ))}
+        </nav>
+
+        <div className="mt-auto pt-5">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full rounded-2xl border border-white/15 bg-black/30 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+          >
+            Logout
+          </button>
+
+          <p className="mt-4 text-xs text-white/45">Support: hello@myaibank.ai</p>
+        </div>
+      </div>
+    </aside>
   );
-
-  if (path === "/signup") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <SignupPage />
-      </div>
-    );
-  }
-
-  if (path === "/onboarding") {
-    if (!user && !loading) {
-      navigate("/login");
-      return null;
-    }
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <OnboardingPage />
-      </div>
-    );
-  }
-
-  if (path === "/fiskil/callback") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <FiskilCallbackPage />
-      </div>
-    );
-  }
-
-  if (path === "/login") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <LoginPage onSuccess={() => navigate("/dashboard")} />
-      </div>
-    );
-  }
-
-  if (path === "/subscribe") {
-    if (!user && !loading) {
-      navigate("/onboarding");
-      return null;
-    }
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <SubscribePage />
-      </div>
-    );
-  }
-
-  if (path === "/auth/callback") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <AuthCallbackPage />
-      </div>
-    );
-  }
-
-  if (path === "/subscription/success") {
-    if (!user && !loading) {
-      navigate("/login");
-      return null;
-    }
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <SubscriptionSuccessPage onComplete={() => navigate("/app/dashboard")} />
-      </div>
-    );
-  }
-
-  if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
-    if (!user && !loading) {
-      navigate("/login");
-      return null;
-    }
-    if (user && profile && !profile.is_onboarded) {
-      navigate("/onboarding");
-      return null;
-    }
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <main className="px-4 pb-16 pt-6 md:px-8">
-          <Dashboard />
-        </main>
-      </div>
-    );
-  }
-
-  if (path === "/app/profile") {
-    if (!user && !loading) {
-      navigate("/login");
-      return null;
-    }
-    if (user && profile && !profile.is_onboarded) {
-      navigate("/onboarding");
-      return null;
-    }
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <main className="px-4 pb-16 pt-6 md:px-8">
-          <ProfilePage />
-        </main>
-      </div>
-    );
-  }
-
-  if (path === "/what-we-do") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="what-we-do" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <main className="px-4 pb-16 pt-24 md:px-8">
-          <WhatWeDo />
-        </main>
-      </div>
-    );
-  }
-
-  if (path === "/sandbox") {
-    return (
-      <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-        {backgroundLayers}
-        <Header activeView="sandbox" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-        <main className="px-4 pb-16 pt-24 md:px-8">
-          <SandboxShowcase />
-        </main>
-      </div>
-    );
-  }
-
-  if (user && profile?.is_onboarded) {
-    navigate("/app/dashboard");
-    return null;
-  }
 
   return (
-    <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
-      {backgroundLayers}
-      <Header activeView="dashboard" onNavigate={(view) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-      <WelcomeScreen
-        onGetStarted={() => navigate("/signup")}
-        onLogin={() => navigate("/login")}
-        onDashboard={user ? () => navigate("/app/dashboard") : undefined}
-      />
-    </div>
+    <>
+      <button
+        type="button"
+        className="lg:hidden fixed left-4 top-[84px] z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#0b0b10] shadow-lg shadow-black/40 transition hover:border-white/30"
+        onClick={() => setIsOpen(true)}
+        aria-label="Open menu"
+      >
+        <Bars3Icon className="h-6 w-6 text-white/85" />
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setIsOpen(false)} />
+          <div className="relative z-50 h-full">
+            <Shell mobile />
+            <button
+              type="button"
+              className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-white/80 transition hover:border-white/25 hover:text-white"
+              onClick={() => setIsOpen(false)}
+              aria-label="Close menu"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Shell />
+    </>
   );
-};
-
-const App: React.FC = () => (
-  <AuthProvider>
-    <ThemeProvider>
-      <AppContent />
-      <SpeedInsights />
-    </ThemeProvider>
-  </AuthProvider>
-);
-
-export default App;
+}

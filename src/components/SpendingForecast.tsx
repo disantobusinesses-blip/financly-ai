@@ -31,8 +31,15 @@ const buildMonthlyNet = (transactions: Transaction[]) => {
 
 const buildProjection = (monthlyNet: ReturnType<typeof buildMonthlyNet>, startingBalance: number): ProjectionPoint[] => {
   if (monthlyNet.length === 0) return [];
+
   const recent = monthlyNet.slice(-3);
-  const savingsPerMonth = Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
+  const raw = Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
+
+  // ✅ UX: always show a positive “goal projection” slope (never downward line)
+  // Keep it small so it feels realistic.
+  const MIN_UPWARD_PER_MONTH = 20;
+  const savingsPerMonth = Math.max(raw, MIN_UPWARD_PER_MONTH);
+
   const now = new Date();
 
   return Array.from({ length: 6 }).map((_, index) => {
@@ -50,10 +57,12 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
 
   const projection = useMemo(() => buildProjection(monthlyNet, startingBalance), [monthlyNet, startingBalance]);
 
-  const savingsPerMonth = useMemo(() => {
-    if (monthlyNet.length === 0) return 0;
+  const { rawSavingsPerMonth, goalSavingsPerMonth } = useMemo(() => {
+    if (monthlyNet.length === 0) return { rawSavingsPerMonth: 0, goalSavingsPerMonth: 0 };
     const recent = monthlyNet.slice(-3);
-    return Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
+    const raw = Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
+    const MIN_UPWARD_PER_MONTH = 20;
+    return { rawSavingsPerMonth: raw, goalSavingsPerMonth: Math.max(raw, MIN_UPWARD_PER_MONTH) };
   }, [monthlyNet]);
 
   const { currentNet, previousNet } = useMemo(() => {
@@ -101,11 +110,15 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
     <Card title="Account forecast">
       <div className="space-y-3">
         <p className="text-sm text-white/70">
-          Based on your last 3 months, your average net is{" "}
+          <span className="text-white/85 font-semibold">Goal projection:</span>{" "}
+          based on your recent trend, we model a minimum positive slope of{" "}
           <span className="text-white font-semibold">
-            {formatCurrency(savingsPerMonth, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {formatCurrency(goalSavingsPerMonth, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </span>{" "}
           per month.
+          {rawSavingsPerMonth < goalSavingsPerMonth && (
+            <span className="ml-2 text-white/50">(clamped upward)</span>
+          )}
         </p>
 
         <div className="flex flex-col items-end gap-1">
@@ -128,7 +141,8 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
           <defs>
             <linearGradient id="forecastLine" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#7C3AED" stopOpacity="0.9" />
-              <stop offset="1" stopColor="#22C55E" stopOpacity="0.9" />
+              {/* ✅ brighter “satisfying” green */}
+              <stop offset="1" stopColor="#34D399" stopOpacity="0.95" />
             </linearGradient>
           </defs>
 
