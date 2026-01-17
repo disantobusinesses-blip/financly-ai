@@ -66,7 +66,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { message: "OPENAI_API_KEY is not configured" } });
   }
 
-  // Require auth (matches your existing banking endpoints pattern)
   if (!supabaseAdmin) {
     return res.status(500).json({
       error: { message: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured for /api/ai/chat" },
@@ -97,23 +96,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { message: "message is required" } });
   }
 
-  // Allow financeContext to be empty (still call OpenAI), but bias to “connect bank” guidance
   const userId = authData.user.id;
   const clientKey = getClientKey(req, userId);
   if (isRateLimited(clientKey)) {
     return res.status(429).json({ error: { message: "Too many requests" } });
   }
 
+  // ✅ Shorter answers enforced here
   const systemPrompt = `You are MyAiBank's in-app finance assistant.
+
 Rules:
 - Only answer using the provided financeContext JSON (if present).
 - Allowed topics: transactions, accounts, income, outgoings, categories, subscriptions/recurring, budgeting, saving opportunities.
 - If the question is unrelated OR cannot be answered from financeContext, reply exactly with:
 "${refusalMessage}"
+
 Style:
-- Private banker tone: calm, concise, data-driven.
-- Use numbers when available (amounts, dates, merchants).
-- No web browsing, no external data.`;
+- Private banker tone: calm, minimal, data-driven.
+- Keep answers SHORT: max 3 sentences OR max 5 bullet lines.
+- Prefer numbers and summaries. No disclaimers unless asked.
+- If the user wants detail, ask: "Want a breakdown by merchant/category?"`;
 
   try {
     console.log("AI_CHAT: calling OpenAI", { userId, hasFinanceContext: Boolean(financeContext) });
@@ -121,6 +123,7 @@ Style:
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       temperature: 0.2,
+      max_tokens: 220, // ✅ hard limit for short replies
       messages: [
         { role: "system", content: systemPrompt },
         {

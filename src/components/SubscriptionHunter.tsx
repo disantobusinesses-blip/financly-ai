@@ -11,6 +11,7 @@ export interface SubscriptionSummary {
 
 export const deriveSubscriptionSummary = (transactions: Transaction[]): SubscriptionSummary[] => {
   const grouped = new Map<string, { total: number; count: number }>();
+
   transactions
     .filter((tx) => tx.category === "Subscriptions" || /subscription|netflix|spotify|disney|prime/i.test(tx.description))
     .forEach((tx) => {
@@ -36,44 +37,46 @@ const SubscriptionHunter: React.FC<Props> = ({ transactions, region }) => {
   const totalSpent = summary.reduce((sum, item) => sum + item.total, 0);
 
   return (
-    <div className="rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-white/10" data-tour-id="subscription-hunter">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/40 backdrop-blur" data-tour-id="subscription-hunter">
       <div className="mb-4 flex items-center gap-3">
-        <CreditCardIcon className="h-6 w-6 text-primary" />
+        <CreditCardIcon className="h-6 w-6 text-[#1F0051]" />
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Subscription Hunter</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-300">
-            We group identical merchants so you can see how often they hit your account.
+          <h2 className="text-lg font-semibold text-white">Subscription Hunter</h2>
+          <p className="text-sm text-white/60">
+            We group identical merchants so you can see recurring charges clearly.
           </p>
         </div>
       </div>
 
       {summary.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-300">No recurring services detected yet.</p>
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-white/70">
+          No recurring services detected yet.
+        </div>
       ) : (
         <>
-          <div className="mb-4 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            Found {summary.length} active subscriptions costing {formatCurrency(totalSpent, region)} per month.
+          <div className="mb-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm font-semibold text-white/80">
+            Found {summary.length} subscriptions costing{" "}
+            <span className="text-white">{formatCurrency(totalSpent, region)}</span> per month.
           </div>
+
           <ul className="space-y-3 text-sm">
             {summary.map((item) => (
               <li
                 key={item.name}
-                className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white/80"
               >
                 <div>
-                  <p className="font-semibold">{item.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Charged {item.count} times</p>
+                  <p className="font-semibold text-white">{item.name}</p>
+                  <p className="text-xs text-white/50">Charged {item.count} times</p>
                 </div>
-                <span className="font-semibold">{formatCurrency(item.total, region)}</span>
+                <span className="font-semibold text-white">{formatCurrency(item.total, region)}</span>
               </li>
             ))}
           </ul>
         </>
       )}
 
-      <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">
-        Insights are informational only and not financial advice.
-      </p>
+      <p className="mt-4 text-xs text-white/40">Insights are informational only.</p>
     </div>
   );
 };

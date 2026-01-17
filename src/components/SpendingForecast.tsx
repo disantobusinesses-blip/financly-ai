@@ -29,15 +29,10 @@ const buildMonthlyNet = (transactions: Transaction[]) => {
   return Array.from(totals.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 };
 
-const buildProjection = (
-  monthlyNet: ReturnType<typeof buildMonthlyNet>,
-  startingBalance: number
-): ProjectionPoint[] => {
+const buildProjection = (monthlyNet: ReturnType<typeof buildMonthlyNet>, startingBalance: number): ProjectionPoint[] => {
   if (monthlyNet.length === 0) return [];
   const recent = monthlyNet.slice(-3);
-  const savingsPerMonth = Math.round(
-    recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1)
-  );
+  const savingsPerMonth = Math.round(recent.reduce((total, item) => total + item.net, 0) / Math.max(recent.length, 1));
   const now = new Date();
 
   return Array.from({ length: 6 }).map((_, index) => {
@@ -52,7 +47,9 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
   const monthlyNet = useMemo(() => buildMonthlyNet(transactions), [transactions]);
   const overview = useMemo(() => computeAccountOverview(accounts), [accounts]);
   const startingBalance = overview.spendingAvailable;
+
   const projection = useMemo(() => buildProjection(monthlyNet, startingBalance), [monthlyNet, startingBalance]);
+
   const savingsPerMonth = useMemo(() => {
     if (monthlyNet.length === 0) return 0;
     const recent = monthlyNet.slice(-3);
@@ -60,9 +57,7 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
   }, [monthlyNet]);
 
   const { currentNet, previousNet } = useMemo(() => {
-    if (monthlyNet.length === 0) {
-      return { currentNet: 0, previousNet: null as number | null };
-    }
+    if (monthlyNet.length === 0) return { currentNet: 0, previousNet: null as number | null };
     const current = monthlyNet[monthlyNet.length - 1]?.net ?? 0;
     const previous = monthlyNet.length > 1 ? monthlyNet[monthlyNet.length - 2]?.net ?? 0 : null;
     return { currentNet: current, previousNet: previous };
@@ -71,37 +66,55 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
   if (projection.length === 0) {
     return (
       <Card title="Account forecast">
-        <p className="text-sm text-white/70">Connect your accounts and build a month of history to model six months ahead.</p>
+        <p className="text-sm text-white/70">Connect accounts and build history to model future cashflow.</p>
       </Card>
     );
   }
 
-  const sixMonthTotal = projection[projection.length - 1]?.projected ?? startingBalance;
-  const maxProjected = Math.max(
-    ...projection.map((point) => Math.max(0, point.projected)),
-    Math.max(0, startingBalance)
-  );
+  const values = projection.map((p) => Math.max(0, p.projected));
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+
+  const w = 560;
+  const h = 160;
+  const padX = 18;
+  const padY = 18;
+
+  const xFor = (i: number) => padX + (i * (w - padX * 2)) / (projection.length - 1);
+  const yFor = (v: number) => {
+    const range = Math.max(1, maxV - minV);
+    const t = (v - minV) / range;
+    return h - padY - t * (h - padY * 2);
+  };
+
+  const path = projection
+    .map((p, i) => {
+      const x = xFor(i);
+      const y = yFor(Math.max(0, p.projected));
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+
+  const last = projection[projection.length - 1]?.projected ?? startingBalance;
 
   return (
     <Card title="Account forecast">
       <div className="space-y-3">
         <p className="text-sm text-white/70">
-          We start from your current cash balance and layer on your average monthly net. At this pace you add{" "}
-          {formatCurrency(savingsPerMonth, region, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          })} per month.
+          Based on your last 3 months, your average net is{" "}
+          <span className="text-white font-semibold">
+            {formatCurrency(savingsPerMonth, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </span>{" "}
+          per month.
         </p>
+
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs uppercase tracking-[0.2em] text-white/60">Last month&apos;s net</span>
           <MonthlyDelta
             currentValue={currentNet}
             previousValue={previousNet}
             formatter={(value) =>
-              formatCurrency(value, region, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })
+              formatCurrency(value, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
             }
             valueClassName="text-lg font-semibold text-white"
             deltaClassName="text-[0.65rem]"
@@ -109,26 +122,32 @@ const SpendingForecast: React.FC<SpendingForecastProps> = ({ accounts, transacti
           />
         </div>
       </div>
-      <div className="mt-5">
-        <div className="flex h-28 items-end gap-2 rounded-2xl bg-black/40 px-4 py-4">
-          {projection.map((point, index) => {
-            const safeProjected = Math.max(0, point.projected);
-            const height = maxProjected ? Math.max(10, (safeProjected / maxProjected) * 100) : 0;
-            return (
-              <div key={point.month} className="flex flex-1 flex-col items-center gap-2">
-                <div
-                  className="forecast-bar w-full rounded-full bg-[#1F0051]"
-                  style={{ height: `${height}%`, animationDelay: `${index * 0.1}s` }}
-                />
-                <span className="text-[0.6rem] uppercase tracking-[0.3em] text-white/50">{point.month}</span>
-              </div>
-            );
-          })}
+
+      <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-4">
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+          <defs>
+            <linearGradient id="forecastLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#7C3AED" stopOpacity="0.9" />
+              <stop offset="1" stopColor="#22C55E" stopOpacity="0.9" />
+            </linearGradient>
+          </defs>
+
+          <path d={path} fill="none" stroke="url(#forecastLine)" strokeWidth="4" strokeLinecap="round" />
+        </svg>
+
+        <div className="mt-3 flex justify-between text-[0.65rem] uppercase tracking-[0.25em] text-white/50">
+          {projection.map((p) => (
+            <span key={p.month}>{p.month.split(" ")[0]}</span>
+          ))}
         </div>
       </div>
+
       <p className="mt-6 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/80">
-        If you keep this cadence, your cash balance could reach{" "}
-        {formatCurrency(sixMonthTotal, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} in six months.
+        At this pace, cash balance could reach{" "}
+        <span className="font-semibold text-white">
+          {formatCurrency(last, region, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        </span>{" "}
+        in ~6 months.
       </p>
     </Card>
   );
