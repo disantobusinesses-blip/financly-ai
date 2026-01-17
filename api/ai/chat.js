@@ -1,34 +1,53 @@
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 
-const openaiApiKey = process.env.OPENAI_API_KEY;
-const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-if (!openaiApiKey) {
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!OPENAI_API_KEY) {
   console.warn("⚠️ OPENAI_API_KEY is not set. /api/ai/chat will return errors until configured.");
 }
 
-const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
+const supabaseAdmin =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null;
 
 const MAX_PAYLOAD_BYTES = 20000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_MAX = 10;
 const rateLimitCache = new Map();
 
-const getClientKey = (req, financeContext) => {
-  const headerKey = req.headers["x-user-id"] || req.headers["x-forwarded-for"];
-  if (typeof headerKey === "string" && headerKey.trim()) {
-    return headerKey.split(",")[0].trim();
-  }
-  if (financeContext && typeof financeContext.userId === "string") {
-    return financeContext.userId;
-  }
-  return req.socket?.remoteAddress || "anonymous";
-};
+const refusalMessage =
+  "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, categories, or saving tips.";
 
-const isRateLimited = (key) => {
+function getBearerToken(req) {
+  const h = req.headers?.authorization || req.headers?.Authorization;
+  if (!h) return null;
+  const s = String(h);
+  if (!s.toLowerCase().startsWith("bearer ")) return null;
+  return s.slice(7).trim();
+}
+
+function getClientKey(req, userId) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return `${userId || "anon"}:${forwarded.split(",")[0].trim()}`;
+  }
+  return `${userId || "anon"}:${req.socket?.remoteAddress || "unknown"}`;
+}
+
+function isRateLimited(key) {
   const now = Date.now();
   const entry = rateLimitCache.get(key) || [];
-  const windowed = entry.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+  const windowed = entry.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
   if (windowed.length >= RATE_LIMIT_MAX) {
     rateLimitCache.set(key, windowed);
     return true;
@@ -36,10 +55,7 @@ const isRateLimited = (key) => {
   windowed.push(now);
   rateLimitCache.set(key, windowed);
   return false;
-};
-
-const refusalMessage =
-  "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.";
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -50,6 +66,23 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { message: "OPENAI_API_KEY is not configured" } });
   }
 
+  // Require auth (matches your existing banking endpoints pattern)
+  if (!supabaseAdmin) {
+    return res.status(500).json({
+      error: { message: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured for /api/ai/chat" },
+    });
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: { message: "Missing Authorization bearer token" } });
+  }
+
+  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !authData?.user) {
+    return res.status(401).json({ error: { message: "Invalid session" } });
+  }
+
   const rawBody = req.body || {};
   const payloadSize = Buffer.byteLength(JSON.stringify(rawBody), "utf8");
   if (payloadSize > MAX_PAYLOAD_BYTES) {
@@ -57,37 +90,50 @@ export default async function handler(req, res) {
   }
 
   const message = typeof rawBody.message === "string" ? rawBody.message.trim() : "";
-  const financeContext = rawBody.financeContext && typeof rawBody.financeContext === "object" ? rawBody.financeContext : null;
+  const financeContext =
+    rawBody.financeContext && typeof rawBody.financeContext === "object" ? rawBody.financeContext : null;
 
-  if (!message || !financeContext) {
-    return res.status(400).json({ error: { message: "message and financeContext are required" } });
+  if (!message) {
+    return res.status(400).json({ error: { message: "message is required" } });
   }
 
-  const clientKey = getClientKey(req, financeContext);
+  // Allow financeContext to be empty (still call OpenAI), but bias to “connect bank” guidance
+  const userId = authData.user.id;
+  const clientKey = getClientKey(req, userId);
   if (isRateLimited(clientKey)) {
     return res.status(429).json({ error: { message: "Too many requests" } });
   }
 
-  const systemPrompt = `You are the MyAiBank Mascot Assistant. You must only answer questions about the user's finances using the provided financeContext JSON. Allowed topics: transactions, accounts, income, outgoings, categories, subscriptions, recurring payments, budgeting, and savings opportunities. If the question is unrelated or cannot be answered from the financeContext, reply exactly with: "${refusalMessage}". Do not browse the web or mention external data. Keep replies concise, friendly, premium, and grounded in the provided numbers. When possible, cite specific amounts, dates, and merchants from financeContext.`;
+  const systemPrompt = `You are MyAiBank's in-app finance assistant.
+Rules:
+- Only answer using the provided financeContext JSON (if present).
+- Allowed topics: transactions, accounts, income, outgoings, categories, subscriptions/recurring, budgeting, saving opportunities.
+- If the question is unrelated OR cannot be answered from financeContext, reply exactly with:
+"${refusalMessage}"
+Style:
+- Private banker tone: calm, concise, data-driven.
+- Use numbers when available (amounts, dates, merchants).
+- No web browsing, no external data.`;
 
   try {
+    console.log("AI_CHAT: calling OpenAI", { userId, hasFinanceContext: Boolean(financeContext) });
+
     const response = await openai.chat.completions.create({
-      model: openaiModel,
+      model: OPENAI_MODEL,
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: `User message: ${message}\n\nfinanceContext JSON:\n${JSON.stringify(financeContext)}`,
+          content: `User message: ${message}\n\nfinanceContext JSON:\n${JSON.stringify(financeContext || {})}`,
         },
       ],
     });
 
     const reply = response.choices?.[0]?.message?.content?.trim() || refusalMessage;
-
     return res.status(200).json({ reply });
   } catch (error) {
-    console.error("Mascot assistant error", error);
+    console.error("AI_CHAT error", error);
     return res.status(500).json({ error: { message: "Unable to generate reply" } });
   }
 }
