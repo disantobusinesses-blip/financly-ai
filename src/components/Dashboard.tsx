@@ -10,7 +10,6 @@ import PlanGate from "./PlanGate";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
 import LegalFooter from "./LegalFooter";
-import ToolTile from "./ToolTile";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
@@ -81,16 +80,12 @@ const Dashboard: React.FC = () => {
   }, [transactions]);
 
   const tourSteps: TourStep[] = [
+    { id: "forecast-hero", title: "Forecast", description: "Your cashflow trend and 6-month projection." },
     { id: "balance-summary", title: "Where you stand", description: "Review key balances at a glance." },
+    { id: "spending-categories", title: "Categories", description: "See where your money goes." },
     { id: "financial-health", title: "Cashflow precision", description: "Track income vs outgoings each month." },
-    {
-      id: "subscription-hunter",
-      title: "Subscription Hunter",
-      description: "AI groups repeat merchants and shows how often they bill you.",
-      mobileHint: "Swipe right to reveal more tools on mobile.",
-    },
-    { id: "cashflow", title: "Cashflow", description: "Monitor break-even trends and savings projections." },
-    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity." },
+    { id: "tool-grid", title: "Tools", description: "Tap a tile to explore subscription and cashflow tools." },
+    { id: "transactions", title: "Transactions", description: "Browse your latest activity." },
   ];
 
   useEffect(() => {
@@ -163,10 +158,17 @@ const Dashboard: React.FC = () => {
       </a>
     ) : null;
 
-  const SectionShell: React.FC<{ children: React.ReactNode; tourId?: string }> = ({ children, tourId }) => (
+  const SectionShell: React.FC<{ children: React.ReactNode; tourId?: string; className?: string }> = ({
+    children,
+    tourId,
+    className,
+  }) => (
     <section
       data-tour-id={tourId}
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur"
+      className={[
+        "relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur",
+        className || "",
+      ].join(" ")}
     >
       <div className="pointer-events-none absolute inset-0 opacity-60">
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
@@ -176,25 +178,49 @@ const Dashboard: React.FC = () => {
     </section>
   );
 
+  const HeaderRow: React.FC = () => (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+        <h1 className="text-2xl font-semibold text-white">Overview</h1>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {profileLink}
+
+        <button
+          type="button"
+          onClick={handleConnectBank}
+          disabled={connecting}
+          className="relative overflow-hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
+          {connecting && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="connect-loading-track">
+                <span className="connect-loading-bar" />
+              </span>
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+        >
+          Refresh bank data
+        </button>
+      </div>
+
+      {connectError && <p className="text-sm text-red-400">{connectError}</p>}
+    </div>
+  );
+
   if (dataLoading && !hasData) {
     return (
       <div className="flex flex-col gap-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-            <h1 className="text-2xl font-semibold text-white">Overview</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileLink}
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
-            >
-              Refresh bank data
-            </button>
-          </div>
-        </div>
+        <HeaderRow />
 
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <SyncingOverlay
@@ -240,25 +266,7 @@ const Dashboard: React.FC = () => {
   if (error && !hasData) {
     return (
       <div className="flex flex-col gap-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-            <h1 className="text-2xl font-semibold text-white">Overview</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileLink}
-            {!connectionPending && (
-              <button
-                type="button"
-                onClick={handleConnectBank}
-                disabled={connecting}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:opacity-60"
-              >
-                Connect bank
-              </button>
-            )}
-          </div>
-        </div>
+        <HeaderRow />
 
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <p className="text-red-400">{error}</p>
@@ -275,22 +283,7 @@ const Dashboard: React.FC = () => {
   if (!hasData) {
     return (
       <div className="flex flex-col gap-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-            <h1 className="text-2xl font-semibold text-white">Overview</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileLink}
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
-            >
-              Refresh bank data
-            </button>
-          </div>
-        </div>
+        <HeaderRow />
 
         <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
           <SyncingOverlay
@@ -327,16 +320,27 @@ const Dashboard: React.FC = () => {
   }
 
   const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(subscriptionTotal, region)} you can save on.`
+    ? `Found ${subscriptionSummary.length} subs. Est. ${formatCurrency(subscriptionTotal, region)} / mo.`
     : "Connect a bank to discover recurring services.";
 
   const cashflowTeaser = monthlyStats.income
     ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}.`
     : "Link your accounts to calculate monthly cashflow.";
 
-  const featureCards = [
+  // Tools: designed to be a 2x2 grid on iPhone; expands on desktop.
+  const toolCards = [
     {
-      key: "subscription-hunter",
+      key: "forecast",
+      title: "Forecast",
+      element: (
+        <PlanGate feature="Account forecast" teaser="Upgrade to view forecasts." dataTourId="forecast">
+          <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
+        </PlanGate>
+      ),
+    },
+    {
+      key: "subscriptions",
+      title: "Subscription Hunter",
       element: (
         <PlanGate feature="Subscription Hunter" teaser={subscriptionTeaser} dataTourId="subscription-hunter">
           <SubscriptionHunter transactions={transactions} region={region} />
@@ -345,6 +349,7 @@ const Dashboard: React.FC = () => {
     },
     {
       key: "cashflow",
+      title: "Cashflow",
       element: (
         <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
           <CashflowMini transactions={transactions} region={region} />
@@ -352,69 +357,19 @@ const Dashboard: React.FC = () => {
       ),
     },
     {
-      key: "spending-forecast",
+      key: "bills",
+      title: "Upcoming bills",
       element: (
-        <PlanGate feature="Account forecast" teaser="Upgrade to view account-level forecasts." dataTourId="forecast">
-          <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "upcoming-bills",
-      element: (
-        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
+        <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills." dataTourId="upcoming-bills">
           <UpcomingBills accounts={accounts} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "transactions",
-      element: (
-        <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
-          <TransactionsList transactions={transactions} />
         </PlanGate>
       ),
     },
   ];
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-12 lg:px-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-          <h1 className="text-2xl font-semibold text-white">Overview</h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {profileLink}
-
-          <button
-            type="button"
-            onClick={handleConnectBank}
-            disabled={connecting}
-            className="relative overflow-hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
-            {connecting && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <span className="connect-loading-track">
-                  <span className="connect-loading-bar" />
-                </span>
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
-          >
-            Refresh bank data
-          </button>
-        </div>
-
-        {connectError && <p className="text-sm text-red-400">{connectError}</p>}
-      </div>
+    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-7 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-12 lg:px-10">
+      <HeaderRow />
 
       {error && hasData && (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-200 shadow-sm">
@@ -422,19 +377,29 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* HERO: Forecast first (main feature) */}
+      <SectionShell tourId="forecast-hero" className="overflow-hidden">
+        <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
+      </SectionShell>
+
+      {/* KPI / balance summary (still valuable, below forecast) */}
       <SectionShell tourId="balance-summary">
         <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
       </SectionShell>
 
-      <SectionShell>
-        <SpendingCategoriesWidget transactions={transactions} region={region} />
-      </SectionShell>
+      {/* Categories + Health in a responsive grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SectionShell tourId="spending-categories">
+          <SpendingCategoriesWidget transactions={transactions} region={region} />
+        </SectionShell>
 
-      <SectionShell tourId="financial-health">
-        <FinancialHealthCard transactions={transactions} region={region} />
-      </SectionShell>
+        <SectionShell tourId="financial-health">
+          <FinancialHealthCard transactions={transactions} region={region} />
+        </SectionShell>
+      </div>
 
-      <section className="flex flex-col gap-4" data-tour-id="tool-carousel">
+      {/* Tools: 2x2 tiles on iPhone; grid expands on desktop */}
+      <section className="flex flex-col gap-4" data-tour-id="tool-grid">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Tools</p>
@@ -442,16 +407,24 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="tool-tiles">
-          {featureCards.map(({ key, element }) => (
-            <ToolTile key={key}>
-              <div className="hover-zoom rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur">
-                <div className="p-5 sm:p-6">{element}</div>
-              </div>
-            </ToolTile>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-2">
+          {toolCards.map((tool) => (
+            <div
+              key={tool.key}
+              className="hover-zoom rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur"
+            >
+              <div className="p-4 sm:p-5">{tool.element}</div>
+            </div>
           ))}
         </div>
       </section>
+
+      {/* Transactions full width */}
+      <SectionShell tourId="transactions">
+        <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters.">
+          <TransactionsList transactions={transactions} />
+        </PlanGate>
+      </SectionShell>
 
       {lastUpdated && (
         <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
@@ -475,8 +448,8 @@ const Dashboard: React.FC = () => {
 
       <LegalFooter />
 
+      {/* AI assistant always mounted */}
       <AiAssistant region={region} accounts={accounts} transactions={transactions} lastUpdated={lastUpdated} />
-
     </div>
   );
 };
