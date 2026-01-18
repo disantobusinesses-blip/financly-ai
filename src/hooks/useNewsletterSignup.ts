@@ -9,7 +9,47 @@ const API_KEY =
   "";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/contacts";
+const BREVO_EMAIL_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 const DEFAULT_LIST_ID = Number(import.meta.env.VITE_BREVO_LIST_ID || 5);
+const NOTIFY_EMAIL = import.meta.env.VITE_NEWSLETTER_NOTIFY_EMAIL || "hello@myaibank.ai";
+
+const sendSignupNotification = async (targetEmail: string): Promise<boolean> => {
+  if (!API_KEY) {
+    console.warn("Brevo API key missing - cannot send newsletter notification email.");
+    return false;
+  }
+
+  try {
+    const response = await fetch(BREVO_EMAIL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        accept: "application/json",
+        "api-key": API_KEY,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "MyAiBank Newsletter",
+          email: NOTIFY_EMAIL,
+        },
+        to: [{ email: NOTIFY_EMAIL }],
+        subject: "New MyAiBank newsletter signup",
+        htmlContent: `<p>New newsletter signup:</p><p><strong>${targetEmail}</strong></p>`,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Brevo email notification error", text);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Brevo notification request failed", error);
+    return false;
+  }
+};
 
 const sendNewsletterRequest = async (targetEmail: string): Promise<boolean> => {
   const trimmedEmail = targetEmail.trim();
@@ -18,8 +58,8 @@ const sendNewsletterRequest = async (targetEmail: string): Promise<boolean> => {
   }
 
   if (!API_KEY) {
-    console.warn("Brevo API key missing - treating newsletter opt-in as successful for preview builds.");
-    return true;
+    console.warn("Brevo API key missing - newsletter signup cannot be sent.");
+    return false;
   }
 
   try {
@@ -43,7 +83,8 @@ const sendNewsletterRequest = async (targetEmail: string): Promise<boolean> => {
       return false;
     }
 
-    return true;
+    const notified = await sendSignupNotification(trimmedEmail);
+    return notified;
   } catch (error) {
     console.error("Brevo request failed", error);
     return false;

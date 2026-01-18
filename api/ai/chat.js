@@ -1,93 +1,79 @@
-import OpenAI from "openai";
+import { OpenAI } from "openai";
+import { getUserFromRequest } from "../../src/server/auth";
+import { getFinanceContextForUser } from "../../src/server/finance-context";
 
-const openaiApiKey = process.env.OPENAI_API_KEY;
-const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-if (!openaiApiKey) {
-  console.warn("⚠️ OPENAI_API_KEY is not set. /api/ai/chat will return errors until configured.");
+function safeJson(res, status, obj) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(obj));
 }
-
-const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
-
-const MAX_PAYLOAD_BYTES = 20000;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 8;
-const rateLimitCache = new Map();
-
-const getClientKey = (req, financeContext) => {
-  const headerKey = req.headers["x-user-id"] || req.headers["x-forwarded-for"];
-  if (typeof headerKey === "string" && headerKey.trim()) {
-    return headerKey.split(",")[0].trim();
-  }
-  if (financeContext && typeof financeContext.userId === "string") {
-    return financeContext.userId;
-  }
-  return req.socket?.remoteAddress || "anonymous";
-};
-
-const isRateLimited = (key) => {
-  const now = Date.now();
-  const entry = rateLimitCache.get(key) || [];
-  const windowed = entry.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-  if (windowed.length >= RATE_LIMIT_MAX) {
-    rateLimitCache.set(key, windowed);
-    return true;
-  }
-  windowed.push(now);
-  rateLimitCache.set(key, windowed);
-  return false;
-};
-
-const refusalMessage =
-  "I can only help with your MyAiBank finances. Ask about spending, income, bills, subscriptions, or saving tips.";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: { message: "Method not allowed" } });
+    return safeJson(res, 405, { error: "Method not allowed" });
   }
-
-  if (!openai) {
-    return res.status(500).json({ error: { message: "OPENAI_API_KEY is not configured" } });
-  }
-
-  const rawBody = req.body || {};
-  const payloadSize = Buffer.byteLength(JSON.stringify(rawBody), "utf8");
-  if (payloadSize > MAX_PAYLOAD_BYTES) {
-    return res.status(413).json({ error: { message: "Payload too large" } });
-  }
-
-  const message = typeof rawBody.message === "string" ? rawBody.message.trim() : "";
-  const financeContext = rawBody.financeContext && typeof rawBody.financeContext === "object" ? rawBody.financeContext : null;
-
-  if (!message || !financeContext) {
-    return res.status(400).json({ error: { message: "message and financeContext are required" } });
-  }
-
-  const clientKey = getClientKey(req, financeContext);
-  if (isRateLimited(clientKey)) {
-    return res.status(429).json({ error: { message: "Too many requests" } });
-  }
-
-  const systemPrompt = `You are the MyAiBank Mascot Assistant. You must only answer questions about the user's finances using the provided financeContext JSON. Allowed topics: transactions, accounts, income, outgoings, categories, subscriptions, recurring payments, budgeting, and savings opportunities. If the question is unrelated or cannot be answered from the financeContext, reply exactly with: "${refusalMessage}". Do not browse the web or mention external data. Keep replies concise, friendly, premium, and grounded in the provided numbers. When possible, cite specific amounts, dates, and merchants from financeContext.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: openaiModel,
+    const { message } = req.body ?? {};
+    if (!message || typeof message !== "string") {
+      return safeJson(res, 400, { error: "Missing message" });
+    }
+
+    const user = await getUserFromRequest(req);
+    if (!user?.id) {
+      return safeJson(res, 401, { error: "Unauthorized" });
+    }
+
+    const financeContext = await getFinanceContextForUser(user.id);
+
+    console.log("AI_CHAT: calling OpenAI", {
+      userId: user.id,
+      hasFinanceContext: Boolean(financeContext),
+    });
+
+    const system = [
+      "You are MyAiBank’s private-banker assistant.",
+      "Finance-only: spending, income, subscriptions, categories, saving tips based on user data.",
+      "No news. No unrelated Q&A. No jokes.",
+      "Be calm, direct, data-driven.",
+      "Keep answers SHORT: max 2 sentences OR max 4 bullet lines.",
+      "If data is missing, ask ONE clarifying question and suggest the user refresh/reconnect bank.",
+    ].join(" ");
+
+    const userPrompt = [
+      "User message:",
+      message,
+      "",
+      "User finance context (may be empty):",
+      financeContext ? JSON.stringify(financeContext) : "{}",
+    ].join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       temperature: 0.2,
+      max_tokens: 160,
       messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: `User message: ${message}\n\nfinanceContext JSON:\n${JSON.stringify(financeContext)}`,
-        },
+        { role: "system", content: system },
+        { role: "user", content: userPrompt },
       ],
     });
 
-    const reply = response.choices?.[0]?.message?.content?.trim() || refusalMessage;
+    const answer = completion?.choices?.[0]?.message?.content?.trim() || "I can help with your MyAiBank finances.";
 
-    return res.status(200).json({ reply });
-  } catch (error) {
-    console.error("Mascot assistant error", error);
-    return res.status(500).json({ error: { message: "Unable to generate reply" } });
+    return safeJson(res, 200, { answer });
+  } catch (err) {
+    const msg = String(err?.message || err);
+    console.error("AI_CHAT error", err);
+
+    // If OpenAI returns structured error, surface a safe message.
+    if (msg.includes("429") || msg.toLowerCase().includes("quota")) {
+      return safeJson(res, 429, {
+        error: "AI is temporarily unavailable (quota/rate limit). Please try again shortly.",
+      });
+    }
+
+    return safeJson(res, 500, { error: "AI request failed" });
   }
 }
