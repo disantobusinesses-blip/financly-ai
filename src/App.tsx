@@ -201,7 +201,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <SignupPage />
       </div>
     );
@@ -215,7 +218,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <OnboardingPage />
       </div>
     );
@@ -234,7 +240,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <LoginPage onSuccess={() => navigate("/app/dashboard")} />
       </div>
     );
@@ -248,7 +257,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="dashboard"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <SubscribePage />
       </div>
     );
@@ -280,7 +292,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="what-we-do" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="what-we-do"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <WhatWeDo />
         </main>
@@ -292,7 +307,10 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header activeView="sandbox" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+        <Header
+          activeView="sandbox"
+          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+        />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <SandboxShowcase />
         </main>
@@ -340,11 +358,10 @@ const AppContent: React.FC = () => {
     return null;
   }
 
-  // Landing
+  // Landing (NO HEADER here)
   return (
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
-      <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
       <WelcomeScreen
         onGetStarted={() => navigate("/signup")}
         onLogin={() => navigate("/login")}
