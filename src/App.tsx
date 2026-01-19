@@ -50,10 +50,9 @@ type SidebarItem = "overview" | "forecast" | "subscriptions" | "transactions" | 
 
 const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   const { user } = useAuth();
-  const { accounts, transactions, loading, error, lastUpdated, connected, syncStatus, refresh } = useAppData();
+  const { accounts, transactions, loading, error, lastUpdated } = useAppData();
   const region = user?.region ?? "AU";
 
-  // Optional: show a tiny status banner if data is loading but page is mounted
   const Status = () => {
     if (!loading && !error) return null;
     return (
@@ -64,11 +63,7 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   };
 
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
-    return (
-      <>
-        <Dashboard />
-      </>
-    );
+    return <Dashboard />;
   }
 
   if (path === "/app/forecast") {
@@ -135,7 +130,6 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     return <ProfilePage />;
   }
 
-  // Fallback inside shell
   return <Dashboard />;
 };
 
@@ -160,7 +154,6 @@ const AppContent: React.FC = () => {
     </>
   );
 
-  // App shell routes (sidebar + main content)
   const isAppShellRoute = useMemo(() => {
     return (
       path === "/dashboard" ||
@@ -189,18 +182,13 @@ const AppContent: React.FC = () => {
   const handleSidebarNavigate = (item: SidebarItem) => {
     setActiveSidebarItem(item);
 
-    if (item === "upgrade") {
-      navigate("/subscribe");
-      return;
-    }
-
+    if (item === "upgrade") return navigate("/subscribe");
     if (item === "forecast") return navigate("/app/forecast");
     if (item === "subscriptions") return navigate("/app/subscriptions");
     if (item === "transactions") return navigate("/app/transactions");
     if (item === "budget") return navigate("/app/cashflow");
     if (item === "reports") return navigate("/app/reports");
 
-    // Overview
     if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -208,7 +196,7 @@ const AppContent: React.FC = () => {
     return navigate("/app/dashboard");
   };
 
-  // --- Public / auth routes ---
+  // Public / auth routes
   if (path === "/signup") {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
@@ -312,7 +300,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // --- App shell (authenticated) ---
+  // App shell (authenticated)
   const requireAuth = () => {
     if (!user && !loading) {
       navigate("/login");
@@ -347,7 +335,6 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // If user is onboarded and hits any non-shell route, bounce them into the app
   if (user && profile?.is_onboarded && !isAppShellRoute) {
     navigate("/app/dashboard");
     return null;
@@ -358,7 +345,11 @@ const AppContent: React.FC = () => {
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
       <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
-      <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} onDashboard={user ? () => navigate("/app/dashboard") : undefined} />
+      <WelcomeScreen
+        onGetStarted={() => navigate("/signup")}
+        onLogin={() => navigate("/login")}
+        onDashboard={user ? () => navigate("/app/dashboard") : undefined}
+      />
     </div>
   );
 };
