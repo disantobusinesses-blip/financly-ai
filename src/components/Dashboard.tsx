@@ -266,7 +266,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative flex flex-col gap-6">
-      <SyncingOverlay isVisible={connectionPending} />
+<SyncingOverlay open={connectionPending} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
