@@ -3,14 +3,23 @@ import {
   Bars3Icon,
   XMarkIcon,
   HomeIcon,
-  DocumentChartBarIcon,
   ChartBarIcon,
+  CreditCardIcon,
+  DocumentChartBarIcon,
   BanknotesIcon,
+  PresentationChartLineIcon,
   ArrowUpRightIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/AuthContext";
 
-export type SidebarItem = "overview" | "transactions" | "budget" | "reports" | "upgrade";
+export type SidebarItem =
+  | "overview"
+  | "forecast"
+  | "subscriptions"
+  | "transactions"
+  | "budget"
+  | "reports"
+  | "upgrade";
 
 type SidebarProps = {
   activeItem?: SidebarItem;
@@ -25,9 +34,11 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
     () =>
       [
         { id: "overview" as const, label: "Overview", icon: HomeIcon },
+        { id: "forecast" as const, label: "Forecast", icon: ChartBarIcon },
+        { id: "subscriptions" as const, label: "Subscriptions", icon: CreditCardIcon },
         { id: "transactions" as const, label: "Transactions", icon: DocumentChartBarIcon },
-        { id: "budget" as const, label: "Budget", icon: ChartBarIcon },
-        { id: "reports" as const, label: "Reports", icon: BanknotesIcon },
+        { id: "budget" as const, label: "Budget", icon: BanknotesIcon },
+        { id: "reports" as const, label: "Reports", icon: PresentationChartLineIcon },
         { id: "upgrade" as const, label: "Upgrade", icon: ArrowUpRightIcon },
       ] as const,
     []
@@ -65,14 +76,14 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
           "group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
           "border",
           isActive
-            ? "border-[#1F0051]/60 bg-[#1F0051]/25 text-white shadow-[0_0_0_1px_rgba(31,0,81,0.35)]"
-            : "border-white/10 bg-white/[0.03] text-white/75 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+            ? "border-[#1F0051]/70 bg-[#14002f] text-white shadow-[0_0_0_1px_rgba(31,0,81,0.45)]"
+            : "border-white/10 bg-[#0b0b10] text-white/75 hover:border-white/20 hover:bg-[#101018] hover:text-white",
         ].join(" ")}
       >
         <span
           className={[
             "flex h-9 w-9 items-center justify-center rounded-xl border transition",
-            isActive ? "border-[#1F0051]/60 bg-[#14002f]" : "border-white/10 bg-black/30 group-hover:border-white/20",
+            isActive ? "border-[#1F0051]/70 bg-[#0f001f]" : "border-white/10 bg-black/50 group-hover:border-white/20",
           ].join(" ")}
         >
           <Icon className={["h-5 w-5", isActive ? "text-white" : "text-white/70 group-hover:text-white"].join(" ")} />
@@ -81,7 +92,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
         <span className="flex-1">{label}</span>
 
         {id === "upgrade" && (
-          <span className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-white/70">
+          <span className="rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-white/70">
             Pro
           </span>
         )}
@@ -92,18 +103,20 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
   const Shell = ({ mobile }: { mobile?: boolean }) => (
     <aside
       className={[
-        "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/50 backdrop-blur",
+        // NOTE: non-transparent (no backdrop-blur)
+        "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/60",
         mobile ? "h-full w-80 max-w-[86vw]" : "hidden lg:block lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-72",
       ].join(" ")}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-70">
-        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/30 blur-3xl" />
-        <div className="absolute -right-28 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      {/* subtle internal lighting (still opaque) */}
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
+        <div className="absolute -right-28 -bottom-24 h-72 w-72 rounded-full bg-white/[0.04] blur-3xl" />
       </div>
 
       <div className="relative flex h-full flex-col p-5">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/40">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/60">
             <span className="h-5 w-5 rounded-full border-2 border-[#1F0051] bg-[#14002f]" />
           </div>
           <div className="min-w-0">
@@ -122,7 +135,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full rounded-2xl border border-white/15 bg-black/30 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+            className="w-full rounded-2xl border border-white/15 bg-black/60 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
           >
             Logout
           </button>
@@ -135,23 +148,25 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
 
   return (
     <>
+      {/* Mobile open button */}
       <button
         type="button"
-        className="lg:hidden fixed left-4 top-[84px] z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#0b0b10] shadow-lg shadow-black/40 transition hover:border-white/30"
+        className="lg:hidden fixed left-4 top-[84px] z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#0b0b10] shadow-lg shadow-black/50 transition hover:border-white/30"
         onClick={() => setIsOpen(true)}
         aria-label="Open menu"
       >
         <Bars3Icon className="h-6 w-6 text-white/85" />
       </button>
 
+      {/* Mobile drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsOpen(false)} />
+          <div className="absolute inset-0 bg-black/70" onClick={() => setIsOpen(false)} />
           <div className="relative z-50 h-full">
             <Shell mobile />
             <button
               type="button"
-              className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/40 text-white/80 transition hover:border-white/25 hover:text-white"
+              className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/60 text-white/80 transition hover:border-white/25 hover:text-white"
               onClick={() => setIsOpen(false)}
               aria-label="Close menu"
             >
@@ -161,6 +176,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
         </div>
       )}
 
+      {/* Desktop */}
       <Shell />
     </>
   );

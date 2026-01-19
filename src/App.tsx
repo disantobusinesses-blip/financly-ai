@@ -17,6 +17,8 @@ import FiskilCallbackPage from "./pages/FiskilCallback";
 import ProfilePage from "./pages/Profile";
 import Sidebar from "./components/Sidebar";
 
+import { AppDataProvider, useAppData } from "./contexts/AppDataContext";
+
 // Reuse existing components for dedicated pages (no new data fetching / no Fiskil changes)
 import SpendingForecast from "./components/SpendingForecast";
 import SubscriptionHunter from "./components/SubscriptionHunter";
@@ -36,7 +38,6 @@ const usePath = () => {
   const navigate = (next: string) => {
     if (next !== window.location.pathname) {
       window.history.pushState({}, "", next);
-      // Trigger listeners consistently across the app
       window.dispatchEvent(new PopStateEvent("popstate"));
       setPath(next);
     }
@@ -47,17 +48,99 @@ const usePath = () => {
 
 type SidebarItem = "overview" | "forecast" | "subscriptions" | "transactions" | "budget" | "reports" | "upgrade";
 
-const scrollToTourId = (tourId: string) => {
-  const el = document.querySelector(`[data-tour-id="${tourId}"]`);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    return true;
+const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
+  const { user } = useAuth();
+  const { accounts, transactions, loading, error, lastUpdated, connected, syncStatus, refresh } = useAppData();
+  const region = user?.region ?? "AU";
+
+  // Optional: show a tiny status banner if data is loading but page is mounted
+  const Status = () => {
+    if (!loading && !error) return null;
+    return (
+      <div className="mb-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs text-white/70">
+        {loading ? "Syncing bank data…" : error}
+      </div>
+    );
+  };
+
+  if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
+    return (
+      <>
+        <Dashboard />
+      </>
+    );
   }
-  return false;
+
+  if (path === "/app/forecast") {
+    return (
+      <>
+        <Status />
+        <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
+        {lastUpdated ? (
+          <p className="mt-4 text-xs text-white/60">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        ) : null}
+      </>
+    );
+  }
+
+  if (path === "/app/subscriptions") {
+    return (
+      <>
+        <Status />
+        <SubscriptionHunter transactions={transactions} region={region} />
+        {lastUpdated ? (
+          <p className="mt-4 text-xs text-white/60">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        ) : null}
+      </>
+    );
+  }
+
+  if (path === "/app/transactions") {
+    return (
+      <>
+        <Status />
+        <TransactionsList transactions={transactions} />
+        {lastUpdated ? (
+          <p className="mt-4 text-xs text-white/60">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        ) : null}
+      </>
+    );
+  }
+
+  if (path === "/app/cashflow") {
+    return (
+      <>
+        <Status />
+        <CashflowMini transactions={transactions} region={region} />
+        {lastUpdated ? (
+          <p className="mt-4 text-xs text-white/60">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        ) : null}
+      </>
+    );
+  }
+
+  if (path === "/app/reports") {
+    return (
+      <>
+        <Status />
+        <FinancialHealthCard transactions={transactions} region={region} />
+        {lastUpdated ? (
+          <p className="mt-4 text-xs text-white/60">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        ) : null}
+      </>
+    );
+  }
+
+  if (path === "/app/profile") {
+    return <ProfilePage />;
+  }
+
+  // Fallback inside shell
+  return <Dashboard />;
 };
 
 const AppContent: React.FC = () => {
-  const { user, profile, loading, session } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { path, navigate } = usePath();
 
   useEffect(() => {
@@ -95,7 +178,6 @@ const AppContent: React.FC = () => {
   const [activeSidebarItem, setActiveSidebarItem] = useState<SidebarItem>("overview");
 
   useEffect(() => {
-    // Keep sidebar state aligned with routes
     if (path === "/app/forecast") setActiveSidebarItem("forecast");
     else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
     else if (path === "/app/transactions") setActiveSidebarItem("transactions");
@@ -112,38 +194,18 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    // Dedicated pages (Figma-like navigation)
-    if (item === "forecast") {
-      navigate("/app/forecast");
-      return;
-    }
-    if (item === "subscriptions") {
-      navigate("/app/subscriptions");
-      return;
-    }
-    if (item === "transactions") {
-      navigate("/app/transactions");
-      return;
-    }
-    if (item === "budget") {
-      navigate("/app/cashflow");
-      return;
-    }
-    if (item === "reports") {
-      navigate("/app/reports");
-      return;
-    }
+    if (item === "forecast") return navigate("/app/forecast");
+    if (item === "subscriptions") return navigate("/app/subscriptions");
+    if (item === "transactions") return navigate("/app/transactions");
+    if (item === "budget") return navigate("/app/cashflow");
+    if (item === "reports") return navigate("/app/reports");
 
-    // Overview = dashboard
-    if (item === "overview") {
-      // If already on dashboard, scroll to top; otherwise route there.
-      if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        navigate("/app/dashboard");
-      }
+    // Overview
+    if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    return navigate("/app/dashboard");
   };
 
   // --- Public / auth routes ---
@@ -151,10 +213,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SignupPage />
       </div>
     );
@@ -168,10 +227,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <OnboardingPage />
       </div>
     );
@@ -190,10 +246,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <LoginPage onSuccess={() => navigate("/app/dashboard")} />
       </div>
     );
@@ -207,10 +260,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SubscribePage />
       </div>
     );
@@ -242,10 +292,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="what-we-do"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="what-we-do" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <WhatWeDo />
         </main>
@@ -257,10 +304,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="sandbox"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="sandbox" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <SandboxShowcase />
         </main>
@@ -284,11 +328,9 @@ const AppContent: React.FC = () => {
   if (isAppShellRoute) {
     if (requireAuth()) return null;
 
-    // Avoid repeating and keep this consistent
     const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        {/* Use safe top padding so iPhone doesn't look "cut off" */}
         <div className="mx-auto flex w-full max-w-[1400px] gap-5 px-4 pb-16 pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8">
           <Sidebar activeItem={activeSidebarItem} onNavigate={handleSidebarNavigate} />
           <main className="min-w-0 flex-1">{children}</main>
@@ -296,88 +338,13 @@ const AppContent: React.FC = () => {
       </div>
     );
 
-    // Dashboard
-    if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
-      return (
+    return (
+      <AppDataProvider>
         <Shell>
-          <Dashboard />
+          <AppShellPages path={path} />
         </Shell>
-      );
-    }
-
-    // Dedicated pages (Figma-style)
-    if (path === "/app/forecast") {
-      return (
-        <Shell>
-          {/* You likely want full-width hero here later; this is safe reuse now */}
-          <SpendingForecast
-            // These props come from Dashboard's data hook normally.
-            // We cannot fetch Fiskil here without changing logic, so for now route stays in-shell
-            // and you should navigate from Dashboard where data exists.
-            // We'll make dedicated pages properly after we centralize data in a provider.
-            accounts={[]}
-            transactions={[]}
-            region={user?.region ?? "AU"}
-          />
-          <p className="mt-4 text-xs text-white/60">
-            Forecast page shell is wired. Next step: share Fiskil data via a context so this page can render real data
-            without duplicating fetch logic.
-          </p>
-        </Shell>
-      );
-    }
-
-    if (path === "/app/subscriptions") {
-      return (
-        <Shell>
-          <SubscriptionHunter transactions={[]} region={user?.region ?? "AU"} />
-          <p className="mt-4 text-xs text-white/60">
-            Subscriptions page shell is wired. Next step: share transactions via a context so this page uses real data.
-          </p>
-        </Shell>
-      );
-    }
-
-    if (path === "/app/transactions") {
-      return (
-        <Shell>
-          <TransactionsList transactions={[]} />
-          <p className="mt-4 text-xs text-white/60">
-            Transactions page shell is wired. Next step: share transactions via a context so this page uses real data.
-          </p>
-        </Shell>
-      );
-    }
-
-    if (path === "/app/cashflow") {
-      return (
-        <Shell>
-          <CashflowMini transactions={[]} region={user?.region ?? "AU"} />
-          <p className="mt-4 text-xs text-white/60">
-            Cashflow page shell is wired. Next step: share transactions via a context so this page uses real data.
-          </p>
-        </Shell>
-      );
-    }
-
-    if (path === "/app/reports") {
-      return (
-        <Shell>
-          <FinancialHealthCard transactions={[]} region={user?.region ?? "AU"} />
-          <p className="mt-4 text-xs text-white/60">
-            Reports page shell is wired. Next step: share transactions via a context so this page uses real data.
-          </p>
-        </Shell>
-      );
-    }
-
-    if (path === "/app/profile") {
-      return (
-        <Shell>
-          <ProfilePage />
-        </Shell>
-      );
-    }
+      </AppDataProvider>
+    );
   }
 
   // If user is onboarded and hits any non-shell route, bounce them into the app
@@ -390,15 +357,8 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
-      <Header
-        activeView="dashboard"
-        onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-      />
-      <WelcomeScreen
-        onGetStarted={() => navigate("/signup")}
-        onLogin={() => navigate("/login")}
-        onDashboard={user ? () => navigate("/app/dashboard") : undefined}
-      />
+      <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
+      <WelcomeScreen onGetStarted={() => navigate("/signup")} onLogin={() => navigate("/login")} onDashboard={user ? () => navigate("/app/dashboard") : undefined} />
     </div>
   );
 };

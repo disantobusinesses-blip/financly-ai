@@ -1,25 +1,28 @@
 import React, { useEffect, useMemo, useState } from "react";
-import FinancialHealthCard from "./FinancialHealthCard";
-import BalanceSummary from "./BalanceSummary";
-import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
-import CashflowMini from "./CashflowMini";
-import UpcomingBills from "./UpcomingBills";
-import TransactionsList from "./TransactionsList";
 import SpendingForecast from "./SpendingForecast";
-import PlanGate from "./PlanGate";
+import BalanceSummary from "./BalanceSummary";
+import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
 import LegalFooter from "./LegalFooter";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
-import type { Transaction } from "../types";
+import type { Account, Transaction } from "../types";
 import SyncingOverlay from "./SyncingOverlay";
 import AiAssistant from "./AiAssistant";
-import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 
 const TOUR_KEY = "myaibank_tour_seen";
 const LEGACY_TOUR_KEY = "financly_tour_seen";
+
+const pushAppRoute = (path: string) => {
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+};
+
+const sumBalances = (accounts: Account[]) => accounts.reduce((sum, a) => sum + (Number.isFinite(a.balance) ? a.balance : 0), 0);
 
 const Dashboard: React.FC = () => {
   const { user, profile, session, loading: authLoading } = useAuth();
@@ -52,44 +55,6 @@ const Dashboard: React.FC = () => {
       localStorage.removeItem(LEGACY_TOUR_KEY);
     }
   }, [accounts.length, transactions.length, user]);
-
-  const subscriptionSummary = useMemo(() => deriveSubscriptionSummary(transactions), [transactions]);
-  const subscriptionTotal = subscriptionSummary.reduce((sum: number, item) => sum + item.total, 0);
-
-  const monthlyStats = useMemo(() => {
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(start.getDate() - 30);
-
-    const recent = transactions.filter((tx: Transaction) => {
-      const date = new Date(tx.date);
-      return !Number.isNaN(date.getTime()) && date >= start;
-    });
-
-    const income = recent
-      .filter((tx: Transaction) => tx.amount > 0)
-      .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
-
-    const expenses = Math.abs(
-      recent
-        .filter((tx: Transaction) => tx.amount < 0)
-        .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0)
-    );
-
-    return { income, expenses, net: income - expenses };
-  }, [transactions]);
-
-  const tourSteps: TourStep[] = [
-    { id: "balance-summary", title: "Where you stand", description: "Review key balances at a glance." },
-    { id: "forecast", title: "Forecast", description: "See your projected balance trend and recent momentum." },
-    {
-      id: "tools",
-      title: "Tools",
-      description: "Compact tiles on mobile so more fits on screen.",
-      mobileHint: "Tiles are in a 2-column grid on iPhone for a cleaner layout.",
-    },
-    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity." },
-  ];
 
   useEffect(() => {
     if (!authLoading && !session) {
@@ -161,27 +126,114 @@ const Dashboard: React.FC = () => {
       </a>
     ) : null;
 
-  const SectionShell: React.FC<{ children: React.ReactNode; tourId?: string }> = ({ children, tourId }) => (
-    <section
-      data-tour-id={tourId}
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur"
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-60">
-        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
-        <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
-      </div>
-      <div className="relative p-4 sm:p-6">{children}</div>
-    </section>
-  );
+  const totals = useMemo(() => {
+    const totalCash = sumBalances(accounts);
 
-  const TileShell: React.FC<{ children: React.ReactNode; tourId?: string }> = ({ children, tourId }) => (
-    <div
-      data-tour-id={tourId}
-      className="hover-zoom relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/40 backdrop-blur"
-    >
-      <div className="relative p-3 sm:p-5">{children}</div>
-    </div>
-  );
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(start.getDate() - 30);
+
+    const recent = transactions.filter((tx: Transaction) => {
+      const date = new Date(tx.date);
+      return !Number.isNaN(date.getTime()) && date >= start;
+    });
+
+    const income = recent
+      .filter((tx: Transaction) => tx.amount > 0)
+      .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0);
+
+    const expenses = Math.abs(
+      recent
+        .filter((tx: Transaction) => tx.amount < 0)
+        .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0)
+    );
+
+    const net = income - expenses;
+
+    // Lightweight “subscriptions estimate”: sum of negative tx that look like recurring categories/keywords.
+    const recurring = recent.filter((tx) => {
+      const desc = (tx.description || "").toLowerCase();
+      const cat = (tx.category || "").toLowerCase();
+      const looksRecurring =
+        cat.includes("subscription") ||
+        cat.includes("recurring") ||
+        desc.includes("netflix") ||
+        desc.includes("spotify") ||
+        desc.includes("apple") ||
+        desc.includes("google") ||
+        desc.includes("prime") ||
+        desc.includes("membership");
+      return tx.amount < 0 && looksRecurring;
+    });
+
+    const subsMonthly = Math.abs(recurring.reduce((sum, tx) => sum + tx.amount, 0));
+
+    return { totalCash, income, expenses, net, subsMonthly };
+  }, [accounts, transactions]);
+
+  const tourSteps: TourStep[] = [
+    { id: "forecast", title: "Cashflow forecast", description: "Tap to open the full forecast page." },
+    { id: "tools", title: "Tiles", description: "Tap any tile to open the dedicated page." },
+    { id: "balance-summary", title: "Where you stand", description: "Quick balances and cash overview." },
+  ];
+
+  const CardShell: React.FC<{ children: React.ReactNode; onClick?: () => void; tourId?: string; className?: string }> = ({
+    children,
+    onClick,
+    tourId,
+    className,
+  }) => {
+    const clickable = Boolean(onClick);
+    return (
+      <section
+        data-tour-id={tourId}
+        onClick={onClick}
+        className={[
+          "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/50",
+          clickable ? "cursor-pointer transition hover:border-white/20 hover:bg-[#101018]" : "",
+          className ?? "",
+        ].join(" ")}
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
+          <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+        </div>
+        <div className="relative p-4 sm:p-6">{children}</div>
+      </section>
+    );
+  };
+
+  const Tile: React.FC<{
+    title: string;
+    value: string;
+    sub?: string;
+    toneClass?: string;
+    onClick: () => void;
+  }> = ({ title, value, sub, toneClass, onClick }) => {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={[
+          "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-4 text-left shadow-2xl shadow-black/40 transition",
+          "hover:border-white/20 hover:bg-[#101018]",
+        ].join(" ")}
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-70">
+          <div className={["absolute -left-20 -top-20 h-60 w-60 rounded-full blur-3xl", toneClass ?? "bg-white/5"].join(" ")} />
+        </div>
+        <div className="relative">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs font-semibold text-white/75">{title}</p>
+            <span className="text-white/50">→</span>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">VISIT PAGE</p>
+          {sub ? <p className="mt-2 text-xs text-white/55">{sub}</p> : null}
+        </div>
+      </button>
+    );
+  };
 
   if (dataLoading && !hasData) {
     return (
@@ -198,157 +250,29 @@ const Dashboard: React.FC = () => {
               type="button"
               onClick={() => void refresh()}
               className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+              disabled={dataLoading}
             >
-              Refresh bank data
+              Refresh
             </button>
           </div>
         </div>
 
-        <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-white/60">
-          <SyncingOverlay
-            open
-            title={syncStatus.stage === "awaiting_transactions" ? "Loading transactions" : "Loading bank data"}
-            message={syncStatus.message || "Fetching accounts and transactions from Fiskil…"}
-            progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 10}
-            details={debugBlock || undefined}
-          />
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40"
-            >
-              Refresh bank data
-            </button>
-
-            {!connectionPending && (
-              <button
-                type="button"
-                onClick={handleConnectBank}
-                disabled={connecting}
-                className="relative overflow-hidden rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
-                {connecting && (
-                  <span className="absolute inset-0 flex items-center justify-center">
-                    <span className="connect-loading-track">
-                      <span className="connect-loading-bar" />
-                    </span>
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
+        <div className="rounded-3xl border border-white/10 bg-[#0b0b10] p-6 text-sm text-white/70">
+          Syncing your bank data…
         </div>
       </div>
     );
   }
-
-  if (error && !hasData) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-            <h1 className="text-xl font-semibold text-white">Overview</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileLink}
-            {!connectionPending && (
-              <button
-                type="button"
-                onClick={handleConnectBank}
-                disabled={connecting}
-                className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 disabled:opacity-60"
-              >
-                Connect bank
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-white/60">
-          <p className="text-red-400">{error}</p>
-          {debugBlock && (
-            <pre className="mt-2 max-h-56 w-full max-w-2xl overflow-auto rounded-xl bg-black/70 p-4 text-xs text-white/80">
-              {debugBlock}
-            </pre>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasData) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-            <h1 className="text-xl font-semibold text-white">Overview</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileLink}
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
-            >
-              Refresh bank data
-            </button>
-          </div>
-        </div>
-
-        <div className="flex h-[52vh] flex-col items-center justify-center gap-3 text-white/60">
-          <SyncingOverlay
-            open={connectionPending}
-            title="Connection successful"
-            message={syncStatus.message || "Waiting for bank data…"}
-            progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 35}
-            details={debugBlock || undefined}
-          />
-          {!connectionPending ? (
-            <>
-              <p>No data yet. Connect your bank to see your dashboard.</p>
-              <button
-                type="button"
-                onClick={handleConnectBank}
-                disabled={connecting}
-                className="interactive-primary rounded-2xl bg-[#1F0051] px-6 py-3 text-xs font-semibold text-white disabled:opacity-60"
-              >
-                {connecting ? "Starting…" : "Connect bank"}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40"
-            >
-              Refresh bank data
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const subscriptionTeaser = subscriptionSummary.length
-    ? `Found ${subscriptionSummary.length} subscriptions • ${formatCurrency(subscriptionTotal, region)} / month`
-    : "Connect a bank to discover recurring services.";
-
-  const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(monthlyStats.expenses, region)}`
-    : "Link your accounts to calculate monthly cashflow.";
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-5 sm:gap-7">
-      {/* Header row */}
+    <div className="relative flex flex-col gap-6">
+      <SyncingOverlay isVisible={connectionPending} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
           <h1 className="text-xl font-semibold text-white">Overview</h1>
+          <p className="mt-1 text-sm text-white/60">Your financial insights</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -356,7 +280,7 @@ const Dashboard: React.FC = () => {
 
           <button
             type="button"
-            onClick={handleConnectBank}
+            onClick={() => void handleConnectBank()}
             disabled={connecting}
             className="relative overflow-hidden rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -388,65 +312,99 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Top hero: forecast + balances */}
+      {/* Forecast hero (click to open /app/forecast) */}
       <div className="grid gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3" data-tour-id="forecast">
-          <SectionShell>
+          <CardShell onClick={() => pushAppRoute("/app/forecast")} className="select-none">
             <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
-          </SectionShell>
+          </CardShell>
         </div>
 
         <div className="lg:col-span-2 grid gap-4">
-          <SectionShell tourId="balance-summary">
+          <CardShell tourId="balance-summary">
             <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
-          </SectionShell>
+          </CardShell>
 
-          <SectionShell>
+          <CardShell onClick={() => pushAppRoute("/app/reports")} className="select-none">
             <SpendingCategoriesWidget transactions={transactions} region={region} />
-          </SectionShell>
+          </CardShell>
         </div>
       </div>
 
-      {/* Compact tools grid (2-column on iPhone) */}
+      {/* Clickable tiles (2-column on iPhone) */}
       <section className="flex flex-col gap-3" data-tour-id="tools">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Tools</p>
-            <h2 className="text-base font-semibold text-white">Build your plan</h2>
-          </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Tools</p>
+          <h2 className="text-base font-semibold text-white">Tap a tile to open the page</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          <TileShell>
-            <PlanGate feature="Subscription Hunter" teaser={subscriptionTeaser} dataTourId="subscription-hunter">
-              <SubscriptionHunter transactions={transactions} region={region} />
-            </PlanGate>
-          </TileShell>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Tile
+            title="Where you stand"
+            value={formatCurrency(totals.totalCash, region)}
+            sub="Total cash"
+            toneClass="bg-white/5"
+            onClick={() => pushAppRoute("/app/dashboard")}
+          />
 
-          <TileShell tourId="cashflow">
-            <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
-              <CashflowMini transactions={transactions} region={region} />
-            </PlanGate>
-          </TileShell>
+          <Tile
+            title="Income"
+            value={formatCurrency(totals.income, region)}
+            sub="Last 30 days"
+            toneClass="bg-emerald-500/15"
+            onClick={() => pushAppRoute("/app/transactions")}
+          />
 
-          <TileShell>
-            <PlanGate feature="Upcoming bills" teaser="Upgrade to predict upcoming bills and due dates." dataTourId="upcoming-bills">
-              <UpcomingBills accounts={accounts} />
-            </PlanGate>
-          </TileShell>
+          <Tile
+            title="Expenses"
+            value={formatCurrency(totals.expenses, region)}
+            sub="Last 30 days"
+            toneClass="bg-sky-500/15"
+            onClick={() => pushAppRoute("/app/transactions")}
+          />
 
-          <TileShell tourId="financial-health">
-            <PlanGate feature="Financial health" teaser="Upgrade to unlock health scoring and deeper insights." dataTourId="financial-health">
-              <FinancialHealthCard transactions={transactions} region={region} />
-            </PlanGate>
-          </TileShell>
+          <Tile
+            title="Subscriptions"
+            value={formatCurrency(totals.subsMonthly, region)}
+            sub="Estimated monthly"
+            toneClass="bg-violet-500/15"
+            onClick={() => pushAppRoute("/app/subscriptions")}
+          />
 
-          <div className="col-span-2 lg:col-span-1">
-            <TileShell tourId="transactions">
-              <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
-                <TransactionsList transactions={transactions} />
-              </PlanGate>
-            </TileShell>
+          <Tile
+            title="Budget"
+            value={formatCurrency(totals.net, region)}
+            sub={totals.net >= 0 ? "Surplus (last 30 days)" : "Deficit (last 30 days)"}
+            toneClass="bg-emerald-500/10"
+            onClick={() => pushAppRoute("/app/cashflow")}
+          />
+
+          <Tile
+            title="Reports"
+            value="Insights"
+            sub="Breakdowns & trends"
+            toneClass="bg-purple-500/10"
+            onClick={() => pushAppRoute("/app/reports")}
+          />
+
+          <div className="col-span-2 lg:col-span-2">
+            <button
+              type="button"
+              onClick={() => pushAppRoute("/app/transactions")}
+              className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-4 text-left shadow-2xl shadow-black/40 transition hover:border-white/20 hover:bg-[#101018]"
+            >
+              <div className="pointer-events-none absolute inset-0 opacity-70">
+                <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/20 blur-3xl" />
+              </div>
+              <div className="relative flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-white/75">Search transactions</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">Open ledger</p>
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">VISIT PAGE</p>
+                </div>
+                <span className="text-white/50">→</span>
+              </div>
+            </button>
           </div>
         </div>
       </section>
@@ -454,6 +412,13 @@ const Dashboard: React.FC = () => {
       {lastUpdated && (
         <p className="text-center text-[11px] text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
       )}
+
+      {debugBlock ? (
+        <details className="rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/70">
+          <summary className="cursor-pointer select-none font-semibold text-white/80">Debug info</summary>
+          <pre className="mt-3 overflow-auto whitespace-pre-wrap break-words">{debugBlock}</pre>
+        </details>
+      ) : null}
 
       <TutorialButton
         onClick={() => {
