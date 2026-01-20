@@ -22,23 +22,24 @@ const pushAppRoute = (path: string) => {
   }
 };
 
-const sumBalances = (accounts: Account[]) => accounts.reduce((sum, a) => sum + (Number.isFinite(a.balance) ? a.balance : 0), 0);
+const sumBalances = (accounts: Account[]) =>
+  accounts.reduce((sum, a) => sum + (Number.isFinite(a.balance) ? a.balance : 0), 0);
 
 const Dashboard: React.FC = () => {
   const { user, profile, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
   const {
-  accounts,
-  transactions,
-  loading,
-  error,
-  lastUpdated,
-  connected,
-  debugInfo,
-  syncStatus,
-  refresh,
-} = useFiskilData(user?.id);
+    accounts,
+    transactions,
+    loading: dataLoading,
+    error,
+    lastUpdated,
+    connected,
+    debugInfo,
+    syncStatus,
+    refresh,
+  } = useFiskilData(user?.id);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -113,8 +114,10 @@ const Dashboard: React.FC = () => {
 
   const hasData = accounts.length > 0 || transactions.length > 0;
   const debugBlock = debugInfo ? JSON.stringify(debugInfo, null, 2) : null;
+
+  const stage = (syncStatus as any)?.stage;
   const connectionPending =
-    connected || syncStatus.stage === "awaiting_accounts" || syncStatus.stage === "awaiting_transactions";
+    connected || stage === "awaiting_accounts" || stage === "awaiting_transactions";
 
   const profileLink =
     user && profile?.is_onboarded ? (
@@ -150,7 +153,6 @@ const Dashboard: React.FC = () => {
 
     const net = income - expenses;
 
-    // Lightweight “subscriptions estimate”: sum of negative tx that look like recurring categories/keywords.
     const recurring = recent.filter((tx) => {
       const desc = (tx.description || "").toLowerCase();
       const cat = (tx.category || "").toLowerCase();
@@ -177,12 +179,12 @@ const Dashboard: React.FC = () => {
     { id: "balance-summary", title: "Where you stand", description: "Quick balances and cash overview." },
   ];
 
-  const CardShell: React.FC<{ children: React.ReactNode; onClick?: () => void; tourId?: string; className?: string }> = ({
-    children,
-    onClick,
-    tourId,
-    className,
-  }) => {
+  const CardShell: React.FC<{
+    children: React.ReactNode;
+    onClick?: () => void;
+    tourId?: string;
+    className?: string;
+  }> = ({ children, onClick, tourId, className }) => {
     const clickable = Boolean(onClick);
     return (
       <section
@@ -220,7 +222,12 @@ const Dashboard: React.FC = () => {
         ].join(" ")}
       >
         <div className="pointer-events-none absolute inset-0 opacity-70">
-          <div className={["absolute -left-20 -top-20 h-60 w-60 rounded-full blur-3xl", toneClass ?? "bg-white/5"].join(" ")} />
+          <div
+            className={[
+              "absolute -left-20 -top-20 h-60 w-60 rounded-full blur-3xl",
+              toneClass ?? "bg-white/5",
+            ].join(" ")}
+          />
         </div>
         <div className="relative">
           <div className="flex items-start justify-between gap-3">
@@ -266,7 +273,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative flex flex-col gap-6">
-<SyncingOverlay open={connectionPending && loading} />
+      <SyncingOverlay open={connectionPending && dataLoading} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -298,6 +305,7 @@ const Dashboard: React.FC = () => {
             type="button"
             onClick={() => void refresh()}
             className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+            disabled={dataLoading}
           >
             Refresh
           </button>
