@@ -29,16 +29,16 @@ const Dashboard: React.FC = () => {
   const region = user?.region ?? "AU";
 
   const {
-    accounts,
-    transactions,
-    loading: dataLoading,
-    error,
-    lastUpdated,
-    connected,
-    debugInfo,
-    syncStatus,
-    refresh,
-  } = useFiskilData(user?.id);
+  accounts,
+  transactions,
+  loading,
+  error,
+  lastUpdated,
+  connected,
+  debugInfo,
+  syncStatus,
+  refresh,
+} = useFiskilData(user?.id);
 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
