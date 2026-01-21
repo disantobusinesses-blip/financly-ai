@@ -20,7 +20,22 @@ export type SidebarItem =
   | "transactions"
   | "budget"
   | "reports"
-  | "upgrade";
+  | "upgrade"
+  // Added so App.tsx can set these without TS errors
+  | "analytics"
+  | "portfolio"
+  | "netWorth"
+  | "markets"
+  | "dividends"
+  | "paperTrading"
+  | "goalPlanner"
+  | "investVsCash"
+  | "etfComparison"
+  | "riskProfile"
+  | "dcaCalculator"
+  | "billDetection"
+  | "riskWarnings"
+  | "healthScore";
 
 type SidebarProps = {
   activeItem?: SidebarItem;
