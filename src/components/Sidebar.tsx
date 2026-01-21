@@ -9,6 +9,7 @@ import {
   BanknotesIcon,
   PresentationChartLineIcon,
   ArrowUpRightIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -26,21 +27,27 @@ type SidebarProps = {
   onNavigate: (item: SidebarItem) => void;
 };
 
+type NavItem = {
+  id: SidebarItem;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+};
+
 export default function Sidebar({ activeItem = "overview", onNavigate }: SidebarProps) {
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const items = useMemo(
-    () =>
-      [
-        { id: "overview" as const, label: "Overview", icon: HomeIcon },
-        { id: "forecast" as const, label: "Forecast", icon: ChartBarIcon },
-        { id: "subscriptions" as const, label: "Subscriptions", icon: CreditCardIcon },
-        { id: "transactions" as const, label: "Transactions", icon: DocumentChartBarIcon },
-        { id: "budget" as const, label: "Budget", icon: BanknotesIcon },
-        { id: "reports" as const, label: "Reports", icon: PresentationChartLineIcon },
-        { id: "upgrade" as const, label: "Upgrade", icon: ArrowUpRightIcon },
-      ] as const,
+  const items = useMemo<NavItem[]>(
+    () => [
+      { id: "overview", label: "Dashboard", icon: HomeIcon },
+      { id: "forecast", label: "Forecast", icon: ChartBarIcon },
+      { id: "transactions", label: "Transactions", icon: DocumentChartBarIcon },
+      { id: "subscriptions", label: "Subscriptions", icon: CreditCardIcon },
+      { id: "budget", label: "Budget", icon: BanknotesIcon },
+      { id: "reports", label: "Reports", icon: PresentationChartLineIcon },
+      { id: "upgrade", label: "Upgrade", icon: ArrowUpRightIcon, badge: "PRO" },
+    ],
     []
   );
 
@@ -54,48 +61,40 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
     }
   };
 
-  const NavButton = ({
-    id,
-    label,
-    Icon,
-  }: {
-    id: SidebarItem;
-    label: string;
-    Icon: React.ComponentType<{ className?: string }>;
-  }) => {
-    const isActive = activeItem === id;
+  const NavButton = ({ item }: { item: NavItem }) => {
+    const isActive = activeItem === item.id;
+    const Icon = item.icon;
 
     return (
       <button
         type="button"
         onClick={() => {
-          onNavigate(id);
+          onNavigate(item.id);
           setIsOpen(false);
         }}
         className={[
-          "group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition",
-          "border",
+          "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition",
           isActive
-            ? "border-[#1F0051]/70 bg-[#14002f] text-white shadow-[0_0_0_1px_rgba(31,0,81,0.45)]"
-            : "border-white/10 bg-[#0b0b10] text-white/75 hover:border-white/20 hover:bg-[#101018] hover:text-white",
+            ? "bg-[#2a0f4d] text-white shadow-[0_0_0_1px_rgba(168,85,247,0.18)]"
+            : "text-white/70 hover:bg-white/5 hover:text-white",
         ].join(" ")}
       >
         <span
           className={[
             "flex h-9 w-9 items-center justify-center rounded-xl border transition",
-            isActive ? "border-[#1F0051]/70 bg-[#0f001f]" : "border-white/10 bg-black/50 group-hover:border-white/20",
+            isActive ? "border-white/10 bg-black/30" : "border-white/10 bg-black/20 group-hover:border-white/15",
           ].join(" ")}
         >
-          <Icon className={["h-5 w-5", isActive ? "text-white" : "text-white/70 group-hover:text-white"].join(" ")} />
+          <Icon className={["h-5 w-5", isActive ? "text-white" : "text-white/65 group-hover:text-white"].join(" ")} />
         </span>
 
-        <span className="flex-1">{label}</span>
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
 
-        {id === "upgrade" && (
-          <span className="rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-white/70">
-            Pro
+        {item.badge ? (
+          <span className="rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/70">
+            {item.badge}
           </span>
-        )}
+        ) : null}
       </button>
     );
   };
@@ -103,44 +102,100 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
   const Shell = ({ mobile }: { mobile?: boolean }) => (
     <aside
       className={[
-        // NOTE: non-transparent (no backdrop-blur)
-        "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/60",
+        // Non-transparent, premium panel
+        "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] shadow-2xl shadow-black/70",
         mobile ? "h-full w-80 max-w-[86vw]" : "hidden lg:block lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-72",
       ].join(" ")}
     >
-      {/* subtle internal lighting (still opaque) */}
-      <div className="pointer-events-none absolute inset-0 opacity-60">
-        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
-        <div className="absolute -right-28 -bottom-24 h-72 w-72 rounded-full bg-white/[0.04] blur-3xl" />
+      {/* subtle internal glow (still opaque) */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-28 -top-28 h-80 w-80 rounded-full bg-[#6d28d9]/15 blur-3xl" />
+        <div className="absolute -right-28 -bottom-28 h-80 w-80 rounded-full bg-[#a855f7]/10 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent" />
       </div>
 
-      <div className="relative flex h-full flex-col p-5">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/60">
-            <span className="h-5 w-5 rounded-full border-2 border-[#1F0051] bg-[#14002f]" />
+      <div className="relative flex h-full flex-col">
+        {/* Header */}
+        <div className="px-5 pt-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold text-white">MyAiBank</p>
+              <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-300/70">
+                PREMIUM
+              </p>
+            </div>
+
+            {mobile ? (
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/30 text-white/80 transition hover:border-white/20 hover:text-white"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close menu"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            ) : null}
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/50">MyAiBank</p>
-            <p className="truncate text-sm font-semibold text-white/90">Dashboard</p>
+
+          <div className="mt-4 h-px w-full bg-white/10" />
+        </div>
+
+        {/* Scroll area */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4">
+          <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Main</p>
+          <div className="mt-2 space-y-2">
+            {/* MAIN grouping (matches figma vibe) */}
+            <NavButton item={items[0]} />
+            <NavButton item={items[1]} />
+            <NavButton item={items[2]} />
+          </div>
+
+          <div className="mt-6">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Cashflow Control</p>
+            <div className="mt-2 space-y-2">
+              <NavButton item={items[3]} />
+              <NavButton item={items[4]} />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Trust & Report</p>
+            <div className="mt-2 space-y-2">
+              <NavButton item={items[5]} />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Account</p>
+            <div className="mt-2 space-y-2">
+              <NavButton item={items[6]} />
+            </div>
+          </div>
+
+          {/* Bottom “Bank-Grade Security” card */}
+          <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-r from-[#3b0764]/40 to-[#1e1b4b]/25 p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/30">
+                <ShieldCheckIcon className="h-6 w-6 text-violet-200/90" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white/90">Bank-Grade Security</p>
+                <p className="mt-1 text-xs text-white/55">Your data is encrypted 256-bit.</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <nav className="space-y-2">
-          {items.map((it) => (
-            <NavButton key={it.id} id={it.id} label={it.label} Icon={it.icon} />
-          ))}
-        </nav>
-
-        <div className="mt-auto pt-5">
+        {/* Footer actions */}
+        <div className="px-5 pb-5 pt-3">
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full rounded-2xl border border-white/15 bg-black/60 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white"
+            className="w-full rounded-2xl border border-white/15 bg-black/30 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/25 hover:text-white"
           >
             Logout
           </button>
-
-          <p className="mt-4 text-xs text-white/45">Support: hello@myaibank.ai</p>
+          <p className="mt-3 text-xs text-white/45">Support: hello@myaibank.ai</p>
         </div>
       </div>
     </aside>
@@ -151,7 +206,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
       {/* Mobile open button */}
       <button
         type="button"
-        className="lg:hidden fixed left-4 top-[84px] z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#0b0b10] shadow-lg shadow-black/50 transition hover:border-white/30"
+        className="lg:hidden fixed left-4 top-[84px] z-40 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-[#0b1020] shadow-lg shadow-black/60 transition hover:border-white/25"
         onClick={() => setIsOpen(true)}
         aria-label="Open menu"
       >
@@ -159,22 +214,30 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
       </button>
 
       {/* Mobile drawer */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setIsOpen(false)} />
-          <div className="relative z-50 h-full">
+      <div
+        className={[
+          "fixed inset-0 z-50 lg:hidden transition",
+          isOpen ? "pointer-events-auto" : "pointer-events-none",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "absolute inset-0 bg-black/70 transition-opacity",
+            isOpen ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+          onClick={() => setIsOpen(false)}
+        />
+        <div
+          className={[
+            "relative h-full transform transition-transform duration-300",
+            isOpen ? "translate-x-0" : "-translate-x-full",
+          ].join(" ")}
+        >
+          <div className="h-full p-4">
             <Shell mobile />
-            <button
-              type="button"
-              className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/60 text-white/80 transition hover:border-white/25 hover:text-white"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close menu"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Desktop */}
       <Shell />

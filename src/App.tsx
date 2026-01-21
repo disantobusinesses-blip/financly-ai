@@ -15,7 +15,7 @@ import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
 import FiskilCallbackPage from "./pages/FiskilCallback";
 import ProfilePage from "./pages/Profile";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { type SidebarItem } from "./components/Sidebar";
 
 import { AppDataProvider, useAppData } from "./contexts/AppDataContext";
 
@@ -46,7 +46,38 @@ const usePath = () => {
   return { path, navigate };
 };
 
-type SidebarItem = "overview" | "forecast" | "subscriptions" | "transactions" | "budget" | "reports" | "upgrade";
+const ComingSoon: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => {
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-6 shadow-2xl shadow-black/50">
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
+        <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      </div>
+      <div className="relative">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Coming soon</p>
+        <h1 className="mt-2 text-2xl font-semibold text-white">{title}</h1>
+        <p className="mt-2 max-w-2xl text-sm text-white/60">
+          {subtitle ??
+            "This feature is in development and will be released soon. The preview layout is in place so we can wire data safely without changing bank connection flows."}
+        </p>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-20 rounded-2xl border border-white/10 bg-white/5"
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+
+        <div className="mt-6 text-xs text-white/45">
+          Educational previews only. No financial product recommendations.
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   const { user } = useAuth();
@@ -62,10 +93,12 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     );
   };
 
+  // Overview
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
     return <Dashboard />;
   }
 
+  // Existing routes (wired to real data)
   if (path === "/app/forecast") {
     return (
       <>
@@ -130,6 +163,25 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     return <ProfilePage />;
   }
 
+  // New Figma/wealth routes (preview shells only for now)
+  if (path === "/app/analytics") return <ComingSoon title="Analytics" subtitle="Charts and breakdowns of income, expenses, and trends." />;
+  if (path === "/app/portfolio") return <ComingSoon title="Portfolio" subtitle="Performance, allocation, and holdings (manual / read-only first)." />;
+  if (path === "/app/net-worth") return <ComingSoon title="Net Worth" subtitle="Assets, liabilities, and net worth history (manual inputs + bank insights later)." />;
+  if (path === "/app/markets") return <ComingSoon title="Markets & Watchlist" subtitle="Indices and watchlists (tracking only). No trade execution." />;
+  if (path === "/app/dividends") return <ComingSoon title="Dividend Calendar" subtitle="Estimated dividend dates and income based on entered holdings." />;
+  if (path === "/app/paper-trading") return <ComingSoon title="Paper Trading" subtitle="Hypothetical portfolios and simulations (education only)." />;
+  if (path === "/app/goal-planner") return <ComingSoon title="Goal Planner" subtitle="User-driven goal scenarios and contribution planning." />;
+  if (path === "/app/invest-vs-cash") return <ComingSoon title="Invest vs Cash" subtitle="Hypothetical comparison charts (user inputs drive outcomes)." />;
+  if (path === "/app/etf-comparison") return <ComingSoon title="ETF Comparison" subtitle="Fees and historical stats display only (no recommendations)." />;
+  if (path === "/app/risk-profile") return <ComingSoon title="Risk Profile" subtitle="Education-only risk tolerance insights (no allocation advice)." />;
+  if (path === "/app/dca-calculator") return <ComingSoon title="DCA Calculator" subtitle="Hypothetical dollar-cost averaging calculator (user-driven inputs)." />;
+  if (path === "/app/bill-detection") return <ComingSoon title="Bill Detection" subtitle="Detect recurring bills and possible savings opportunities." />;
+  if (path === "/app/risk-warnings") return <ComingSoon title="Risk Warnings" subtitle="Upcoming balance risk and anomaly warnings." />;
+  if (path === "/app/health-score") return <ComingSoon title="Health Score" subtitle="A transparent financial health score breakdown." />;
+  if (path === "/app/tax-center") return <ComingSoon title="Tax Center" subtitle="Exports and summaries to help with tax time." />;
+  if (path === "/app/security") return <ComingSoon title="Security & Fraud" subtitle="Fraud/anomaly insights and security center." />;
+  if (path === "/app/settings") return <ComingSoon title="Settings" subtitle="App settings, notifications, and account preferences." />;
+
   return <Dashboard />;
 };
 
@@ -164,13 +216,32 @@ const AppContent: React.FC = () => {
       path === "/app/subscriptions" ||
       path === "/app/transactions" ||
       path === "/app/cashflow" ||
-      path === "/app/reports"
+      path === "/app/reports" ||
+      // New routes
+      path === "/app/analytics" ||
+      path === "/app/portfolio" ||
+      path === "/app/net-worth" ||
+      path === "/app/markets" ||
+      path === "/app/dividends" ||
+      path === "/app/paper-trading" ||
+      path === "/app/goal-planner" ||
+      path === "/app/invest-vs-cash" ||
+      path === "/app/etf-comparison" ||
+      path === "/app/risk-profile" ||
+      path === "/app/dca-calculator" ||
+      path === "/app/bill-detection" ||
+      path === "/app/risk-warnings" ||
+      path === "/app/health-score" ||
+      path === "/app/tax-center" ||
+      path === "/app/security" ||
+      path === "/app/settings"
     );
   }, [path]);
 
   const [activeSidebarItem, setActiveSidebarItem] = useState<SidebarItem>("overview");
 
   useEffect(() => {
+    // Map routes to existing sidebar set (we’ll expand sidebar later)
     if (path === "/app/forecast") setActiveSidebarItem("forecast");
     else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
     else if (path === "/app/transactions") setActiveSidebarItem("transactions");
@@ -189,6 +260,7 @@ const AppContent: React.FC = () => {
     if (item === "budget") return navigate("/app/cashflow");
     if (item === "reports") return navigate("/app/reports");
 
+    // overview
     if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -358,10 +430,14 @@ const AppContent: React.FC = () => {
     return null;
   }
 
-  // Landing (NO HEADER here)
+  // Landing
   return (
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
+      <Header
+        activeView="dashboard"
+        onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
+      />
       <WelcomeScreen
         onGetStarted={() => navigate("/signup")}
         onLogin={() => navigate("/login")}
