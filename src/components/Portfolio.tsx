@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   BellIcon,
@@ -12,35 +12,53 @@ import { formatCurrency } from "../utils/currency";
 type AssetType = "stock" | "etf" | "crypto" | "cash";
 type PropertyType = "house" | "apartment" | "unit" | "townhouse" | "land";
 
+type MarketProvider = "finnhub";
+
 type InvestmentHolding = {
   id: string;
   kind: "investment";
   assetType: AssetType;
-  symbol: string; // user-entered (e.g. "VTS", "AAPL", "BTC")
-  name: string; // user-entered (e.g. "Vanguard Total World")
-  quantity: number; // units/shares/coins
-  buyPrice: number; // per unit
+  symbol: string; // display symbol (e.g. "AAPL", "VTS", "BTC")
+  name: string;
+  quantity: number;
+  buyPrice: number;
   buyDate: string; // YYYY-MM-DD
-  currentPrice?: number; // optional manual price now (until we wire quotes)
-  currency?: "AUD" | "USD"; // optional (future: used per-holding)
+
+  // Optional manual current price (fallback if API has no quote)
+  currentPrice?: number;
+
+  // Market plumbing (Phase 2)
+  provider?: MarketProvider;
+  providerSymbol?: string; // Finnhub symbol (can include exchange prefix for crypto)
+  livePrice?: number;
+  liveAsOf?: string; // ISO string
+  quoteError?: string;
 };
 
 type PropertyHolding = {
   id: string;
   kind: "property";
   propertyType: PropertyType;
-  name: string; // "Main House", "IP1 - Brisbane"
+  name: string;
   purchasePrice: number;
   purchaseDate: string; // YYYY-MM-DD
   deposit: number;
-  interestRatePct: number; // annual %
+  interestRatePct: number;
   termYears: number;
   rentalIncomeMonthly: number;
-  otherMonthlyCosts: number; // insurance/maintenance etc (user-entered)
-  currentValue?: number; // optional manual estimate
+  otherMonthlyCosts: number;
+  currentValue?: number;
 };
 
 type Holding = InvestmentHolding | PropertyHolding;
+
+type MarketSearchResult = {
+  provider: MarketProvider;
+  assetClass: "stock" | "etf" | "crypto";
+  symbol: string;
+  providerSymbol: string;
+  name: string;
+};
 
 const pushAppRoute = (path: string) => {
   if (window.location.pathname !== path) {
@@ -68,7 +86,6 @@ const monthlyMortgagePayment = (loanAmount: number, annualRatePct: number, termY
 
   if (r === 0) return principal / n;
 
-  // amortization formula
   const payment = (principal * r) / (1 - Math.pow(1 + r, -n));
   return Number.isFinite(payment) ? payment : 0;
 };
@@ -88,7 +105,6 @@ const categoryLabel = (t: AssetType) => {
 };
 
 const dotClassByCategory = (key: string) => {
-  // keep consistent, subtle neon style (no inline colors)
   switch (key) {
     case "Stocks":
       return "bg-violet-400";
@@ -126,6 +142,14 @@ const Portfolio: React.FC = () => {
   const [invBuyDate, setInvBuyDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [invCurrentPrice, setInvCurrentPrice] = useState<string>("");
 
+  // Market search in modal
+  const [marketResults, setMarketResults] = useState<MarketSearchResult[]>([]);
+  const [marketLoading, setMarketLoading] = useState(false);
+  const [marketError, setMarketError] = useState<string | null>(null);
+  const [selectedMarket, setSelectedMarket] = useState<MarketSearchResult | null>(null);
+  const marketAbortRef = useRef<AbortController | null>(null);
+  const marketDebounceRef = useRef<number | null>(null);
+
   // Property form
   const [propType, setPropType] = useState<PropertyType>("house");
   const [propName, setPropName] = useState("");
@@ -140,6 +164,7 @@ const Portfolio: React.FC = () => {
 
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Load persisted holdings
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -152,6 +177,7 @@ const Portfolio: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
+  // Persist holdings
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(holdings));
@@ -175,18 +201,25 @@ const Portfolio: React.FC = () => {
     });
   }, [holdings, query]);
 
+  const priceForInvestment = (h: InvestmentHolding) => {
+    // Prefer live quote, then manual current price, then buy price.
+    if (typeof h.livePrice === "number" && Number.isFinite(h.livePrice) && h.livePrice > 0) return h.livePrice;
+    if (typeof h.currentPrice === "number" && Number.isFinite(h.currentPrice) && h.currentPrice > 0) return h.currentPrice;
+    return h.buyPrice;
+  };
+
   const totals = useMemo(() => {
     const inv = holdings.filter((h): h is InvestmentHolding => h.kind === "investment");
     const props = holdings.filter((h): h is PropertyHolding => h.kind === "property");
 
     const invCost = inv.reduce((sum, h) => sum + h.quantity * h.buyPrice, 0);
-    const invValue = inv.reduce((sum, h) => {
-      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
-      return sum + h.quantity * px;
-    }, 0);
+    const invValue = inv.reduce((sum, h) => sum + h.quantity * priceForInvestment(h), 0);
 
     const propCost = props.reduce((sum, p) => sum + p.purchasePrice, 0);
-    const propValue = props.reduce((sum, p) => sum + (typeof p.currentValue === "number" ? p.currentValue : p.purchasePrice), 0);
+    const propValue = props.reduce(
+      (sum, p) => sum + (typeof p.currentValue === "number" ? p.currentValue : p.purchasePrice),
+      0
+    );
 
     const totalValue = invValue + propValue;
     const totalCost = invCost + propCost;
@@ -219,8 +252,7 @@ const Portfolio: React.FC = () => {
     };
 
     for (const h of inv) {
-      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
-      const value = h.quantity * px;
+      const value = h.quantity * priceForInvestment(h);
       const key = categoryLabel(h.assetType);
       byType[key] += value;
     }
@@ -241,15 +273,14 @@ const Portfolio: React.FC = () => {
   }, [holdings]);
 
   const chartSeries = useMemo(() => {
-    // Until we wire historical quotes: generate a clean, stable “shape” based on current total + gain.
+    // Until /api/market/history exists: stable shape based on cost vs value (no randomness).
     const n = 24;
     const end = Math.max(0, totals.totalValue);
-    const base = Math.max(0, end - totals.gain); // approximate “cost basis line”
+    const base = Math.max(0, end - totals.gain); // approx cost basis
     const start = Math.max(0, base * 0.92);
 
     const points = Array.from({ length: n }, (_, i) => {
       const t = i / (n - 1);
-      // smooth curve with slight undulation (no randomness)
       const wave = Math.sin(t * Math.PI * 2) * 0.012;
       const trend = start + (end - start) * (0.18 + 0.82 * t);
       return trend * (1 + wave);
@@ -259,7 +290,6 @@ const Portfolio: React.FC = () => {
   }, [totals.gain, totals.totalValue]);
 
   const donut = useMemo(() => {
-    // SVG donut segments
     const radius = 44;
     const stroke = 10;
     const c = 2 * Math.PI * radius;
@@ -281,6 +311,9 @@ const Portfolio: React.FC = () => {
 
   const openModal = (tab: "investment" | "property") => {
     setFormError(null);
+    setMarketError(null);
+    setMarketResults([]);
+    setSelectedMarket(null);
     setModalTab(tab);
     setModalOpen(true);
   };
@@ -288,6 +321,11 @@ const Portfolio: React.FC = () => {
   const closeModal = () => {
     setModalOpen(false);
     setFormError(null);
+    setMarketError(null);
+    setMarketResults([]);
+    setSelectedMarket(null);
+    if (marketDebounceRef.current) window.clearTimeout(marketDebounceRef.current);
+    if (marketAbortRef.current) marketAbortRef.current.abort();
   };
 
   const resetInvestmentForm = () => {
@@ -298,6 +336,9 @@ const Portfolio: React.FC = () => {
     setInvBuyPrice("");
     setInvBuyDate(new Date().toISOString().slice(0, 10));
     setInvCurrentPrice("");
+    setMarketResults([]);
+    setSelectedMarket(null);
+    setMarketError(null);
   };
 
   const resetPropertyForm = () => {
@@ -311,6 +352,67 @@ const Portfolio: React.FC = () => {
     setPropRentMonthly("");
     setPropOtherMonthly("0");
     setPropCurrentValue("");
+  };
+
+  const assetClassForSearch = (t: AssetType) => {
+    if (t === "crypto") return "crypto";
+    if (t === "etf") return "etf";
+    return "stock";
+  };
+
+  const runMarketSearch = (text: string, assetType: AssetType) => {
+    const q = text.trim();
+    setMarketError(null);
+    setSelectedMarket(null);
+
+    if (!q || assetType === "cash") {
+      setMarketResults([]);
+      return;
+    }
+
+    if (marketDebounceRef.current) window.clearTimeout(marketDebounceRef.current);
+    if (marketAbortRef.current) marketAbortRef.current.abort();
+
+    marketDebounceRef.current = window.setTimeout(async () => {
+      const controller = new AbortController();
+      marketAbortRef.current = controller;
+
+      setMarketLoading(true);
+      try {
+        const url =
+          "/api/market/search?q=" +
+          encodeURIComponent(q) +
+          "&assetClass=" +
+          encodeURIComponent(assetClassForSearch(assetType));
+
+        const r = await fetch(url, { signal: controller.signal });
+        const data = (await r.json().catch(() => null)) as any;
+
+        if (!r.ok || !data?.ok) {
+          const err = data?.error ? String(data.error) : "Search failed";
+          setMarketError(err);
+          setMarketResults([]);
+          return;
+        }
+
+        const results = Array.isArray(data.results) ? (data.results as MarketSearchResult[]) : [];
+        setMarketResults(results.slice(0, 10));
+      } catch (e) {
+        if ((e as any)?.name === "AbortError") return;
+        setMarketError("Search failed.");
+        setMarketResults([]);
+      } finally {
+        setMarketLoading(false);
+      }
+    }, 280);
+  };
+
+  const selectMarketResult = (r: MarketSearchResult) => {
+    setSelectedMarket(r);
+    setInvSymbol(r.symbol);
+    setInvName(r.name);
+    setMarketResults([]);
+    setMarketError(null);
   };
 
   const addInvestment = () => {
@@ -327,6 +429,9 @@ const Portfolio: React.FC = () => {
     if (buyPrice <= 0) return setFormError("Buy price must be greater than 0.");
     if (!invBuyDate) return setFormError("Select a purchase date.");
 
+    const provider = selectedMarket?.provider ?? (invAssetType === "cash" ? undefined : "finnhub");
+    const providerSymbol = selectedMarket?.providerSymbol ?? undefined;
+
     const next: InvestmentHolding = {
       id: uid(),
       kind: "investment",
@@ -337,6 +442,8 @@ const Portfolio: React.FC = () => {
       buyPrice,
       buyDate: invBuyDate,
       currentPrice,
+      provider,
+      providerSymbol,
     };
 
     setHoldings((prev) => [next, ...prev]);
@@ -387,15 +494,94 @@ const Portfolio: React.FC = () => {
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   };
 
+  // Live quotes: refresh investment holdings that have providerSymbol (stocks/etf/crypto)
+  useEffect(() => {
+    let isCancelled = false;
+
+    const refreshQuotes = async () => {
+      const inv = holdings.filter((h): h is InvestmentHolding => h.kind === "investment");
+      const targets = inv.filter(
+        (h) => !!h.providerSymbol && (h.assetType === "stock" || h.assetType === "etf" || h.assetType === "crypto")
+      );
+
+      if (!targets.length) return;
+
+      const updates: Record<string, Partial<InvestmentHolding>> = {};
+
+      await Promise.all(
+        targets.map(async (h) => {
+          try {
+            const url =
+              "/api/market/quote?providerSymbol=" +
+              encodeURIComponent(h.providerSymbol as string) +
+              "&assetClass=" +
+              encodeURIComponent(h.assetType === "crypto" ? "crypto" : h.assetType === "etf" ? "etf" : "stock") +
+              "&symbol=" +
+              encodeURIComponent(h.symbol);
+
+            const r = await fetch(url);
+            const data = (await r.json().catch(() => null)) as any;
+
+            if (!r.ok || !data?.ok || !data?.quote) {
+              const err = data?.error ? String(data.error) : "Quote unavailable";
+              updates[h.id] = { quoteError: err, livePrice: undefined, liveAsOf: undefined };
+              return;
+            }
+
+            const price = Number(data.quote.price);
+            const asOf = String(data.quote.asOf || "");
+
+            if (!Number.isFinite(price) || price <= 0) {
+              updates[h.id] = { quoteError: "Quote unavailable", livePrice: undefined, liveAsOf: undefined };
+              return;
+            }
+
+            updates[h.id] = { livePrice: price, liveAsOf: asOf, quoteError: undefined };
+          } catch {
+            updates[h.id] = { quoteError: "Quote unavailable", livePrice: undefined, liveAsOf: undefined };
+          }
+        })
+      );
+
+      if (isCancelled) return;
+
+      const hasAny = Object.keys(updates).length > 0;
+      if (!hasAny) return;
+
+      setHoldings((prev) =>
+        prev.map((h) => {
+          if (h.kind !== "investment") return h;
+          const patch = updates[h.id];
+          if (!patch) return h;
+          return { ...h, ...patch };
+        })
+      );
+    };
+
+    refreshQuotes();
+
+    const interval = window.setInterval(() => {
+      refreshQuotes();
+    }, 60_000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdings.map((h) => (h.kind === "investment" ? `${h.id}:${h.providerSymbol ?? ""}:${h.symbol}:${h.assetType}` : h.id)).join("|")]);
+
   const HoldingRow: React.FC<{ holding: Holding }> = ({ holding }) => {
     if (holding.kind === "investment") {
-      const px = typeof holding.currentPrice === "number" ? holding.currentPrice : holding.buyPrice;
+      const px = priceForInvestment(holding);
       const value = holding.quantity * px;
       const cost = holding.quantity * holding.buyPrice;
       const gain = value - cost;
       const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
 
       const initials = holding.symbol.slice(0, 2).toUpperCase();
+
+      const hasLive = typeof holding.livePrice === "number" && holding.livePrice > 0;
 
       return (
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-[#0b0b10] p-4 shadow-2xl shadow-black/40">
@@ -411,10 +597,34 @@ const Portfolio: React.FC = () => {
                   {categoryLabel(holding.assetType)}
                 </span>
                 <span className="truncate">{holding.symbol}</span>
+
+                {hasLive ? (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-200">
+                    Live
+                  </span>
+                ) : holding.quoteError ? (
+                  <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-red-200">
+                    No quote
+                  </span>
+                ) : null}
+
                 <span className="text-white/35">•</span>
                 <span>
                   {round2(holding.quantity)} @ {formatCurrency(holding.buyPrice, region)}
                 </span>
+              </div>
+
+              <div className="mt-1 text-xs text-white/45">
+                {hasLive ? (
+                  <>
+                    Price: {formatCurrency(holding.livePrice as number, region)}
+                    {holding.liveAsOf ? <span className="text-white/35"> • as of {new Date(holding.liveAsOf).toLocaleString()}</span> : null}
+                  </>
+                ) : holding.currentPrice ? (
+                  <>Manual price: {formatCurrency(holding.currentPrice, region)}</>
+                ) : (
+                  <>Using buy price as estimate</>
+                )}
               </div>
             </div>
           </div>
@@ -439,12 +649,10 @@ const Portfolio: React.FC = () => {
       );
     }
 
-    // property
     const value = typeof holding.currentValue === "number" ? holding.currentValue : holding.purchasePrice;
     const loan = Math.max(0, holding.purchasePrice - Math.max(0, holding.deposit));
     const pmt = monthlyMortgagePayment(loan, holding.interestRatePct, holding.termYears);
     const netMonthly = holding.rentalIncomeMonthly - pmt - holding.otherMonthlyCosts;
-
     const equity = value - loan;
 
     return (
@@ -504,7 +712,6 @@ const Portfolio: React.FC = () => {
       totals.gainPct
     )}%)`;
 
-    // chart svg
     const w = 320;
     const h = 110;
     const pad = 10;
@@ -543,7 +750,7 @@ const Portfolio: React.FC = () => {
                 <span className={["font-semibold", isUp ? "text-emerald-300" : "text-red-300"].join(" ")}>{gainText}</span>
                 <span className="text-white/35">All time</span>
                 <span className="text-white/35">•</span>
-                <span className="text-white/55">Manual prices (quotes coming)</span>
+                <span className="text-white/55">Live quotes (where available)</span>
               </div>
             </div>
 
@@ -564,6 +771,9 @@ const Portfolio: React.FC = () => {
               <path d={area} fill="url(#mab_area)" />
               <path d={path} fill="none" stroke="rgba(168,85,247,0.9)" strokeWidth="2.5" />
             </svg>
+            <div className="mt-2 text-xs text-white/45">
+              Chart is an educational trend placeholder until historical pricing is enabled.
+            </div>
           </div>
         </div>
       </section>
@@ -580,29 +790,24 @@ const Portfolio: React.FC = () => {
             <svg width="120" height="120" viewBox="0 0 120 120">
               <g transform="translate(60,60)">
                 <circle r={donut.radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={donut.stroke} />
-                {donut.segs.map((s) => (
-                  <circle
-                    key={s.label}
-                    r={donut.radius}
-                    fill="none"
-                    strokeWidth={donut.stroke}
-                    strokeLinecap="round"
-                    strokeDasharray={s.dash}
-                    strokeDashoffset={-s.offset}
-                    stroke={`rgba(168,85,247,0.0)`}
-                    className={(() => {
-                      // map to tailwind via currentColor using wrapper below
-                      // (we keep it simple: use className on a <g> with color; for circles use stroke="currentColor")
-                      return "";
-                    })()}
-                  />
-                ))}
               </g>
 
-              {/* redraw segments with currentColor to leverage CSS color */}
               <g transform="translate(60,60)">
                 {donut.segs.map((s) => (
-                  <g key={`${s.label}-color`} className={s.label === "Stocks" ? "text-violet-400" : s.label === "Crypto" ? "text-emerald-400" : s.label === "ETFs" ? "text-sky-400" : s.label === "Cash" ? "text-slate-300" : "text-amber-300"}>
+                  <g
+                    key={`${s.label}-color`}
+                    className={
+                      s.label === "Stocks"
+                        ? "text-violet-400"
+                        : s.label === "Crypto"
+                        ? "text-emerald-400"
+                        : s.label === "ETFs"
+                        ? "text-sky-400"
+                        : s.label === "Cash"
+                        ? "text-slate-300"
+                        : "text-amber-300"
+                    }
+                  >
                     <circle
                       r={donut.radius}
                       fill="none"
@@ -641,7 +846,6 @@ const Portfolio: React.FC = () => {
 
   return (
     <div className="relative flex flex-col gap-6">
-      {/* Top bar (page-local) */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
@@ -679,13 +883,9 @@ const Portfolio: React.FC = () => {
         </div>
       </div>
 
-      {/* Total balance card */}
       <TotalCard />
-
-      {/* Allocation */}
       <AllocationCard />
 
-      {/* Holdings */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-white">Holdings</h2>
@@ -724,11 +924,10 @@ const Portfolio: React.FC = () => {
         )}
 
         <div className="text-xs text-white/45">
-          Educational tracking only. No recommendations. Market quotes will be added via server-side pricing endpoints.
+          Educational tracking only. No recommendations. Quotes are read-only and may be delayed depending on provider/plan.
         </div>
       </section>
 
-      {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
@@ -748,7 +947,7 @@ const Portfolio: React.FC = () => {
                     </h3>
                     <p className="mt-1 text-sm text-white/55">
                       {modalTab === "investment"
-                        ? "Enter what you bought, when, and how much. Prices are manual for now."
+                        ? "Search the market symbol (recommended). Manual entry still works."
                         : "Track purchase, loan terms, rent, and net monthly cashflow."}
                     </p>
                   </div>
@@ -802,7 +1001,14 @@ const Portfolio: React.FC = () => {
                       Asset type
                       <select
                         value={invAssetType}
-                        onChange={(e) => setInvAssetType(e.target.value as AssetType)}
+                        onChange={(e) => {
+                          const next = e.target.value as AssetType;
+                          setInvAssetType(next);
+                          setMarketResults([]);
+                          setSelectedMarket(null);
+                          setMarketError(null);
+                          if (invSymbol.trim()) runMarketSearch(invSymbol, next);
+                        }}
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-white/20"
                       >
                         <option value="stock">Stocks</option>
@@ -813,13 +1019,57 @@ const Portfolio: React.FC = () => {
                     </label>
 
                     <label className="text-sm text-white/70">
-                      Ticker / Symbol
-                      <input
-                        value={invSymbol}
-                        onChange={(e) => setInvSymbol(e.target.value)}
-                        placeholder="e.g. VTS, AAPL, BTC"
-                        className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
-                      />
+                      Ticker / Symbol (search)
+                      <div className="relative">
+                        <input
+                          value={invSymbol}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setInvSymbol(v);
+                            setSelectedMarket(null);
+                            runMarketSearch(v, invAssetType);
+                          }}
+                          placeholder={invAssetType === "crypto" ? "e.g. BTC" : "e.g. AAPL, VTS"}
+                          className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
+                        />
+
+                        {marketLoading ? (
+                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/45">
+                            Searching…
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {marketError ? (
+                        <div className="mt-2 text-xs text-red-200">{marketError}</div>
+                      ) : null}
+
+                      {marketResults.length ? (
+                        <div className="mt-2 max-h-52 overflow-auto rounded-2xl border border-white/10 bg-black/40">
+                          {marketResults.map((r) => (
+                            <button
+                              key={r.providerSymbol}
+                              type="button"
+                              onClick={() => selectMarketResult(r)}
+                              className="flex w-full items-start justify-between gap-3 border-b border-white/10 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-semibold text-white">{r.symbol}</div>
+                                <div className="truncate text-xs text-white/55">{r.name}</div>
+                              </div>
+                              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/60">
+                                {r.assetClass.toUpperCase()}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {selectedMarket ? (
+                        <div className="mt-2 text-xs text-emerald-200">
+                          Selected: {selectedMarket.symbol} • {selectedMarket.providerSymbol}
+                        </div>
+                      ) : null}
                     </label>
 
                     <label className="text-sm text-white/70 sm:col-span-2">
@@ -827,7 +1077,7 @@ const Portfolio: React.FC = () => {
                       <input
                         value={invName}
                         onChange={(e) => setInvName(e.target.value)}
-                        placeholder="e.g. Vanguard Total World"
+                        placeholder="Auto-filled when you select a search result"
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
                       />
                     </label>
@@ -864,12 +1114,12 @@ const Portfolio: React.FC = () => {
                     </label>
 
                     <label className="text-sm text-white/70">
-                      Current price (optional)
+                      Manual current price (optional)
                       <input
                         value={invCurrentPrice}
                         onChange={(e) => setInvCurrentPrice(e.target.value)}
                         inputMode="decimal"
-                        placeholder="Manual for now"
+                        placeholder="Only used if no live quote"
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
                       />
                     </label>

@@ -10,6 +10,9 @@ import {
   PresentationChartLineIcon,
   ArrowUpRightIcon,
   ShieldCheckIcon,
+  BriefcaseIcon,
+  GlobeAltIcon,
+  ScaleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -35,7 +38,6 @@ export type SidebarItem =
   | "billDetection"
   | "riskWarnings"
   | "healthScore"
-  // Added to match App.tsx
   | "taxCenter"
   | "security"
   | "settings";
@@ -56,16 +58,39 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const items = useMemo<NavItem[]>(
+  const mainItems = useMemo<NavItem[]>(
     () => [
       { id: "overview", label: "Dashboard", icon: HomeIcon },
       { id: "forecast", label: "Forecast", icon: ChartBarIcon },
       { id: "transactions", label: "Transactions", icon: DocumentChartBarIcon },
-      { id: "subscriptions", label: "Subscriptions", icon: CreditCardIcon },
-      { id: "budget", label: "Budget", icon: BanknotesIcon },
-      { id: "reports", label: "Reports", icon: PresentationChartLineIcon },
-      { id: "upgrade", label: "Upgrade", icon: ArrowUpRightIcon, badge: "PRO" },
     ],
+    []
+  );
+
+  const cashflowItems = useMemo<NavItem[]>(
+    () => [
+      { id: "subscriptions", label: "Subscriptions", icon: CreditCardIcon },
+      { id: "budget", label: "Cashflow", icon: BanknotesIcon },
+    ],
+    []
+  );
+
+  const trustItems = useMemo<NavItem[]>(
+    () => [{ id: "reports", label: "Reports", icon: PresentationChartLineIcon }],
+    []
+  );
+
+  const investingItems = useMemo<NavItem[]>(
+    () => [
+      { id: "portfolio", label: "Portfolio", icon: BriefcaseIcon },
+      { id: "markets", label: "Markets", icon: GlobeAltIcon },
+      { id: "netWorth", label: "Net Worth", icon: ScaleIcon },
+    ],
+    []
+  );
+
+  const accountItems = useMemo<NavItem[]>(
+    () => [{ id: "upgrade", label: "Upgrade", icon: ArrowUpRightIcon, badge: "PRO" }],
     []
   );
 
@@ -117,6 +142,17 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
     );
   };
 
+  const Section = ({ title, items }: { title: string; items: NavItem[] }) => (
+    <div className="mt-6">
+      <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">{title}</p>
+      <div className="mt-2 space-y-2">
+        {items.map((it) => (
+          <NavButton key={it.id} item={it} />
+        ))}
+      </div>
+    </div>
+  );
+
   const Shell = ({ mobile }: { mobile?: boolean }) => (
     <aside
       className={[
@@ -156,34 +192,11 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4">
-          <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Main</p>
-          <div className="mt-2 space-y-2">
-            <NavButton item={items[0]} />
-            <NavButton item={items[1]} />
-            <NavButton item={items[2]} />
-          </div>
-
-          <div className="mt-6">
-            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Cashflow Control</p>
-            <div className="mt-2 space-y-2">
-              <NavButton item={items[3]} />
-              <NavButton item={items[4]} />
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Trust & Report</p>
-            <div className="mt-2 space-y-2">
-              <NavButton item={items[5]} />
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/35">Account</p>
-            <div className="mt-2 space-y-2">
-              <NavButton item={items[6]} />
-            </div>
-          </div>
+          <Section title="Main" items={mainItems} />
+          <Section title="Cashflow Control" items={cashflowItems} />
+          <Section title="Investing" items={investingItems} />
+          <Section title="Trust & Report" items={trustItems} />
+          <Section title="Account" items={accountItems} />
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-r from-[#3b0764]/40 to-[#1e1b4b]/25 p-4">
             <div className="flex items-start gap-3">
