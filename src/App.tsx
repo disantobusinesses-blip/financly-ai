@@ -160,10 +160,14 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   }
 
   // New feature routes (preview shells for now)
-  if (path === "/app/analytics") return <ComingSoon title="Analytics" subtitle="Charts and breakdowns of income, expenses, and trends." />;
+  if (path === "/app/analytics")
+    return <ComingSoon title="Analytics" subtitle="Charts and breakdowns of income, expenses, and trends." />;
 
-  if (path === "/app/portfolio") return <ComingSoon title="Portfolio" subtitle="Performance, allocation, and holdings (manual / read-only first)." />;
-  if (path === "/app/net-worth") return <ComingSoon title="Net Worth" subtitle="Assets, liabilities, and net worth history (manual inputs + bank insights later)." />;
+  // ✅ Use the real Portfolio component so the import is not unused.
+  if (path === "/app/portfolio") return <Portfolio />;
+
+  if (path === "/app/net-worth")
+    return <ComingSoon title="Net Worth" subtitle="Assets, liabilities, and net worth history (manual inputs + bank insights later)." />;
   if (path === "/app/markets") return <ComingSoon title="Markets & Watchlist" subtitle="Tracking only. No trade execution." />;
   if (path === "/app/dividends") return <ComingSoon title="Dividend Calendar" subtitle="Estimated dividend dates and income based on entered holdings." />;
   if (path === "/app/paper-trading") return <ComingSoon title="Paper Trading" subtitle="Hypothetical portfolios and simulations (education only)." />;
