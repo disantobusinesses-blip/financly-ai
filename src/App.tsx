@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
+import Portfolio from "./components/Portfolio";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SandboxShowcase from "./components/SandboxShowcase";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -19,7 +20,7 @@ import Sidebar, { type SidebarItem } from "./components/Sidebar";
 
 import { AppDataProvider, useAppData } from "./contexts/AppDataContext";
 
-// Reuse existing components for dedicated pages (no new data fetching / no Fiskil changes)
+// Existing components (no new data fetching / no Fiskil changes)
 import SpendingForecast from "./components/SpendingForecast";
 import SubscriptionHunter from "./components/SubscriptionHunter";
 import TransactionsList from "./components/TransactionsList";
@@ -53,27 +54,22 @@ const ComingSoon: React.FC<{ title: string; subtitle?: string }> = ({ title, sub
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/25 blur-3xl" />
         <div className="absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
       </div>
+
       <div className="relative">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Coming soon</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Preview</p>
         <h1 className="mt-2 text-2xl font-semibold text-white">{title}</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
           {subtitle ??
-            "This feature is in development and will be released soon. The preview layout is in place so we can wire data safely without changing bank connection flows."}
+            "This feature is in development. The page shell is live so we can wire real data safely without changing bank connection flows."}
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 rounded-2xl border border-white/10 bg-white/5"
-              aria-hidden="true"
-            />
+            <div key={i} className="h-20 rounded-2xl border border-white/10 bg-white/5" aria-hidden="true" />
           ))}
         </div>
 
-        <div className="mt-6 text-xs text-white/45">
-          Educational previews only. No financial product recommendations.
-        </div>
+        <div className="mt-6 text-xs text-white/45">Educational previews only. No financial product recommendations.</div>
       </div>
     </section>
   );
@@ -98,7 +94,7 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     return <Dashboard />;
   }
 
-  // Existing routes (wired to real data)
+  // Core pages (wired to real data)
   if (path === "/app/forecast") {
     return (
       <>
@@ -163,24 +159,29 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     return <ProfilePage />;
   }
 
-  // New Figma/wealth routes (preview shells only for now)
+  // New feature routes (preview shells for now)
   if (path === "/app/analytics") return <ComingSoon title="Analytics" subtitle="Charts and breakdowns of income, expenses, and trends." />;
+
   if (path === "/app/portfolio") return <ComingSoon title="Portfolio" subtitle="Performance, allocation, and holdings (manual / read-only first)." />;
   if (path === "/app/net-worth") return <ComingSoon title="Net Worth" subtitle="Assets, liabilities, and net worth history (manual inputs + bank insights later)." />;
-  if (path === "/app/markets") return <ComingSoon title="Markets & Watchlist" subtitle="Indices and watchlists (tracking only). No trade execution." />;
+  if (path === "/app/markets") return <ComingSoon title="Markets & Watchlist" subtitle="Tracking only. No trade execution." />;
   if (path === "/app/dividends") return <ComingSoon title="Dividend Calendar" subtitle="Estimated dividend dates and income based on entered holdings." />;
   if (path === "/app/paper-trading") return <ComingSoon title="Paper Trading" subtitle="Hypothetical portfolios and simulations (education only)." />;
+
   if (path === "/app/goal-planner") return <ComingSoon title="Goal Planner" subtitle="User-driven goal scenarios and contribution planning." />;
   if (path === "/app/invest-vs-cash") return <ComingSoon title="Invest vs Cash" subtitle="Hypothetical comparison charts (user inputs drive outcomes)." />;
-  if (path === "/app/etf-comparison") return <ComingSoon title="ETF Comparison" subtitle="Fees and historical stats display only (no recommendations)." />;
+  if (path === "/app/etf-comparison") return <ComingSoon title="ETF Comparison" subtitle="Display-only: fees and historical stats. No recommendations." />;
   if (path === "/app/risk-profile") return <ComingSoon title="Risk Profile" subtitle="Education-only risk tolerance insights (no allocation advice)." />;
-  if (path === "/app/dca-calculator") return <ComingSoon title="DCA Calculator" subtitle="Hypothetical dollar-cost averaging calculator (user-driven inputs)." />;
+  if (path === "/app/dca-calculator") return <ComingSoon title="DCA Calculator" subtitle="Hypothetical dollar-cost averaging calculator (user inputs only)." />;
+
   if (path === "/app/bill-detection") return <ComingSoon title="Bill Detection" subtitle="Detect recurring bills and possible savings opportunities." />;
   if (path === "/app/risk-warnings") return <ComingSoon title="Risk Warnings" subtitle="Upcoming balance risk and anomaly warnings." />;
-  if (path === "/app/health-score") return <ComingSoon title="Health Score" subtitle="A transparent financial health score breakdown." />;
+
+  if (path === "/app/health-score") return <ComingSoon title="Health Score" subtitle="Transparent financial health score breakdown." />;
   if (path === "/app/tax-center") return <ComingSoon title="Tax Center" subtitle="Exports and summaries to help with tax time." />;
   if (path === "/app/security") return <ComingSoon title="Security & Fraud" subtitle="Fraud/anomaly insights and security center." />;
-  if (path === "/app/settings") return <ComingSoon title="Settings" subtitle="App settings, notifications, and account preferences." />;
+
+  if (path === "/app/settings") return <ComingSoon title="Settings" subtitle="App settings, notifications, and preferences." />;
 
   return <Dashboard />;
 };
@@ -241,31 +242,141 @@ const AppContent: React.FC = () => {
   const [activeSidebarItem, setActiveSidebarItem] = useState<SidebarItem>("overview");
 
   useEffect(() => {
-    // Map routes to existing sidebar set (we’ll expand sidebar later)
-    if (path === "/app/forecast") setActiveSidebarItem("forecast");
-    else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
+    // Keep sidebar highlight aligned with current route
+    if (path === "/app/analytics") setActiveSidebarItem("analytics");
+    else if (path === "/app/forecast") setActiveSidebarItem("forecast");
     else if (path === "/app/transactions") setActiveSidebarItem("transactions");
+    else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
     else if (path === "/app/cashflow") setActiveSidebarItem("budget");
     else if (path === "/app/reports") setActiveSidebarItem("reports");
+    else if (path === "/app/portfolio") setActiveSidebarItem("portfolio");
+    else if (path === "/app/net-worth") setActiveSidebarItem("netWorth");
+    else if (path === "/app/markets") setActiveSidebarItem("markets");
+    else if (path === "/app/dividends") setActiveSidebarItem("dividends");
+    else if (path === "/app/paper-trading") setActiveSidebarItem("paperTrading");
+    else if (path === "/app/goal-planner") setActiveSidebarItem("goalPlanner");
+    else if (path === "/app/invest-vs-cash") setActiveSidebarItem("investVsCash");
+    else if (path === "/app/etf-comparison") setActiveSidebarItem("etfComparison");
+    else if (path === "/app/risk-profile") setActiveSidebarItem("riskProfile");
+    else if (path === "/app/dca-calculator") setActiveSidebarItem("dcaCalculator");
+    else if (path === "/app/bill-detection") setActiveSidebarItem("billDetection");
+    else if (path === "/app/risk-warnings") setActiveSidebarItem("riskWarnings");
+    else if (path === "/app/health-score") setActiveSidebarItem("healthScore");
+    else if (path === "/app/tax-center") setActiveSidebarItem("taxCenter");
+    else if (path === "/app/security") setActiveSidebarItem("security");
+    else if (path === "/app/settings") setActiveSidebarItem("settings");
+    else if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") setActiveSidebarItem("overview");
     else setActiveSidebarItem("overview");
   }, [path]);
 
   const handleSidebarNavigate = (item: SidebarItem) => {
     setActiveSidebarItem(item);
 
-    if (item === "upgrade") return navigate("/subscribe");
-    if (item === "forecast") return navigate("/app/forecast");
-    if (item === "subscriptions") return navigate("/app/subscriptions");
-    if (item === "transactions") return navigate("/app/transactions");
-    if (item === "budget") return navigate("/app/cashflow");
-    if (item === "reports") return navigate("/app/reports");
+    switch (item) {
+      case "upgrade":
+        navigate("/subscribe");
+        return;
 
-    // overview
-    if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
+      case "overview":
+        if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          navigate("/app/dashboard");
+        }
+        return;
+
+      case "analytics":
+        navigate("/app/analytics");
+        return;
+
+      case "forecast":
+        navigate("/app/forecast");
+        return;
+
+      case "transactions":
+        navigate("/app/transactions");
+        return;
+
+      case "subscriptions":
+        navigate("/app/subscriptions");
+        return;
+
+      case "budget":
+        navigate("/app/cashflow");
+        return;
+
+      case "reports":
+        navigate("/app/reports");
+        return;
+
+      case "portfolio":
+        navigate("/app/portfolio");
+        return;
+
+      case "netWorth":
+        navigate("/app/net-worth");
+        return;
+
+      case "markets":
+        navigate("/app/markets");
+        return;
+
+      case "dividends":
+        navigate("/app/dividends");
+        return;
+
+      case "paperTrading":
+        navigate("/app/paper-trading");
+        return;
+
+      case "goalPlanner":
+        navigate("/app/goal-planner");
+        return;
+
+      case "investVsCash":
+        navigate("/app/invest-vs-cash");
+        return;
+
+      case "etfComparison":
+        navigate("/app/etf-comparison");
+        return;
+
+      case "riskProfile":
+        navigate("/app/risk-profile");
+        return;
+
+      case "dcaCalculator":
+        navigate("/app/dca-calculator");
+        return;
+
+      case "billDetection":
+        navigate("/app/bill-detection");
+        return;
+
+      case "riskWarnings":
+        navigate("/app/risk-warnings");
+        return;
+
+      case "healthScore":
+        navigate("/app/health-score");
+        return;
+
+      case "taxCenter":
+        navigate("/app/tax-center");
+        return;
+
+      case "security":
+        navigate("/app/security");
+        return;
+
+      case "settings":
+        navigate("/app/settings");
+        return;
+
+      default:
+        navigate("/app/dashboard");
+        return;
     }
-    return navigate("/app/dashboard");
   };
 
   // Public / auth routes
@@ -273,10 +384,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SignupPage />
       </div>
     );
@@ -290,10 +398,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <OnboardingPage />
       </div>
     );
@@ -312,10 +417,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <LoginPage onSuccess={() => navigate("/app/dashboard")} />
       </div>
     );
@@ -329,10 +431,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="dashboard"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <SubscribePage />
       </div>
     );
@@ -364,10 +463,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="what-we-do"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="what-we-do" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <WhatWeDo />
         </main>
@@ -379,10 +475,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
         {backgroundLayers}
-        <Header
-          activeView="sandbox"
-          onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-        />
+        <Header activeView="sandbox" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
         <main className="px-4 pb-16 pt-24 md:px-8">
           <SandboxShowcase />
         </main>
@@ -434,10 +527,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-[100dvh] min-h-screen bg-[#050507] text-white">
       {backgroundLayers}
-      <Header
-        activeView="dashboard"
-        onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))}
-      />
+      <Header activeView="dashboard" onNavigate={(view: string) => (view === "dashboard" ? navigate("/") : navigate(`/${view}`))} />
       <WelcomeScreen
         onGetStarted={() => navigate("/signup")}
         onLogin={() => navigate("/login")}
