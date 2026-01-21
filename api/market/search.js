@@ -1,12 +1,9 @@
 /**
  * GET /api/market/search?q=...&assetClass=stock|etf|crypto
- *
- * Provider: Finnhub symbol search
- * Docs: https://finnhub.io/docs/api/symbol-search :contentReference[oaicite:5]{index=5}
+ * Provider: Finnhub
  */
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
@@ -18,15 +15,24 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+  const q = typeof req.query?.q === "string" ? req.query.q.trim().slice(0, 80) : "";
   if (!q) {
     return res.status(400).json({ ok: false, error: "Missing query param: q" });
   }
 
-  const assetClassParam = typeof req.query.assetClass === "string" ? req.query.assetClass.toLowerCase() : "stock";
-  const assetClass = assetClassParam === "crypto" || assetClassParam === "etf" || assetClassParam === "stock"
-    ? assetClassParam
-    : "stock";
+  const assetClassParam =
+    typeof req.query?.assetClass === "string" ? req.query.assetClass.toLowerCase() : "stock";
+  const assetClass =
+    assetClassParam === "crypto" || assetClassParam === "etf" || assetClassParam === "stock"
+      ? assetClassParam
+      : "stock";
+
+  const inferAssetClass = (type) => {
+    const t = String(type || "").toLowerCase();
+    if (t.includes("crypto")) return "crypto";
+    if (t.includes("etf")) return "etf";
+    return "stock";
+  };
 
   try {
     const url =
@@ -56,22 +62,14 @@ module.exports = async function handler(req, res) {
     const data = await upstream.json();
     const raw = Array.isArray(data?.result) ? data.result : [];
 
-    // Best-effort inference; Finnhub’s search type varies by market/instrument.
-    const infer = (type) => {
-      const t = String(type || "").toLowerCase();
-      if (t.includes("crypto")) return "crypto";
-      if (t.includes("etf")) return "etf";
-      return "stock";
-    };
-
     const results = raw
       .map((r) => {
         const providerSymbol = String(r?.symbol || "").trim();
         const displaySymbol = String(r?.displaySymbol || "").trim();
         const name = String(r?.description || "").trim();
-        const inferred = infer(r?.type);
-
         if (!providerSymbol || !name) return null;
+
+        const inferred = inferAssetClass(r?.type);
 
         return {
           provider: "finnhub",
@@ -85,11 +83,10 @@ module.exports = async function handler(req, res) {
       .filter((x) => (assetClass ? x.assetClass === assetClass : true))
       .slice(0, 20);
 
-    // Cache to reduce rate/latency (safe: search results don’t need realtime)
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({ ok: true, results });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return res.status(500).json({ ok: false, error: message });
   }
-};
+}
