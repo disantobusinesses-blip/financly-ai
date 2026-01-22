@@ -4,8 +4,8 @@ import {
   XMarkIcon,
   HomeIcon,
   ChartBarIcon,
-  CreditCardIcon,
   DocumentChartBarIcon,
+  CreditCardIcon,
   BanknotesIcon,
   PresentationChartLineIcon,
   ArrowUpRightIcon,
@@ -13,6 +13,17 @@ import {
   BriefcaseIcon,
   GlobeAltIcon,
   ScaleIcon,
+  CalendarDaysIcon,
+  AcademicCapIcon,
+  ArrowTrendingUpIcon,
+  AdjustmentsHorizontalIcon,
+  CalculatorIcon,
+  MagnifyingGlassIcon,
+  ExclamationTriangleIcon,
+  HeartIcon,
+  ReceiptPercentIcon,
+  LockClosedIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -58,34 +69,65 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
+  // MAIN
   const mainItems = useMemo<NavItem[]>(
     () => [
       { id: "overview", label: "Dashboard", icon: HomeIcon },
-      { id: "forecast", label: "Forecast", icon: ChartBarIcon },
+      { id: "analytics", label: "Analytics", icon: ChartBarIcon },
       { id: "transactions", label: "Transactions", icon: DocumentChartBarIcon },
     ],
     []
   );
 
+  // WEALTH STATION
+  const wealthItems = useMemo<NavItem[]>(
+    () => [
+      { id: "portfolio", label: "Portfolio Tracker", icon: BriefcaseIcon },
+      { id: "netWorth", label: "Net Worth", icon: ScaleIcon },
+      { id: "markets", label: "Markets & Watchlist", icon: GlobeAltIcon },
+      { id: "dividends", label: "Dividend Calendar", icon: CalendarDaysIcon },
+      { id: "paperTrading", label: "Paper Trading", icon: AcademicCapIcon },
+    ],
+    []
+  );
+
+  // PLANNING LAB
+  const planningItems = useMemo<NavItem[]>(
+    () => [
+      { id: "goalPlanner", label: "Goal Planner", icon: ArrowTrendingUpIcon },
+      { id: "investVsCash", label: "Invest vs Cash", icon: AdjustmentsHorizontalIcon },
+      { id: "etfComparison", label: "ETF Comparison", icon: MagnifyingGlassIcon },
+      { id: "riskProfile", label: "Risk Profile", icon: ShieldCheckIcon },
+      { id: "dcaCalculator", label: "DCA Calculator", icon: CalculatorIcon },
+    ],
+    []
+  );
+
+  // CASHFLOW CONTROL
   const cashflowItems = useMemo<NavItem[]>(
     () => [
+      { id: "forecast", label: "Budget Autopilot", icon: BanknotesIcon },
+      { id: "billDetection", label: "Bill Detection", icon: ReceiptPercentIcon },
       { id: "subscriptions", label: "Subscriptions", icon: CreditCardIcon },
-      { id: "budget", label: "Cashflow", icon: BanknotesIcon },
+      { id: "riskWarnings", label: "Risk Warnings", icon: ExclamationTriangleIcon },
     ],
     []
   );
 
+  // TRUST & REPORT
   const trustItems = useMemo<NavItem[]>(
-    () => [{ id: "reports", label: "Reports", icon: PresentationChartLineIcon }],
+    () => [
+      { id: "reports", label: "Health Report", icon: PresentationChartLineIcon },
+      { id: "healthScore", label: "Health Score", icon: HeartIcon },
+      { id: "taxCenter", label: "Tax Center", icon: ReceiptPercentIcon },
+      { id: "security", label: "Security & Fraud", icon: LockClosedIcon },
+    ],
     []
   );
 
-  const investingItems = useMemo<NavItem[]>(
-    () => [
-      { id: "portfolio", label: "Portfolio", icon: BriefcaseIcon },
-      { id: "markets", label: "Markets", icon: GlobeAltIcon },
-      { id: "netWorth", label: "Net Worth", icon: ScaleIcon },
-    ],
+  // APP
+  const appItems = useMemo<NavItem[]>(
+    () => [{ id: "settings", label: "Settings", icon: Cog6ToothIcon }],
     []
   );
 
@@ -193,9 +235,11 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-4">
           <Section title="Main" items={mainItems} />
+          <Section title="Wealth Station" items={wealthItems} />
+          <Section title="Planning Lab" items={planningItems} />
           <Section title="Cashflow Control" items={cashflowItems} />
-          <Section title="Investing" items={investingItems} />
           <Section title="Trust & Report" items={trustItems} />
+          <Section title="App" items={appItems} />
           <Section title="Account" items={accountItems} />
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-gradient-to-r from-[#3b0764]/40 to-[#1e1b4b]/25 p-4">
