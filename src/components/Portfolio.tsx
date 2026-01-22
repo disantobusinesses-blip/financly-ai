@@ -18,21 +18,26 @@ type InvestmentHolding = {
   id: string;
   kind: "investment";
   assetType: AssetType;
-  symbol: string; // display symbol (e.g. "AAPL", "VTS", "BTC")
+
+  // display + identity
+  symbol: string; // user-friendly display symbol (e.g. "AAPL", "BTC")
   name: string;
+
+  // provider identifiers (important for crypto)
+  provider?: MarketProvider;
+  providerSymbol?: string; // e.g. "AAPL" or "BINANCE:BTCUSDT" from search results
+
+  // position
   quantity: number;
   buyPrice: number;
-  buyDate: string; // YYYY-MM-DD
+  buyDate: string;
 
-  // Optional manual current price (fallback if API has no quote)
-  currentPrice?: number;
+  // live pricing
+  currentPrice?: number; // set by live quote refresh (or manual fallback)
+  lastPriceAt?: number; // epoch ms
+  priceSource?: "live" | "manual";
 
-  // Market plumbing (Phase 2)
-  provider?: MarketProvider;
-  providerSymbol?: string; // Finnhub symbol (can include exchange prefix for crypto)
-  livePrice?: number;
-  liveAsOf?: string; // ISO string
-  quoteError?: string;
+  currency?: "AUD" | "USD";
 };
 
 type PropertyHolding = {
@@ -41,7 +46,7 @@ type PropertyHolding = {
   propertyType: PropertyType;
   name: string;
   purchasePrice: number;
-  purchaseDate: string; // YYYY-MM-DD
+  purchaseDate: string;
   deposit: number;
   interestRatePct: number;
   termYears: number;
@@ -52,11 +57,11 @@ type PropertyHolding = {
 
 type Holding = InvestmentHolding | PropertyHolding;
 
-type MarketSearchResult = {
-  provider: MarketProvider;
+type SearchResult = {
+  provider: "finnhub";
   assetClass: "stock" | "etf" | "crypto";
-  symbol: string;
-  providerSymbol: string;
+  symbol: string; // display symbol
+  providerSymbol: string; // used for quote/history (crypto often needs exchange prefix)
   name: string;
 };
 
@@ -123,6 +128,9 @@ const dotClassByCategory = (key: string) => {
 
 const STORAGE_KEY_BASE = "myaibank_portfolio_v1";
 
+const isInvestment = (h: Holding): h is InvestmentHolding => h.kind === "investment";
+const isProperty = (h: Holding): h is PropertyHolding => h.kind === "property";
+
 const Portfolio: React.FC = () => {
   const { user } = useAuth();
   const region = user?.region ?? "AU";
@@ -142,29 +150,22 @@ const Portfolio: React.FC = () => {
   const [invBuyDate, setInvBuyDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [invCurrentPrice, setInvCurrentPrice] = useState<string>("");
 
-  // Market search in modal
-  const [marketResults, setMarketResults] = useState<MarketSearchResult[]>([]);
-  const [marketLoading, setMarketLoading] = useState(false);
-  const [marketError, setMarketError] = useState<string | null>(null);
-  const [selectedMarket, setSelectedMarket] = useState<MarketSearchResult | null>(null);
-  const marketAbortRef = useRef<AbortController | null>(null);
-  const marketDebounceRef = useRef<number | null>(null);
+  // Search in modal
+  const [searching, setSearching] = useState(false);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [selectedSearch, setSelectedSearch] = useState<SearchResult | null>(null);
 
-  // Property form
-  const [propType, setPropType] = useState<PropertyType>("house");
-  const [propName, setPropName] = useState("");
-  const [propPurchasePrice, setPropPurchasePrice] = useState<string>("");
-  const [propPurchaseDate, setPropPurchaseDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [propDeposit, setPropDeposit] = useState<string>("");
-  const [propRate, setPropRate] = useState<string>("6.5");
-  const [propTerm, setPropTerm] = useState<string>("30");
-  const [propRentMonthly, setPropRentMonthly] = useState<string>("");
-  const [propOtherMonthly, setPropOtherMonthly] = useState<string>("0");
-  const [propCurrentValue, setPropCurrentValue] = useState<string>("");
+  // Live pricing
+  const [quoteStatus, setQuoteStatus] = useState<"idle" | "updating" | "error">("idle");
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
-  const [formError, setFormError] = useState<string | null>(null);
+  // Sorting
+  const [sortBy, setSortBy] = useState<"value" | "pnl" | "name" | "type">("value");
 
-  // Load persisted holdings
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const quoteAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -177,7 +178,6 @@ const Portfolio: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
-  // Persist holdings
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(holdings));
@@ -188,32 +188,64 @@ const Portfolio: React.FC = () => {
 
   const filteredHoldings = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return holdings;
-    return holdings.filter((h) => {
-      if (h.kind === "investment") {
-        return (
-          h.symbol.toLowerCase().includes(q) ||
-          h.name.toLowerCase().includes(q) ||
-          h.assetType.toLowerCase().includes(q)
-        );
-      }
-      return h.name.toLowerCase().includes(q) || h.propertyType.toLowerCase().includes(q);
-    });
-  }, [holdings, query]);
+    const base = !q
+      ? holdings
+      : holdings.filter((h) => {
+          if (h.kind === "investment") {
+            return (
+              h.symbol.toLowerCase().includes(q) ||
+              h.name.toLowerCase().includes(q) ||
+              h.assetType.toLowerCase().includes(q)
+            );
+          }
+          return h.name.toLowerCase().includes(q) || h.propertyType.toLowerCase().includes(q);
+        });
 
-  const priceForInvestment = (h: InvestmentHolding) => {
-    // Prefer live quote, then manual current price, then buy price.
-    if (typeof h.livePrice === "number" && Number.isFinite(h.livePrice) && h.livePrice > 0) return h.livePrice;
-    if (typeof h.currentPrice === "number" && Number.isFinite(h.currentPrice) && h.currentPrice > 0) return h.currentPrice;
-    return h.buyPrice;
-  };
+    const getInvValue = (h: InvestmentHolding) => {
+      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
+      return h.quantity * px;
+    };
+    const getInvPnl = (h: InvestmentHolding) => {
+      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
+      const value = h.quantity * px;
+      const cost = h.quantity * h.buyPrice;
+      return value - cost;
+    };
+
+    const sorted = [...base].sort((a, b) => {
+      if (sortBy === "name") {
+        const an = (a.kind === "investment" ? a.name : a.name).toLowerCase();
+        const bn = (b.kind === "investment" ? b.name : b.name).toLowerCase();
+        return an.localeCompare(bn);
+      }
+      if (sortBy === "type") {
+        const ak = a.kind === "investment" ? `0_${a.assetType}` : "1_property";
+        const bk = b.kind === "investment" ? `0_${b.assetType}` : "1_property";
+        return ak.localeCompare(bk);
+      }
+      if (sortBy === "pnl") {
+        const ap = a.kind === "investment" ? getInvPnl(a) : 0;
+        const bp = b.kind === "investment" ? getInvPnl(b) : 0;
+        return bp - ap;
+      }
+      // value
+      const av = a.kind === "investment" ? getInvValue(a) : typeof a.currentValue === "number" ? a.currentValue : a.purchasePrice;
+      const bv = b.kind === "investment" ? getInvValue(b) : typeof b.currentValue === "number" ? b.currentValue : b.purchasePrice;
+      return bv - av;
+    });
+
+    return sorted;
+  }, [holdings, query, sortBy]);
 
   const totals = useMemo(() => {
-    const inv = holdings.filter((h): h is InvestmentHolding => h.kind === "investment");
-    const props = holdings.filter((h): h is PropertyHolding => h.kind === "property");
+    const inv = holdings.filter(isInvestment);
+    const props = holdings.filter(isProperty);
 
     const invCost = inv.reduce((sum, h) => sum + h.quantity * h.buyPrice, 0);
-    const invValue = inv.reduce((sum, h) => sum + h.quantity * priceForInvestment(h), 0);
+    const invValue = inv.reduce((sum, h) => {
+      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
+      return sum + h.quantity * px;
+    }, 0);
 
     const propCost = props.reduce((sum, p) => sum + p.purchasePrice, 0);
     const propValue = props.reduce(
@@ -240,8 +272,8 @@ const Portfolio: React.FC = () => {
   }, [holdings]);
 
   const allocation = useMemo(() => {
-    const inv = holdings.filter((h): h is InvestmentHolding => h.kind === "investment");
-    const props = holdings.filter((h): h is PropertyHolding => h.kind === "property");
+    const inv = holdings.filter(isInvestment);
+    const props = holdings.filter(isProperty);
 
     const byType: Record<string, number> = {
       Stocks: 0,
@@ -252,7 +284,8 @@ const Portfolio: React.FC = () => {
     };
 
     for (const h of inv) {
-      const value = h.quantity * priceForInvestment(h);
+      const px = typeof h.currentPrice === "number" ? h.currentPrice : h.buyPrice;
+      const value = h.quantity * px;
       const key = categoryLabel(h.assetType);
       byType[key] += value;
     }
@@ -273,10 +306,10 @@ const Portfolio: React.FC = () => {
   }, [holdings]);
 
   const chartSeries = useMemo(() => {
-    // Until /api/market/history exists: stable shape based on cost vs value (no randomness).
+    // Placeholder “shape” until Finnhub history is available on your plan.
     const n = 24;
     const end = Math.max(0, totals.totalValue);
-    const base = Math.max(0, end - totals.gain); // approx cost basis
+    const base = Math.max(0, end - totals.gain);
     const start = Math.max(0, base * 0.92);
 
     const points = Array.from({ length: n }, (_, i) => {
@@ -311,21 +344,18 @@ const Portfolio: React.FC = () => {
 
   const openModal = (tab: "investment" | "property") => {
     setFormError(null);
-    setMarketError(null);
-    setMarketResults([]);
-    setSelectedMarket(null);
     setModalTab(tab);
     setModalOpen(true);
+
+    // reset modal search state
+    setSearchErr(null);
+    setSearchResults([]);
+    setSelectedSearch(null);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setFormError(null);
-    setMarketError(null);
-    setMarketResults([]);
-    setSelectedMarket(null);
-    if (marketDebounceRef.current) window.clearTimeout(marketDebounceRef.current);
-    if (marketAbortRef.current) marketAbortRef.current.abort();
   };
 
   const resetInvestmentForm = () => {
@@ -336,9 +366,9 @@ const Portfolio: React.FC = () => {
     setInvBuyPrice("");
     setInvBuyDate(new Date().toISOString().slice(0, 10));
     setInvCurrentPrice("");
-    setMarketResults([]);
-    setSelectedMarket(null);
-    setMarketError(null);
+    setSearchErr(null);
+    setSearchResults([]);
+    setSelectedSearch(null);
   };
 
   const resetPropertyForm = () => {
@@ -354,66 +384,185 @@ const Portfolio: React.FC = () => {
     setPropCurrentValue("");
   };
 
-  const assetClassForSearch = (t: AssetType) => {
-    if (t === "crypto") return "crypto";
-    if (t === "etf") return "etf";
-    return "stock";
-  };
+  // Property form
+  const [propType, setPropType] = useState<PropertyType>("house");
+  const [propName, setPropName] = useState("");
+  const [propPurchasePrice, setPropPurchasePrice] = useState<string>("");
+  const [propPurchaseDate, setPropPurchaseDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [propDeposit, setPropDeposit] = useState<string>("");
+  const [propRate, setPropRate] = useState<string>("6.5");
+  const [propTerm, setPropTerm] = useState<string>("30");
+  const [propRentMonthly, setPropRentMonthly] = useState<string>("");
+  const [propOtherMonthly, setPropOtherMonthly] = useState<string>("0");
+  const [propCurrentValue, setPropCurrentValue] = useState<string>("");
 
-  const runMarketSearch = (text: string, assetType: AssetType) => {
-    const q = text.trim();
-    setMarketError(null);
-    setSelectedMarket(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
-    if (!q || assetType === "cash") {
-      setMarketResults([]);
+  // ---------- Modal search (Finnhub search endpoint) ----------
+  useEffect(() => {
+    if (!modalOpen || modalTab !== "investment") return;
+
+    const term = invSymbol.trim();
+    // only search once user typed enough to be meaningful
+    if (term.length < 1) {
+      setSearchErr(null);
+      setSearchResults([]);
+      setSelectedSearch(null);
       return;
     }
 
-    if (marketDebounceRef.current) window.clearTimeout(marketDebounceRef.current);
-    if (marketAbortRef.current) marketAbortRef.current.abort();
+    const assetClass = invAssetType === "crypto" ? "crypto" : invAssetType === "stock" ? "stock" : "etf";
 
-    marketDebounceRef.current = window.setTimeout(async () => {
-      const controller = new AbortController();
-      marketAbortRef.current = controller;
+    const doSearch = async () => {
+      setSearching(true);
+      setSearchErr(null);
 
-      setMarketLoading(true);
+      // abort previous
+      if (searchAbortRef.current) searchAbortRef.current.abort();
+      const ac = new AbortController();
+      searchAbortRef.current = ac;
+
       try {
-        const url =
-          "/api/market/search?q=" +
-          encodeURIComponent(q) +
-          "&assetClass=" +
-          encodeURIComponent(assetClassForSearch(assetType));
+        const url = `/api/market/search?q=${encodeURIComponent(term)}&assetClass=${encodeURIComponent(assetClass)}`;
+        const r = await fetch(url, { signal: ac.signal });
+        const json = await r.json().catch(() => null);
 
-        const r = await fetch(url, { signal: controller.signal });
-        const data = (await r.json().catch(() => null)) as any;
-
-        if (!r.ok || !data?.ok) {
-          const err = data?.error ? String(data.error) : "Search failed";
-          setMarketError(err);
-          setMarketResults([]);
+        if (!r.ok || !json?.ok) {
+          const msg = (json && typeof json.error === "string" && json.error) || "Search failed";
+          setSearchErr(msg);
+          setSearchResults([]);
+          setSelectedSearch(null);
           return;
         }
 
-        const results = Array.isArray(data.results) ? (data.results as MarketSearchResult[]) : [];
-        setMarketResults(results.slice(0, 10));
+        const results: SearchResult[] = Array.isArray(json.results) ? json.results : [];
+        setSearchResults(results.slice(0, 8));
+
+        // auto-select if exact match
+        const exact = results.find(
+          (x) => x.providerSymbol.toLowerCase() === term.toLowerCase() || x.symbol.toLowerCase() === term.toLowerCase()
+        );
+        if (exact) {
+          setSelectedSearch(exact);
+          setInvName(exact.name || exact.symbol);
+        }
       } catch (e) {
-        if ((e as any)?.name === "AbortError") return;
-        setMarketError("Search failed.");
-        setMarketResults([]);
+        const message = e instanceof Error ? e.message : "Search error";
+        // ignore abort noise
+        if (message.toLowerCase().includes("abort")) return;
+        setSearchErr("Search error");
       } finally {
-        setMarketLoading(false);
+        setSearching(false);
       }
-    }, 280);
+    };
+
+    const t = window.setTimeout(doSearch, 250);
+    return () => window.clearTimeout(t);
+  }, [invSymbol, invAssetType, modalOpen, modalTab]);
+
+  const applySearchSelection = (r: SearchResult) => {
+    setSelectedSearch(r);
+    setInvSymbol(r.symbol);
+    setInvName(r.name || r.symbol);
   };
 
-  const selectMarketResult = (r: MarketSearchResult) => {
-    setSelectedMarket(r);
-    setInvSymbol(r.symbol);
-    setInvName(r.name);
-    setMarketResults([]);
-    setMarketError(null);
+  // ---------- Live quotes (Finnhub free quote endpoint) ----------
+  const refreshQuotes = async () => {
+    const inv = holdings.filter(isInvestment);
+
+    // only update holdings that can be quoted:
+    // - stock/etf: providerSymbol OR symbol works
+    // - crypto: providerSymbol strongly preferred (exchange-qualified)
+    const quoteTargets = inv
+      .map((h) => {
+        const providerSymbol = (h.providerSymbol || h.symbol || "").trim();
+        if (!providerSymbol) return null;
+        if (h.assetType === "crypto" && !h.providerSymbol) return null; // avoid bad crypto symbols
+        return { id: h.id, assetClass: h.assetType === "crypto" ? "crypto" : "stock", providerSymbol };
+      })
+      .filter(Boolean) as { id: string; assetClass: "stock" | "crypto"; providerSymbol: string }[];
+
+    if (!quoteTargets.length) return;
+
+    // abort previous quote
+    if (quoteAbortRef.current) quoteAbortRef.current.abort();
+    const ac = new AbortController();
+    quoteAbortRef.current = ac;
+
+    setQuoteStatus("updating");
+    setQuoteError(null);
+
+    try {
+      // Do sequential to keep rate friendly on free tier.
+      const updates: Record<string, { price?: number; ok: boolean }> = {};
+
+      for (const t of quoteTargets) {
+        const url = `/api/market/quote?providerSymbol=${encodeURIComponent(t.providerSymbol)}&assetClass=${encodeURIComponent(
+          t.assetClass
+        )}`;
+        const r = await fetch(url, { signal: ac.signal });
+        const json = await r.json().catch(() => null);
+
+        if (!r.ok || !json?.ok) {
+          updates[t.id] = { ok: false };
+          continue;
+        }
+
+        const price = safeNumber(json?.quote?.price, NaN);
+        if (!Number.isFinite(price) || price <= 0) {
+          updates[t.id] = { ok: false };
+          continue;
+        }
+
+        updates[t.id] = { ok: true, price };
+      }
+
+      const now = Date.now();
+      setHoldings((prev) =>
+        prev.map((h) => {
+          if (h.kind !== "investment") return h;
+          const u = updates[h.id];
+          if (!u) return h;
+
+          if (!u.ok) {
+            return {
+              ...h,
+              // keep existing price, only mark timestamp if we have one
+              lastPriceAt: h.lastPriceAt,
+            };
+          }
+
+          return {
+            ...h,
+            currentPrice: u.price,
+            lastPriceAt: now,
+            priceSource: "live",
+          };
+        })
+      );
+
+      setQuoteStatus("idle");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Quote error";
+      if (String(msg).toLowerCase().includes("abort")) return;
+      setQuoteStatus("error");
+      setQuoteError("Live pricing temporarily unavailable.");
+    }
   };
+
+  // initial + interval refresh
+  useEffect(() => {
+    refreshQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      refreshQuotes();
+    }, 60_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdings]);
 
   const addInvestment = () => {
     setFormError(null);
@@ -422,15 +571,14 @@ const Portfolio: React.FC = () => {
     const name = invName.trim() || symbol || "Investment";
     const quantity = safeNumber(invQty, 0);
     const buyPrice = safeNumber(invBuyPrice, 0);
-    const currentPrice = invCurrentPrice.trim() ? safeNumber(invCurrentPrice, buyPrice) : undefined;
+    const manualCurrent = invCurrentPrice.trim() ? safeNumber(invCurrentPrice, buyPrice) : undefined;
 
     if (!symbol) return setFormError("Enter a ticker/symbol.");
     if (quantity <= 0) return setFormError("Quantity must be greater than 0.");
     if (buyPrice <= 0) return setFormError("Buy price must be greater than 0.");
     if (!invBuyDate) return setFormError("Select a purchase date.");
 
-    const provider = selectedMarket?.provider ?? (invAssetType === "cash" ? undefined : "finnhub");
-    const providerSymbol = selectedMarket?.providerSymbol ?? undefined;
+    const providerSymbol = selectedSearch?.providerSymbol || (invAssetType !== "crypto" ? symbol : undefined);
 
     const next: InvestmentHolding = {
       id: uid(),
@@ -441,14 +589,21 @@ const Portfolio: React.FC = () => {
       quantity,
       buyPrice,
       buyDate: invBuyDate,
-      currentPrice,
-      provider,
+      provider: "finnhub",
       providerSymbol,
+      currentPrice: manualCurrent,
+      priceSource: manualCurrent ? "manual" : undefined,
+      lastPriceAt: manualCurrent ? Date.now() : undefined,
     };
 
     setHoldings((prev) => [next, ...prev]);
     resetInvestmentForm();
     closeModal();
+
+    // refresh pricing shortly after adding
+    window.setTimeout(() => {
+      refreshQuotes();
+    }, 250);
   };
 
   const addProperty = () => {
@@ -494,94 +649,26 @@ const Portfolio: React.FC = () => {
     setHoldings((prev) => prev.filter((h) => h.id !== id));
   };
 
-  // Live quotes: refresh investment holdings that have providerSymbol (stocks/etf/crypto)
-  useEffect(() => {
-    let isCancelled = false;
-
-    const refreshQuotes = async () => {
-      const inv = holdings.filter((h): h is InvestmentHolding => h.kind === "investment");
-      const targets = inv.filter(
-        (h) => !!h.providerSymbol && (h.assetType === "stock" || h.assetType === "etf" || h.assetType === "crypto")
-      );
-
-      if (!targets.length) return;
-
-      const updates: Record<string, Partial<InvestmentHolding>> = {};
-
-      await Promise.all(
-        targets.map(async (h) => {
-          try {
-            const url =
-              "/api/market/quote?providerSymbol=" +
-              encodeURIComponent(h.providerSymbol as string) +
-              "&assetClass=" +
-              encodeURIComponent(h.assetType === "crypto" ? "crypto" : h.assetType === "etf" ? "etf" : "stock") +
-              "&symbol=" +
-              encodeURIComponent(h.symbol);
-
-            const r = await fetch(url);
-            const data = (await r.json().catch(() => null)) as any;
-
-            if (!r.ok || !data?.ok || !data?.quote) {
-              const err = data?.error ? String(data.error) : "Quote unavailable";
-              updates[h.id] = { quoteError: err, livePrice: undefined, liveAsOf: undefined };
-              return;
-            }
-
-            const price = Number(data.quote.price);
-            const asOf = String(data.quote.asOf || "");
-
-            if (!Number.isFinite(price) || price <= 0) {
-              updates[h.id] = { quoteError: "Quote unavailable", livePrice: undefined, liveAsOf: undefined };
-              return;
-            }
-
-            updates[h.id] = { livePrice: price, liveAsOf: asOf, quoteError: undefined };
-          } catch {
-            updates[h.id] = { quoteError: "Quote unavailable", livePrice: undefined, liveAsOf: undefined };
-          }
-        })
-      );
-
-      if (isCancelled) return;
-
-      const hasAny = Object.keys(updates).length > 0;
-      if (!hasAny) return;
-
-      setHoldings((prev) =>
-        prev.map((h) => {
-          if (h.kind !== "investment") return h;
-          const patch = updates[h.id];
-          if (!patch) return h;
-          return { ...h, ...patch };
-        })
-      );
-    };
-
-    refreshQuotes();
-
-    const interval = window.setInterval(() => {
-      refreshQuotes();
-    }, 60_000);
-
-    return () => {
-      isCancelled = true;
-      window.clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdings.map((h) => (h.kind === "investment" ? `${h.id}:${h.providerSymbol ?? ""}:${h.symbol}:${h.assetType}` : h.id)).join("|")]);
+  const priceBadge = (h: InvestmentHolding) => {
+    const ts = h.lastPriceAt;
+    if (!ts || h.priceSource !== "live") return { label: "Manual", cls: "text-white/45 border-white/10 bg-white/5" };
+    const ageMs = Date.now() - ts;
+    if (ageMs <= 90_000) return { label: "Live", cls: "text-emerald-200 border-emerald-500/20 bg-emerald-500/10" };
+    if (ageMs <= 5 * 60_000)
+      return { label: "Stale", cls: "text-amber-200 border-amber-500/20 bg-amber-500/10" };
+    return { label: "Old", cls: "text-white/50 border-white/10 bg-white/5" };
+  };
 
   const HoldingRow: React.FC<{ holding: Holding }> = ({ holding }) => {
     if (holding.kind === "investment") {
-      const px = priceForInvestment(holding);
+      const px = typeof holding.currentPrice === "number" ? holding.currentPrice : holding.buyPrice;
       const value = holding.quantity * px;
       const cost = holding.quantity * holding.buyPrice;
       const gain = value - cost;
       const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
 
       const initials = holding.symbol.slice(0, 2).toUpperCase();
-
-      const hasLive = typeof holding.livePrice === "number" && holding.livePrice > 0;
+      const badge = priceBadge(holding);
 
       return (
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-[#0b0b10] p-4 shadow-2xl shadow-black/40">
@@ -596,35 +683,23 @@ const Portfolio: React.FC = () => {
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
                   {categoryLabel(holding.assetType)}
                 </span>
+
+                <span className={["rounded-full border px-2 py-0.5 text-[11px] font-semibold", badge.cls].join(" ")}>
+                  {badge.label}
+                </span>
+
                 <span className="truncate">{holding.symbol}</span>
-
-                {hasLive ? (
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-200">
-                    Live
-                  </span>
-                ) : holding.quoteError ? (
-                  <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-red-200">
-                    No quote
-                  </span>
-                ) : null}
-
                 <span className="text-white/35">•</span>
                 <span>
                   {round2(holding.quantity)} @ {formatCurrency(holding.buyPrice, region)}
                 </span>
-              </div>
 
-              <div className="mt-1 text-xs text-white/45">
-                {hasLive ? (
+                {typeof holding.currentPrice === "number" ? (
                   <>
-                    Price: {formatCurrency(holding.livePrice as number, region)}
-                    {holding.liveAsOf ? <span className="text-white/35"> • as of {new Date(holding.liveAsOf).toLocaleString()}</span> : null}
+                    <span className="text-white/35">•</span>
+                    <span className="text-white/70">Price: {formatCurrency(holding.currentPrice, region)}</span>
                   </>
-                ) : holding.currentPrice ? (
-                  <>Manual price: {formatCurrency(holding.currentPrice, region)}</>
-                ) : (
-                  <>Using buy price as estimate</>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -649,6 +724,7 @@ const Portfolio: React.FC = () => {
       );
     }
 
+    // property
     const value = typeof holding.currentValue === "number" ? holding.currentValue : holding.purchasePrice;
     const loan = Math.max(0, holding.purchasePrice - Math.max(0, holding.deposit));
     const pmt = monthlyMortgagePayment(loan, holding.interestRatePct, holding.termYears);
@@ -750,8 +826,15 @@ const Portfolio: React.FC = () => {
                 <span className={["font-semibold", isUp ? "text-emerald-300" : "text-red-300"].join(" ")}>{gainText}</span>
                 <span className="text-white/35">All time</span>
                 <span className="text-white/35">•</span>
-                <span className="text-white/55">Live quotes (where available)</span>
+                <span className="text-white/55">Finnhub free: live quotes</span>
               </div>
+
+              {quoteStatus !== "idle" || quoteError ? (
+                <div className="mt-2 text-xs text-white/55">
+                  {quoteStatus === "updating" ? "Updating live prices…" : null}
+                  {quoteError ? ` ${quoteError}` : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/30">
@@ -771,9 +854,6 @@ const Portfolio: React.FC = () => {
               <path d={area} fill="url(#mab_area)" />
               <path d={path} fill="none" stroke="rgba(168,85,247,0.9)" strokeWidth="2.5" />
             </svg>
-            <div className="mt-2 text-xs text-white/45">
-              Chart is an educational trend placeholder until historical pricing is enabled.
-            </div>
           </div>
         </div>
       </section>
@@ -846,6 +926,7 @@ const Portfolio: React.FC = () => {
 
   return (
     <div className="relative flex flex-col gap-6">
+      {/* Top bar (page-local) */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
@@ -883,14 +964,18 @@ const Portfolio: React.FC = () => {
         </div>
       </div>
 
+      {/* Total balance card */}
       <TotalCard />
+
+      {/* Allocation */}
       <AllocationCard />
 
+      {/* Holdings */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-white">Holdings</h2>
 
-          <div className="flex w-full gap-2 sm:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <div className="relative flex-1 sm:w-[320px]">
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/30" />
               <input
@@ -900,6 +985,17 @@ const Portfolio: React.FC = () => {
                 className="h-11 w-full rounded-2xl border border-white/10 bg-[#0b0b10] pl-10 pr-3 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-white/20"
               />
             </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="h-11 rounded-2xl border border-white/10 bg-[#0b0b10] px-3 text-sm font-semibold text-white/80 outline-none transition focus:border-white/20"
+            >
+              <option value="value">Sort: Value</option>
+              <option value="pnl">Sort: P&amp;L</option>
+              <option value="name">Sort: Name</option>
+              <option value="type">Sort: Type</option>
+            </select>
 
             <button
               type="button"
@@ -924,10 +1020,11 @@ const Portfolio: React.FC = () => {
         )}
 
         <div className="text-xs text-white/45">
-          Educational tracking only. No recommendations. Quotes are read-only and may be delayed depending on provider/plan.
+          Educational tracking only. No recommendations. Live quotes are fetched server-side (Finnhub free plan).
         </div>
       </section>
 
+      {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
@@ -947,7 +1044,7 @@ const Portfolio: React.FC = () => {
                     </h3>
                     <p className="mt-1 text-sm text-white/55">
                       {modalTab === "investment"
-                        ? "Search the market symbol (recommended). Manual entry still works."
+                        ? "Search and select a symbol for live pricing. Manual prices are optional."
                         : "Track purchase, loan terms, rent, and net monthly cashflow."}
                     </p>
                   </div>
@@ -1002,12 +1099,10 @@ const Portfolio: React.FC = () => {
                       <select
                         value={invAssetType}
                         onChange={(e) => {
-                          const next = e.target.value as AssetType;
-                          setInvAssetType(next);
-                          setMarketResults([]);
-                          setSelectedMarket(null);
-                          setMarketError(null);
-                          if (invSymbol.trim()) runMarketSearch(invSymbol, next);
+                          setInvAssetType(e.target.value as AssetType);
+                          setSelectedSearch(null);
+                          setSearchResults([]);
+                          setSearchErr(null);
                         }}
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-white/20"
                       >
@@ -1019,65 +1114,72 @@ const Portfolio: React.FC = () => {
                     </label>
 
                     <label className="text-sm text-white/70">
-                      Ticker / Symbol (search)
-                      <div className="relative">
-                        <input
-                          value={invSymbol}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setInvSymbol(v);
-                            setSelectedMarket(null);
-                            runMarketSearch(v, invAssetType);
-                          }}
-                          placeholder={invAssetType === "crypto" ? "e.g. BTC" : "e.g. AAPL, VTS"}
-                          className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
-                        />
+                      Ticker / Symbol
+                      <input
+                        value={invSymbol}
+                        onChange={(e) => {
+                          setInvSymbol(e.target.value);
+                          setSelectedSearch(null);
+                        }}
+                        placeholder={invAssetType === "crypto" ? "e.g. BTC, ETH" : "e.g. VTS, AAPL"}
+                        className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
+                      />
+                    </label>
 
-                        {marketLoading ? (
-                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/45">
-                            Searching…
-                          </div>
-                        ) : null}
+                    {/* search results */}
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/40">Search</p>
+                        <p className="text-xs text-white/45">{searching ? "Searching…" : null}</p>
                       </div>
 
-                      {marketError ? (
-                        <div className="mt-2 text-xs text-red-200">{marketError}</div>
-                      ) : null}
-
-                      {marketResults.length ? (
-                        <div className="mt-2 max-h-52 overflow-auto rounded-2xl border border-white/10 bg-black/40">
-                          {marketResults.map((r) => (
-                            <button
-                              key={r.providerSymbol}
-                              type="button"
-                              onClick={() => selectMarketResult(r)}
-                              className="flex w-full items-start justify-between gap-3 border-b border-white/10 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
-                            >
-                              <div className="min-w-0">
-                                <div className="font-semibold text-white">{r.symbol}</div>
-                                <div className="truncate text-xs text-white/55">{r.name}</div>
-                              </div>
-                              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/60">
-                                {r.assetClass.toUpperCase()}
-                              </div>
-                            </button>
-                          ))}
+                      {searchErr ? (
+                        <div className="mt-2 rounded-2xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                          {searchErr}
                         </div>
                       ) : null}
 
-                      {selectedMarket ? (
-                        <div className="mt-2 text-xs text-emerald-200">
-                          Selected: {selectedMarket.symbol} • {selectedMarket.providerSymbol}
+                      {searchResults.length ? (
+                        <div className="mt-2 grid gap-2">
+                          {searchResults.map((r) => {
+                            const active = selectedSearch?.providerSymbol === r.providerSymbol;
+                            return (
+                              <button
+                                key={r.providerSymbol}
+                                type="button"
+                                onClick={() => applySearchSelection(r)}
+                                className={[
+                                  "flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left text-sm transition",
+                                  active
+                                    ? "border-white/10 bg-[#2a0f4d] text-white"
+                                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10",
+                                ].join(" ")}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold">{r.symbol}</span>
+                                    <span className="text-xs text-white/45">{r.assetClass}</span>
+                                  </div>
+                                  <p className="truncate text-xs text-white/55">{r.name}</p>
+                                </div>
+                                <span className="text-xs text-white/45">Select</span>
+                              </button>
+                            );
+                          })}
                         </div>
-                      ) : null}
-                    </label>
+                      ) : (
+                        <p className="mt-2 text-xs text-white/45">
+                          Type a symbol to search (Finnhub). Select one result for best live pricing.
+                        </p>
+                      )}
+                    </div>
 
                     <label className="text-sm text-white/70 sm:col-span-2">
                       Name
                       <input
                         value={invName}
                         onChange={(e) => setInvName(e.target.value)}
-                        placeholder="Auto-filled when you select a search result"
+                        placeholder="Auto-fills when you select search result"
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
                       />
                     </label>
@@ -1114,12 +1216,12 @@ const Portfolio: React.FC = () => {
                     </label>
 
                     <label className="text-sm text-white/70">
-                      Manual current price (optional)
+                      Current price (optional)
                       <input
                         value={invCurrentPrice}
                         onChange={(e) => setInvCurrentPrice(e.target.value)}
                         inputMode="decimal"
-                        placeholder="Only used if no live quote"
+                        placeholder="Optional manual override"
                         className="mt-2 h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/20"
                       />
                     </label>
@@ -1142,6 +1244,11 @@ const Portfolio: React.FC = () => {
                       >
                         Cancel
                       </button>
+                    </div>
+
+                    <div className="sm:col-span-2 text-xs text-white/45">
+                      Tip: For crypto, select a result like <span className="text-white/70">BINANCE:BTCUSDT</span> so live
+                      pricing works reliably on Finnhub free.
                     </div>
                   </div>
                 ) : (

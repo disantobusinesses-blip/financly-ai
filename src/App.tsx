@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import Portfolio from "./components/Portfolio";
+import Analytics from "./components/Analytics";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SandboxShowcase from "./components/SandboxShowcase";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -159,13 +160,13 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
     return <ProfilePage />;
   }
 
-  // New feature routes (preview shells for now)
-  if (path === "/app/analytics")
-    return <ComingSoon title="Analytics" subtitle="Charts and breakdowns of income, expenses, and trends." />;
+  // ✅ Use the real Analytics component
+  if (path === "/app/analytics") return <Analytics />;
 
-  // ✅ Use the real Portfolio component so the import is not unused.
+  // ✅ Use the real Portfolio component
   if (path === "/app/portfolio") return <Portfolio />;
 
+  // New feature routes (preview shells for now)
   if (path === "/app/net-worth")
     return <ComingSoon title="Net Worth" subtitle="Assets, liabilities, and net worth history (manual inputs + bank insights later)." />;
   if (path === "/app/markets") return <ComingSoon title="Markets & Watchlist" subtitle="Tracking only. No trade execution." />;
