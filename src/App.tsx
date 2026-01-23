@@ -4,6 +4,7 @@ import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import Portfolio from "./components/Portfolio";
 import Analytics from "./components/Analytics";
+import BudgetAutopilot from "./components/BudgetAutopilot";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SandboxShowcase from "./components/SandboxShowcase";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
