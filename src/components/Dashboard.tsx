@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SpendingForecast from "./SpendingForecast";
 import BalanceSummary from "./BalanceSummary";
+import WeeklyOrdersPanel from "./WeeklyOrdersPanel";
 import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
