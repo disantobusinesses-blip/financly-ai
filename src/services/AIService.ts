@@ -1,5 +1,7 @@
 import type { Account, Transaction, User } from "../types";
 
+/* ===== Shared Types ===== */
+
 export interface Insight {
   emoji: string;
   text: string;
@@ -41,6 +43,13 @@ export interface WeeklyOrder {
   steps: string[];
 }
 
+/* ===== Compatibility Exports (FIXES ERRORS) ===== */
+
+export type TransactionAnalysisResult = FinancialAnalysisResponse;
+export type FinancialAnalysisCleanData = Record<string, unknown>;
+
+/* ===== API Request / Response ===== */
+
 export interface FinancialAnalysisRequest {
   userId: string;
   month: number;
@@ -53,7 +62,7 @@ export interface FinancialAnalysisRequest {
 }
 
 export interface FinancialAnalysisResponse {
-  cleanData: Record<string, unknown>;
+  cleanData: FinancialAnalysisCleanData;
   analysis: {
     insights: Insight[];
     alerts: AlertItem[];
@@ -66,6 +75,8 @@ export interface FinancialAnalysisResponse {
   generatedAt: string;
 }
 
+/* ===== API Call ===== */
+
 export async function fetchFinancialAnalysis(
   payload: FinancialAnalysisRequest
 ): Promise<FinancialAnalysisResponse> {
@@ -75,26 +86,23 @@ export async function fetchFinancialAnalysis(
     body: JSON.stringify(payload),
   });
 
-  const data = (await response.json().catch(() => ({}))) as any;
+  const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data?.error || "Failed to fetch financial analysis");
   }
 
-  // Safety defaults (keeps UI stable even if OpenAI returns partial fields)
-  const safe: FinancialAnalysisResponse = {
-    cleanData: data?.cleanData ?? {},
+  return {
+    cleanData: data.cleanData ?? {},
     analysis: {
-      insights: Array.isArray(data?.analysis?.insights) ? data.analysis.insights : [],
-      alerts: Array.isArray(data?.analysis?.alerts) ? data.analysis.alerts : [],
-      forecast: data?.analysis?.forecast ?? { forecastData: [], insight: "", keyChanges: [] },
-      subscriptions: Array.isArray(data?.analysis?.subscriptions) ? data.analysis.subscriptions : [],
-      weeklyOrders: Array.isArray(data?.analysis?.weeklyOrders) ? data.analysis.weeklyOrders : [],
-      disclaimer: typeof data?.analysis?.disclaimer === "string" ? data.analysis.disclaimer : "This is not financial advice.",
+      insights: data.analysis?.insights ?? [],
+      alerts: data.analysis?.alerts ?? [],
+      forecast: data.analysis?.forecast ?? { forecastData: [], insight: "", keyChanges: [] },
+      subscriptions: data.analysis?.subscriptions ?? [],
+      weeklyOrders: data.analysis?.weeklyOrders ?? [],
+      disclaimer: data.analysis?.disclaimer ?? "This is not financial advice.",
     },
-    cached: Boolean(data?.cached),
-    generatedAt: typeof data?.generatedAt === "string" ? data.generatedAt : new Date().toISOString(),
+    cached: Boolean(data.cached),
+    generatedAt: data.generatedAt ?? new Date().toISOString(),
   };
-
-  return safe;
 }
