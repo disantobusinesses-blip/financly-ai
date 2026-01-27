@@ -24,7 +24,6 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
 
       setSessionToken(data.session.access_token);
 
-      // If already marked as connected locally, allow user to continue.
       const storedStatus = BankingService.getConnectionStatus() as ConnectionStatus;
       setConnectionStatus(storedStatus);
 
@@ -39,12 +38,12 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     setConnectingBank(true);
 
     try {
-      const token =
-        sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
+      const token = sessionToken || (await supabase.auth.getSession()).data.session?.access_token || null;
       if (!token) {
         throw new Error("Please log in to connect your bank.");
       }
 
+      // DO NOT CHANGE: stable Fiskil connect flow
       const { redirectUrl, endUserId } = await initiateBankConnection(token);
 
       BankingService.setStoredEndUserId(endUserId);
@@ -64,55 +63,93 @@ const OnboardingPage: React.FC<{ onComplete?: () => void }> = ({ onComplete }) =
     return <div className="px-4 py-24 text-center text-white">Loading onboarding…</div>;
   }
 
-  return (
-    <div className="px-4 pb-16 pt-24 text-white">
-      <div className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6">
-        <p className="text-sm uppercase tracking-[0.2em] text-white/50">Connect your bank</p>
-        <h1 className="text-3xl font-black uppercase tracking-[0.22em]">MyAiBank</h1>
+  const CardShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="relative mx-auto w-full max-w-3xl">
+      <div className="pointer-events-none absolute -inset-8 rounded-[3rem] bg-gradient-to-r from-[#1F0051]/25 via-white/5 to-[#1F0051]/15 blur-3xl opacity-70" />
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/50 backdrop-blur">
+        {children}
+      </div>
+    </div>
+  );
 
-        <div className="space-y-2">
-          <p className="text-xl font-semibold">Secure bank connection</p>
-          <p className="text-white/70">
-            Connect once. We’ll pull your accounts and transactions, then your dashboard will populate.
+  return (
+    <div className="px-4 pb-16 pt-10 text-white md:pt-14">
+      <CardShell>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Onboarding</p>
+            <h1 className="mt-2 text-2xl font-semibold text-white">Connect your bank</h1>
+            <p className="mt-2 max-w-xl text-sm text-white/65">
+              One secure connection. MyAiBank will pull your accounts and transactions so your dashboard can populate.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/50">Step</p>
+            <p className="mt-1 text-sm font-semibold text-white">4 of 4</p>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/50">Security</p>
+          <p className="mt-2 text-sm text-white/75">
+            Your credentials are handled by the provider. MyAiBank receives authorised data only.
           </p>
         </div>
 
-        {status && <p className="rounded-xl bg-white/5 px-4 py-3 text-white/80">{status}</p>}
-        {error && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-red-200">{error}</p>}
+        {status && <p className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">{status}</p>}
+        {error && <p className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
 
-        {connectionStatus === "connected" ? (
-          <div className="space-y-4">
-            <p className="text-white/80">Bank already connected.</p>
-            <button
-              type="button"
-              onClick={() => {
-                onComplete?.();
-                window.location.replace("/app/dashboard");
-              }}
-              className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white"
-            >
-              Go to dashboard
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={handleConnectBank}
-              className="interactive-primary w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-white disabled:opacity-60"
-              disabled={connectingBank}
-            >
-              {connectingBank ? "Starting connection…" : "Connect your bank"}
-            </button>
+        <div className="mt-6">
+          {connectionStatus === "connected" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-white/80">Bank already connected.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  onComplete?.();
+                  window.location.replace("/app/dashboard");
+                }}
+                className="interactive-primary w-full rounded-2xl bg-[#1F0051] px-6 py-3 text-sm font-semibold text-white"
+              >
+                Go to dashboard
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleConnectBank}
+                className="interactive-primary w-full rounded-2xl bg-[#1F0051] px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={connectingBank}
+              >
+                {connectingBank ? "Starting connection…" : "Connect your bank"}
+              </button>
 
-            {connectionStatus === "pending" && (
-              <p className="text-sm text-white/60">
-                Connection started. If you completed Fiskil and returned, it will finalise on the callback page.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+              {connectionStatus === "pending" && (
+                <p className="text-xs text-white/60">
+                  Connection started. If you completed Fiskil and returned, it will finalise on the callback page.
+                </p>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/50">Fast</p>
+                  <p className="mt-2 text-sm text-white/75">Typically under 60 seconds.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/50">Private</p>
+                  <p className="mt-2 text-sm text-white/75">Finance-only insights. No unrelated usage.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/50">Useful</p>
+                  <p className="mt-2 text-sm text-white/75">Spending, subscriptions, categories, savings.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </CardShell>
     </div>
   );
 };

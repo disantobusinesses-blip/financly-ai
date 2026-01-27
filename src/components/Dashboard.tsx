@@ -1,31 +1,28 @@
 import React, { useEffect, useMemo, useState } from "react";
-import FinancialHealthCard from "./FinancialHealthCard";
-import BalanceSummary from "./BalanceSummary";
-import SubscriptionHunter, { deriveSubscriptionSummary } from "./SubscriptionHunter";
-import CashflowMini from "./CashflowMini";
-import UpcomingBills from "./UpcomingBills";
-import TransactionsList from "./TransactionsList";
 import SpendingForecast from "./SpendingForecast";
-import PlanGate from "./PlanGate";
+import BalanceSummary from "./BalanceSummary";
+import WeeklyOrdersPanel from "./WeeklyOrdersPanel";
+import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
 import LegalFooter from "./LegalFooter";
-import ToolTile from "./ToolTile";
 import { useFiskilData } from "../hooks/useFiskilData";
 import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
-import type { Transaction } from "../types";
+import type { Account, Transaction } from "../types";
 import SyncingOverlay from "./SyncingOverlay";
-import MascotAssistant from "./MascotAssistant";
-import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
+import AiAssistant from "./AiAssistant";
 
 const TOUR_KEY = "myaibank_tour_seen";
-const LEGACY_TOUR_KEY = "financly_tour_seen";
+
+const sumBalances = (accounts: Account[]) =>
+  accounts.reduce((sum, a) => sum + (Number.isFinite(a.balance) ? a.balance : 0), 0);
 
 const Dashboard: React.FC = () => {
   const { user, profile, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
+  // NOTE: useFiskilData signature is (userId)
   const {
     accounts,
     transactions,
@@ -33,38 +30,32 @@ const Dashboard: React.FC = () => {
     error,
     lastUpdated,
     connected,
-    debugInfo,
     syncStatus,
+    debugInfo,
     refresh,
   } = useFiskilData(user?.id);
 
-  const [connecting, setConnecting] = useState(false);
-  const [connectError, setConnectError] = useState<string | null>(null);
+  const hasData = accounts.length > 0 || transactions.length > 0;
 
-  const [tourOpen, setTourOpen] = useState(false);
-  const [tourStep, setTourStep] = useState(0);
-
-  useEffect(() => {
-    if (!user) return;
-    const seenTour = localStorage.getItem(TOUR_KEY) ?? localStorage.getItem(LEGACY_TOUR_KEY);
-    if (!seenTour && (accounts.length > 0 || transactions.length > 0)) {
-      setTourOpen(true);
-      localStorage.setItem(TOUR_KEY, "1");
-      localStorage.removeItem(LEGACY_TOUR_KEY);
+  const debugBlock = useMemo(() => {
+    if (!debugInfo) return "";
+    try {
+      return JSON.stringify(debugInfo, null, 2);
+    } catch {
+      return String(debugInfo);
     }
-  }, [accounts.length, transactions.length, user]);
+  }, [debugInfo]);
 
-  const subscriptionSummary = useMemo(() => deriveSubscriptionSummary(transactions), [transactions]);
-  const subscriptionTotal = subscriptionSummary.reduce((sum: number, item) => sum + item.total, 0);
+  const totals = useMemo(() => {
+    const totalCash = sumBalances(accounts);
 
-  const monthlyStats = useMemo(() => {
     const now = new Date();
-    const start = new Date(now);
-    start.setDate(start.getDate() - 30);
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - 30);
 
     const recent = transactions.filter((tx: Transaction) => {
-      const date = new Date(tx.date);
-      return !Number.isNaN(date.getTime()) && date >= start;
+      const d = new Date(tx.date);
+      return !Number.isNaN(d.getTime()) && d >= cutoff;
     });
 
     const income = recent
@@ -77,323 +68,394 @@ const Dashboard: React.FC = () => {
         .reduce((sum: number, tx: Transaction) => sum + tx.amount, 0)
     );
 
-    return { income, expenses, net: income - expenses };
-  }, [transactions]);
+    const net = income - expenses;
 
-  const tourSteps: TourStep[] = [
-    { id: "balance-summary", title: "Where you stand", description: "Review key balances at a glance." },
-    { id: "financial-health", title: "Cashflow precision", description: "Track income vs outgoings each month." },
-    {
-      id: "subscription-hunter",
-      title: "Subscription Hunter",
-      description: "AI groups repeat merchants and shows how often they bill you.",
-      mobileHint: "Swipe right to reveal more tools on mobile.",
-    },
-    { id: "cashflow", title: "Cashflow", description: "Monitor break-even trends and savings projections." },
-    { id: "transactions", title: "Transactions", description: "Filter and search your latest activity." },
-  ];
+    const recurring = recent.filter((tx) => {
+      const desc = (tx.description || "").toLowerCase();
+      const cat = (tx.category || "").toLowerCase();
+      const looksRecurring =
+        desc.includes("subscription") ||
+        desc.includes("monthly") ||
+        desc.includes("netflix") ||
+        desc.includes("spotify") ||
+        cat.includes("subscription");
+      return looksRecurring && tx.amount < 0;
+    });
 
-  useEffect(() => {
-    if (!authLoading && !session) {
-      window.location.href = "/login";
-    }
-  }, [authLoading, session]);
+    const recurringTotal = Math.abs(recurring.reduce((sum, tx) => sum + tx.amount, 0));
 
-  const handleConnectBank = async (): Promise<void> => {
-    setConnectError(null);
-    setConnecting(true);
+    return {
+      totalCash,
+      income,
+      expenses,
+      net,
+      recurringTotal,
+    };
+  }, [accounts, transactions]);
 
-    try {
-      if (!session?.access_token) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const response = await fetch("/api/create-consent-session", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: session.user.email }),
-      });
-
-      const text = await response.text();
-      let payload: Record<string, unknown> = {};
-      try {
-        payload = text ? (JSON.parse(text) as Record<string, unknown>) : {};
-      } catch {
-        payload = {};
-      }
-
-      if (!response.ok) {
-        const serverErr = typeof payload.error === "string" ? payload.error : null;
-        throw new Error(serverErr || text || "Unable to start bank connection.");
-      }
-
-      const authUrl = typeof payload.auth_url === "string" ? payload.auth_url : undefined;
-      const requestError = typeof payload.error === "string" ? payload.error : null;
-
-      if (authUrl) {
-        window.location.href = authUrl;
-        return;
-      }
-
-      throw new Error(requestError || "Missing auth URL from consent session.");
-    } catch (err) {
-      setConnectError(err instanceof Error ? err.message : "Unable to connect bank right now.");
-    } finally {
-      setConnecting(false);
-    }
+  const pushAppRoute = (path: string) => {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
-  const ConnectBankCTA = (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <button
-        type="button"
-        onClick={handleConnectBank}
-        disabled={connecting}
-        className="relative overflow-hidden rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
-        {connecting && (
-          <span className="absolute inset-0 flex items-center justify-center">
-            <span className="connect-loading-track">
-              <span className="connect-loading-bar" />
-            </span>
-          </span>
-        )}
-      </button>
-      {connectError && <p className="text-sm text-red-500 text-center">{connectError}</p>}
-    </div>
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        id: "forecast",
+        title: "Cashflow forecast",
+        description: "See where your balance is trending based on spending patterns.",
+      },
+      {
+        id: "balance-summary",
+        title: "Balance snapshot",
+        description: "Quick view of cash positions across connected accounts.",
+      },
+      {
+        id: "tools",
+        title: "Quick launch tools",
+        description: "Tap any tile to open the full page. Optimized for iPhone with two columns.",
+      },
+    ],
+    []
   );
 
-  const hasData = accounts.length > 0 || transactions.length > 0;
-  const debugBlock = debugInfo ? JSON.stringify(debugInfo, null, 2) : null;
-  const connectionPending =
-    connected || syncStatus.stage === "awaiting_accounts" || syncStatus.stage === "awaiting_transactions";
+  useEffect(() => {
+    const seen = window.localStorage.getItem(TOUR_KEY);
+    if (!seen) {
+      setTourOpen(true);
+      setTourStep(0);
+    }
+  }, []);
+
+  const markTourSeen = () => {
+    window.localStorage.setItem(TOUR_KEY, "1");
+  };
+
+  const onTourClose = () => {
+    setTourOpen(false);
+    markTourSeen();
+  };
+
+  const CardShell: React.FC<{
+    children: React.ReactNode;
+    onClick?: () => void;
+    tourId?: string;
+    className?: string;
+  }> = ({ children, onClick, tourId, className }) => {
+    const clickable = Boolean(onClick);
+    return (
+      <section
+        data-tour-id={tourId}
+        onClick={onClick}
+        className={[
+          "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] shadow-2xl shadow-black/50",
+          clickable ? "cursor-pointer transition hover:border-white/20 hover:bg-[#101018]" : "",
+          className ?? "",
+        ].join(" ")}
+      >
+        <div className="p-5 sm:p-6">{children}</div>
+      </section>
+    );
+  };
+
+  const Tile: React.FC<{
+    title: string;
+    value: string;
+    sub: string;
+    toneClass?: string;
+    onClick: () => void;
+  }> = ({ title, value, sub, toneClass, onClick }) => {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={[
+          "group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] px-4 py-4 text-left shadow-2xl shadow-black/40 transition hover:border-white/20 hover:bg-[#101018]",
+          toneClass ?? "",
+        ].join(" ")}
+      >
+        <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-white/5 blur-2xl transition group-hover:bg-white/10" />
+        <div className="relative">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/50">{title}</p>
+          <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+          <p className="mt-1 text-[11px] text-white/50">{sub}</p>
+        </div>
+      </button>
+    );
+  };
+
+  const canShowApp = Boolean(session && user);
 
   const profileLink =
     user && profile?.is_onboarded ? (
       <a
         href="/app/profile"
-        className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
       >
         My profile
       </a>
     ) : null;
 
-  const DashboardHeader = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-        <h1 className="text-2xl font-semibold text-white">Overview</h1>
+  const stage = syncStatus.stage;
+
+  const showConnectCTA = !connected || stage === "no_connection" || stage === "error";
+  const connectLabel = connected ? "Manage connection" : "Connect bank";
+
+  const overlayOpen =
+    dataLoading && (stage === "awaiting_accounts" || stage === "awaiting_transactions") && hasData;
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center py-16 text-sm text-white/70">Loading…</div>;
+  }
+
+  if (!canShowApp) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-[#0b0b10] p-6 text-sm text-white/70">
+        You’re not signed in.
       </div>
-      <div className="flex items-center gap-2">{profileLink}</div>
-    </div>
-  );
+    );
+  }
 
   if (dataLoading && !hasData) {
     return (
-      <div className="flex flex-col gap-8">
-        {DashboardHeader}
-        <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
-          <SyncingOverlay
-            open
-            title={syncStatus.stage === "awaiting_transactions" ? "Loading transactions" : "Loading bank data"}
-            message={syncStatus.message || "Fetching accounts and transactions from Fiskil…"}
-            progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 10}
-            details={debugBlock || undefined}
-          />
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
-          >
-            Refresh bank data
-          </button>
-          {!connectionPending && ConnectBankCTA}
-        </div>
-      </div>
-    );
-  }
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+            <h1 className="text-xl font-semibold text-white">Overview</h1>
+          </div>
 
-  if (error && !hasData) {
-    return (
-      <div className="flex flex-col gap-8">
-        {DashboardHeader}
-        <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
-          <p className="text-red-400">{error}</p>
-          {debugBlock && (
-            <pre className="mt-2 max-h-56 w-full max-w-2xl overflow-auto rounded-xl bg-black/70 p-4 text-xs text-white/80">
-              {debugBlock}
-            </pre>
-          )}
-          {!connectionPending && ConnectBankCTA}
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasData) {
-    return (
-      <div className="flex flex-col gap-8">
-        {DashboardHeader}
-        <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-white/60">
-          <SyncingOverlay
-            open={connectionPending}
-            title="Connection successful"
-            message={syncStatus.message || "Waiting for bank data…"}
-            progress={typeof syncStatus.progress === "number" ? syncStatus.progress : 35}
-            details={debugBlock || undefined}
-          />
-          {!connectionPending ? (
-            <>
-              <p>No data yet. Connect your bank to see your dashboard.</p>
-              {ConnectBankCTA}
-            </>
-          ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            {profileLink}
+            {showConnectCTA ? (
+              <button
+                type="button"
+                onClick={() => pushAppRoute("/onboarding")}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10"
+              >
+                {connectLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void refresh()}
-              className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+              disabled={dataLoading}
             >
-              Refresh bank data
+              Refresh
             </button>
-          )}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-[#0b0b10] p-6">
+          <p className="text-sm text-white/70">{syncStatus.message || "Syncing your bank data…"}</p>
         </div>
       </div>
     );
   }
 
-  const subscriptionTeaser = subscriptionSummary.length
-    ? `We found ${subscriptionSummary.length} subscriptions and ${formatCurrency(
-        subscriptionTotal,
-        region
-      )} you can save on.`
-    : "Connect a bank to discover recurring services.";
-
-  const cashflowTeaser = monthlyStats.income
-    ? `Income ${formatCurrency(monthlyStats.income, region)} vs spend ${formatCurrency(
-        monthlyStats.expenses,
-        region
-      )}.`
-    : "Link your accounts to calculate monthly cashflow.";
-
-  const featureCards = [
-    {
-      key: "subscription-hunter",
-      element: (
-        <PlanGate feature="Subscription Hunter" teaser={subscriptionTeaser} dataTourId="subscription-hunter">
-          <SubscriptionHunter transactions={transactions} region={region} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "cashflow",
-      element: (
-        <PlanGate feature="Cashflow monthly" teaser={cashflowTeaser} dataTourId="cashflow">
-          <CashflowMini transactions={transactions} region={region} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "spending-forecast",
-      element: (
-        <PlanGate
-          feature="Account forecast"
-          teaser="Upgrade to view account-level forecasts."
-          dataTourId="forecast"
-        >
-          <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "upcoming-bills",
-      element: (
-        <PlanGate
-          feature="Upcoming bills"
-          teaser="Upgrade to predict upcoming bills and due dates."
-          dataTourId="upcoming-bills"
-        >
-          <UpcomingBills accounts={accounts} />
-        </PlanGate>
-      ),
-    },
-    {
-      key: "transactions",
-      element: (
-        <PlanGate feature="Transactions" teaser="Unlock full transaction history with AI filters." dataTourId="transactions">
-          <TransactionsList transactions={transactions} />
-        </PlanGate>
-      ),
-    },
-  ];
-
   return (
-    <div className="relative mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 sm:max-w-screen-2xl sm:gap-10 sm:px-6 lg:gap-14 lg:px-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="relative flex flex-col gap-6">
+      <SyncingOverlay
+        open={overlayOpen}
+        title="Syncing your bank data"
+        message={syncStatus.message || "This may take a moment…"}
+        progress={syncStatus.progress}
+        details={debugBlock || undefined}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
-          <h1 className="text-2xl font-semibold text-white">Overview</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Dashboard</p>
+          <h1 className="text-xl font-semibold text-white">Overview</h1>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {profileLink}
-          <button
-            type="button"
-            onClick={handleConnectBank}
-            disabled={connecting}
-            className="relative overflow-hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <span className={connecting ? "opacity-0" : "opacity-100"}>Connect bank</span>
-            {connecting && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <span className="connect-loading-track">
-                  <span className="connect-loading-bar" />
-                </span>
-              </span>
-            )}
-          </button>
+
+          {showConnectCTA ? (
+            <button
+              type="button"
+              onClick={() => pushAppRoute("/onboarding")}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10"
+              disabled={dataLoading}
+            >
+              {connectLabel}
+            </button>
+          ) : null}
 
           <button
             type="button"
             onClick={() => void refresh()}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+            disabled={dataLoading}
           >
-            Refresh bank data
+            Refresh
           </button>
         </div>
-
-        {connectError && <p className="text-sm text-red-400">{connectError}</p>}
       </div>
 
-      {error && hasData && (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-200 shadow-sm">
+      {error && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-200 shadow-sm">
           {error}
         </div>
       )}
 
-      <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
-      <SpendingCategoriesWidget transactions={transactions} region={region} />
-      <FinancialHealthCard transactions={transactions} region={region} />
-
-      <section className="flex flex-col gap-4" data-tour-id="tool-carousel">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">Tools</p>
-            <h2 className="text-lg font-semibold text-white">Build your plan</h2>
-          </div>
+      {/* Forecast hero (click to open /app/forecast) */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3" data-tour-id="forecast">
+          <CardShell onClick={() => pushAppRoute("/app/forecast")} className="select-none">
+            <SpendingForecast accounts={accounts} transactions={transactions} region={region} />
+          </CardShell>
         </div>
-        <div className="tool-tiles">
-          {featureCards.map(({ key, element }) => (
-            <ToolTile key={key}>{element}</ToolTile>
-          ))}
+
+        <div className="lg:col-span-2 grid gap-4">
+          <CardShell tourId="balance-summary">
+            <BalanceSummary accounts={accounts} transactions={transactions} region={region} />
+          </CardShell>
+
+          <CardShell onClick={() => pushAppRoute("/app/reports")} className="select-none">
+            <SpendingCategoriesWidget transactions={transactions} region={region} />
+          </CardShell>
+        </div>
+      </div>
+
+      {/* AI Operator: Weekly orders (click to open /app/weekly-orders) */}
+      {user ? (
+        <CardShell onClick={() => pushAppRoute("/app/weekly-orders")} className="select-none">
+          <WeeklyOrdersPanel
+            userId={user.id}
+            region={region}
+            transactions={transactions}
+            accounts={accounts}
+            totalBalance={totals.totalCash}
+          />
+        </CardShell>
+      ) : null}
+
+      {/* Clickable tiles (2-column on iPhone) */}
+      <section className="flex flex-col gap-3" data-tour-id="tools">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Tools</p>
+          <h2 className="text-base font-semibold text-white">Tap a tile to open the page</h2>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Tile
+            title="Where you stand"
+            value={formatCurrency(totals.totalCash, region)}
+            sub="Total cash"
+            toneClass="bg-white/5"
+            onClick={() => pushAppRoute("/app/dashboard")}
+          />
+
+          <Tile
+            title="Income"
+            value={formatCurrency(totals.income, region)}
+            sub="Past 30 days"
+            onClick={() => pushAppRoute("/app/transactions")}
+          />
+
+          <Tile
+            title="Expenses"
+            value={formatCurrency(totals.expenses, region)}
+            sub="Past 30 days"
+            onClick={() => pushAppRoute("/app/transactions")}
+          />
+
+          <Tile
+            title="Net"
+            value={formatCurrency(totals.net, region)}
+            sub="Past 30 days"
+            onClick={() => pushAppRoute("/app/cashflow")}
+          />
+
+          <Tile
+            title="Subscriptions"
+            value={formatCurrency(totals.recurringTotal, region)}
+            sub="Estimated recurring"
+            onClick={() => pushAppRoute("/app/subscriptions")}
+          />
+
+          <Tile
+            title="Budget Autopilot"
+            value="Open"
+            sub="Rules + coaching"
+            onClick={() => pushAppRoute("/app/budget-autopilot")}
+          />
+
+          <Tile
+            title="Weekly Orders"
+            value="Open"
+            sub="AI-suggested schedule"
+            onClick={() => pushAppRoute("/app/weekly-orders")}
+          />
+
+          <Tile
+            title="Portfolio"
+            value="Open"
+            sub="Manual tracker"
+            onClick={() => pushAppRoute("/app/portfolio")}
+          />
         </div>
       </section>
 
+      {/* Quick actions */}
+      <section className="grid gap-4 lg:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => pushAppRoute("/app/budget-autopilot")}
+          className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-5 text-left shadow-2xl shadow-black/40 transition hover:border-white/20 hover:bg-[#101018]"
+        >
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl transition group-hover:bg-white/10" />
+          <div className="relative flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-white/75">Automate your budget</p>
+              <p className="mt-2 text-2xl font-semibold text-white">Budget Autopilot</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">VISIT PAGE</p>
+            </div>
+            <span className="text-white/50">→</span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => pushAppRoute("/app/subscriptions")}
+          className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-5 text-left shadow-2xl shadow-black/40 transition hover:border-white/20 hover:bg-[#101018]"
+        >
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl transition group-hover:bg-white/10" />
+          <div className="relative flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-white/75">Find recurring charges</p>
+              <p className="mt-2 text-2xl font-semibold text-white">Subscription Hunter</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">VISIT PAGE</p>
+            </div>
+            <span className="text-white/50">→</span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => pushAppRoute("/app/transactions")}
+          className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-5 text-left shadow-2xl shadow-black/40 transition hover:border-white/20 hover:bg-[#101018]"
+        >
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#1F0051]/20 blur-3xl" />
+          <div className="relative flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold text-white/75">Search transactions</p>
+              <p className="mt-2 text-2xl font-semibold text-white">Open ledger</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/45">VISIT PAGE</p>
+            </div>
+            <span className="text-white/50">→</span>
+          </div>
+        </button>
+      </section>
+
       {lastUpdated && (
-        <p className="text-center text-xs text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+        <p className="text-center text-[11px] text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
       )}
 
       <TutorialButton
@@ -404,21 +466,17 @@ const Dashboard: React.FC = () => {
       />
 
       <DashboardTour
-        steps={tourSteps}
         isOpen={tourOpen}
+        steps={tourSteps}
         stepIndex={tourStep}
         onNext={() => setTourStep((s) => Math.min(s + 1, tourSteps.length - 1))}
         onBack={() => setTourStep((s) => Math.max(s - 1, 0))}
-        onClose={() => setTourOpen(false)}
+        onClose={onTourClose}
       />
 
       <LegalFooter />
-      <MascotAssistant
-        accounts={accounts}
-        transactions={transactions}
-        region={region}
-        lastUpdated={lastUpdated ?? undefined}
-      />
+
+      <AiAssistant region={region} accounts={accounts} transactions={transactions} lastUpdated={lastUpdated} />
     </div>
   );
 };
