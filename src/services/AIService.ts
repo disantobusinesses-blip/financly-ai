@@ -1,6 +1,8 @@
 import type { Account, Transaction, User } from "../types";
 
-/* ===== Shared Types ===== */
+/* =====================
+   CORE SHARED TYPES
+===================== */
 
 export interface Insight {
   emoji: string;
@@ -43,25 +45,14 @@ export interface WeeklyOrder {
   steps: string[];
 }
 
-/* ===== Compatibility Exports (FIXES ERRORS) ===== */
+/* =====================
+   COMPATIBILITY EXPORTS
+   (FIXES BUILD ERRORS)
+===================== */
 
-export type TransactionAnalysisResult = FinancialAnalysisResponse;
 export type FinancialAnalysisCleanData = Record<string, unknown>;
 
-/* ===== API Request / Response ===== */
-
-export interface FinancialAnalysisRequest {
-  userId: string;
-  month: number;
-  year: number;
-  region: User["region"];
-  transactions: Transaction[];
-  accounts: Account[];
-  totalBalance: number;
-  forceRefresh?: boolean;
-}
-
-export interface FinancialAnalysisResponse {
+export interface TransactionAnalysisResult {
   cleanData: FinancialAnalysisCleanData;
   analysis: {
     insights: Insight[];
@@ -75,7 +66,26 @@ export interface FinancialAnalysisResponse {
   generatedAt: string;
 }
 
-/* ===== API Call ===== */
+/* =====================
+   REQUEST / RESPONSE
+===================== */
+
+export interface FinancialAnalysisRequest {
+  userId: string;
+  month: number;
+  year: number;
+  region: User["region"];
+  transactions: Transaction[];
+  accounts: Account[];
+  totalBalance: number;
+  forceRefresh?: boolean;
+}
+
+export type FinancialAnalysisResponse = TransactionAnalysisResult;
+
+/* =====================
+   API CALL
+===================== */
 
 export async function fetchFinancialAnalysis(
   payload: FinancialAnalysisRequest
@@ -97,7 +107,11 @@ export async function fetchFinancialAnalysis(
     analysis: {
       insights: data.analysis?.insights ?? [],
       alerts: data.analysis?.alerts ?? [],
-      forecast: data.analysis?.forecast ?? { forecastData: [], insight: "", keyChanges: [] },
+      forecast: data.analysis?.forecast ?? {
+        forecastData: [],
+        insight: "",
+        keyChanges: [],
+      },
       subscriptions: data.analysis?.subscriptions ?? [],
       weeklyOrders: data.analysis?.weeklyOrders ?? [],
       disclaimer: data.analysis?.disclaimer ?? "This is not financial advice.",

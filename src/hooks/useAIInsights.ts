@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   fetchFinancialAnalysis,
-  TransactionAnalysisResult,
   FinancialAnalysisRequest,
+  TransactionAnalysisResult,
 } from "../services/AIService";
 
 export function useAIInsights(payload: FinancialAnalysisRequest | null) {
@@ -22,7 +22,7 @@ export function useAIInsights(payload: FinancialAnalysisRequest | null) {
         if (mounted) setData(res);
       })
       .catch((err) => {
-        if (mounted) setError(err.message || "AI analysis failed");
+        if (mounted) setError(err?.message ?? "AI analysis failed");
       })
       .finally(() => {
         if (mounted) setLoading(false);
