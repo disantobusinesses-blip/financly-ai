@@ -29,13 +29,13 @@ import { useAuth } from "../contexts/AuthContext";
 
 export type SidebarItem =
   | "overview"
+  | "weeklyOrders"
+  | "analytics"
   | "forecast"
-  | "subscriptions"
   | "transactions"
+  | "subscriptions"
   | "budget"
   | "reports"
-  | "upgrade"
-  | "analytics"
   | "portfolio"
   | "netWorth"
   | "markets"
@@ -51,7 +51,9 @@ export type SidebarItem =
   | "healthScore"
   | "taxCenter"
   | "security"
-  | "settings";
+  | "settings"
+  | "upgrade";
+
 
 type SidebarProps = {
   activeItem?: SidebarItem;
