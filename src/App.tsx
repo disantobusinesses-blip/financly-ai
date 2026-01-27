@@ -61,9 +61,7 @@ const ComingSoon: React.FC<{ title: string; subtitle?: string }> = ({ title, sub
   <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b10] p-6 shadow-2xl shadow-black/50">
     <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">Preview</p>
     <h1 className="mt-2 text-2xl font-semibold text-white">{title}</h1>
-    <p className="mt-2 max-w-2xl text-sm text-white/60">
-      {subtitle ?? "This feature is in development."}
-    </p>
+    <p className="mt-2 max-w-2xl text-sm text-white/60">{subtitle ?? "This feature is in development."}</p>
   </section>
 );
 
@@ -74,12 +72,17 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   const { accounts, transactions, loading, error, lastUpdated } = useAppData();
   const region = user?.region ?? "AU";
 
-  const Status = () =>
-    loading || error ? (
+  const Status = () => {
+    if (!loading && !error) return null;
+    const lastUpdatedLabel = lastUpdated ? new Date(lastUpdated).toLocaleString() : null;
+
+    return (
       <div className="mb-4 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs text-white/70">
-        {loading ? "Syncing bank data…" : error}
+        <div>{loading ? "Syncing bank data…" : error}</div>
+        {lastUpdatedLabel ? <div className="mt-1 text-white/50">Last updated: {lastUpdatedLabel}</div> : null}
       </div>
-    ) : null;
+    );
+  };
 
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") return <Dashboard />;
 
@@ -138,6 +141,15 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   if (path === "/app/portfolio") return <Portfolio />;
   if (path === "/app/profile") return <ProfilePage />;
 
+  if (path.startsWith("/app/")) {
+    return (
+      <>
+        <Status />
+        <ComingSoon title="Coming soon" subtitle="This page is in development." />
+      </>
+    );
+  }
+
   return <Dashboard />;
 };
 
@@ -147,23 +159,126 @@ const AppContent: React.FC = () => {
   const { user, profile, loading } = useAuth();
   const { path, navigate } = usePath();
 
-  const isAppShellRoute = useMemo(
-    () =>
-      path.startsWith("/app") ||
-      path === "/dashboard",
-    [path]
-  );
+  const handleHeaderNavigate = (view: "dashboard" | "what-we-do" | "sandbox") => {
+    if (view === "dashboard") navigate("/");
+    else if (view === "what-we-do") navigate("/what-we-do");
+    else navigate("/sandbox");
+  };
+
+  if (path === "/what-we-do") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="what-we-do" onNavigate={handleHeaderNavigate} />
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <WhatWeDo />
+        </div>
+      </div>
+    );
+  }
+
+  if (path === "/sandbox") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="sandbox" onNavigate={handleHeaderNavigate} />
+        <div className="mx-auto max-w-6xl px-4 py-10">
+          <SandboxShowcase />
+        </div>
+      </div>
+    );
+  }
+
+  if (path === "/login") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <LoginPage onSuccess={() => navigate("/app/dashboard")} />
+      </div>
+    );
+  }
+
+  if (path === "/signup") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <SignupPage />
+      </div>
+    );
+  }
+
+  if (path === "/onboarding") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <OnboardingPage onComplete={() => navigate("/app/dashboard")} />
+      </div>
+    );
+  }
+
+  if (path === "/subscribe") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <SubscribePage />
+      </div>
+    );
+  }
+
+  if (path === "/subscription-success") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <SubscriptionSuccessPage onComplete={() => navigate("/subscribe")} />
+      </div>
+    );
+  }
+
+  if (path === "/auth/callback") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <AuthCallbackPage />
+      </div>
+    );
+  }
+
+  if (path === "/fiskil/callback") {
+    return (
+      <div className="min-h-screen bg-[#050507] text-white">
+        <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
+        <FiskilCallbackPage />
+      </div>
+    );
+  }
+
+  const isAppShellRoute = useMemo(() => path.startsWith("/app") || path === "/dashboard", [path]);
 
   const [activeSidebarItem, setActiveSidebarItem] = useState<SidebarItem>("overview");
 
   useEffect(() => {
     if (path === "/app/weekly-orders") setActiveSidebarItem("weeklyOrders");
-    else if (path === "/app/budget-autopilot") setActiveSidebarItem("budget");
-    else if (path === "/app/forecast") setActiveSidebarItem("forecast");
-    else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
+    else if (path === "/app/analytics") setActiveSidebarItem("analytics");
     else if (path === "/app/transactions") setActiveSidebarItem("transactions");
+    else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
+    else if (path === "/app/forecast") setActiveSidebarItem("forecast");
+    else if (path === "/app/budget-autopilot") setActiveSidebarItem("budget");
     else if (path === "/app/cashflow") setActiveSidebarItem("budget");
     else if (path === "/app/reports") setActiveSidebarItem("reports");
+    else if (path === "/app/portfolio") setActiveSidebarItem("portfolio");
+    else if (path === "/app/net-worth") setActiveSidebarItem("netWorth");
+    else if (path === "/app/markets") setActiveSidebarItem("markets");
+    else if (path === "/app/dividends") setActiveSidebarItem("dividends");
+    else if (path === "/app/paper-trading") setActiveSidebarItem("paperTrading");
+    else if (path === "/app/goal-planner") setActiveSidebarItem("goalPlanner");
+    else if (path === "/app/invest-vs-cash") setActiveSidebarItem("investVsCash");
+    else if (path === "/app/etf-comparison") setActiveSidebarItem("etfComparison");
+    else if (path === "/app/risk-profile") setActiveSidebarItem("riskProfile");
+    else if (path === "/app/dca-calculator") setActiveSidebarItem("dcaCalculator");
+    else if (path === "/app/bill-detection") setActiveSidebarItem("billDetection");
+    else if (path === "/app/risk-warnings") setActiveSidebarItem("riskWarnings");
+    else if (path === "/app/health-score") setActiveSidebarItem("healthScore");
+    else if (path === "/app/tax-center") setActiveSidebarItem("taxCenter");
+    else if (path === "/app/security") setActiveSidebarItem("security");
+    else if (path === "/app/settings") setActiveSidebarItem("settings");
     else setActiveSidebarItem("overview");
   }, [path]);
 
@@ -171,11 +286,80 @@ const AppContent: React.FC = () => {
     setActiveSidebarItem(item);
 
     switch (item) {
+      case "overview":
+        navigate("/app/dashboard");
+        return;
       case "weeklyOrders":
         navigate("/app/weekly-orders");
         return;
+      case "analytics":
+        navigate("/app/analytics");
+        return;
+      case "forecast":
+        navigate("/app/forecast");
+        return;
+      case "transactions":
+        navigate("/app/transactions");
+        return;
+      case "subscriptions":
+        navigate("/app/subscriptions");
+        return;
       case "budget":
         navigate("/app/budget-autopilot");
+        return;
+      case "reports":
+        navigate("/app/reports");
+        return;
+      case "portfolio":
+        navigate("/app/portfolio");
+        return;
+      case "netWorth":
+        navigate("/app/net-worth");
+        return;
+      case "markets":
+        navigate("/app/markets");
+        return;
+      case "dividends":
+        navigate("/app/dividends");
+        return;
+      case "paperTrading":
+        navigate("/app/paper-trading");
+        return;
+      case "goalPlanner":
+        navigate("/app/goal-planner");
+        return;
+      case "investVsCash":
+        navigate("/app/invest-vs-cash");
+        return;
+      case "etfComparison":
+        navigate("/app/etf-comparison");
+        return;
+      case "riskProfile":
+        navigate("/app/risk-profile");
+        return;
+      case "dcaCalculator":
+        navigate("/app/dca-calculator");
+        return;
+      case "billDetection":
+        navigate("/app/bill-detection");
+        return;
+      case "riskWarnings":
+        navigate("/app/risk-warnings");
+        return;
+      case "healthScore":
+        navigate("/app/health-score");
+        return;
+      case "taxCenter":
+        navigate("/app/tax-center");
+        return;
+      case "security":
+        navigate("/app/security");
+        return;
+      case "settings":
+        navigate("/app/settings");
+        return;
+      case "upgrade":
+        navigate("/subscribe");
         return;
       default:
         navigate("/app/dashboard");
@@ -214,7 +398,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#050507] text-white">
-      <Header activeView="dashboard" onNavigate={() => navigate("/")} />
+      <Header activeView="dashboard" onNavigate={handleHeaderNavigate} />
       <WelcomeScreen
         onGetStarted={() => navigate("/signup")}
         onLogin={() => navigate("/login")}
