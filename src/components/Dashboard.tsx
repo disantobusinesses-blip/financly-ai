@@ -22,6 +22,7 @@ const Dashboard: React.FC = () => {
   const { user, profile, session, loading: authLoading } = useAuth();
   const region = user?.region ?? "AU";
 
+  // NOTE: useFiskilData signature is (userId)
   const {
     accounts,
     transactions,
@@ -29,16 +30,12 @@ const Dashboard: React.FC = () => {
     error,
     lastUpdated,
     connected,
+    syncStatus,
     debugInfo,
     refresh,
-    stage,
-    connect,
-  } = useFiskilData(region);
-
-  const [connectError, setConnectError] = useState<string | null>(null);
+  } = useFiskilData(user?.id);
 
   const hasData = accounts.length > 0 || transactions.length > 0;
-  const isSyncing = dataLoading && hasData;
 
   const debugBlock = useMemo(() => {
     if (!debugInfo) return "";
@@ -48,19 +45,6 @@ const Dashboard: React.FC = () => {
       return String(debugInfo);
     }
   }, [debugInfo]);
-
-  const showConnect =
-    !connected || stage === "awaiting_accounts" || stage === "awaiting_transactions";
-
-  const profileLink =
-    user && profile?.is_onboarded ? (
-      <a
-        href="/app/profile"
-        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
-      >
-        My profile
-      </a>
-    ) : null;
 
   const totals = useMemo(() => {
     const totalCash = sumBalances(accounts);
@@ -122,17 +106,17 @@ const Dashboard: React.FC = () => {
       {
         id: "forecast",
         title: "Cashflow forecast",
-        body: "See where your balance is trending based on spending patterns.",
+        description: "See where your balance is trending based on spending patterns.",
       },
       {
         id: "balance-summary",
         title: "Balance snapshot",
-        body: "Quick view of cash positions across connected accounts.",
+        description: "Quick view of cash positions across connected accounts.",
       },
       {
         id: "tools",
         title: "Quick launch tools",
-        body: "Tap any tile to open the full page. Optimized for iPhone with two columns.",
+        description: "Tap any tile to open the full page. Optimized for iPhone with two columns.",
       },
     ],
     []
@@ -204,21 +188,27 @@ const Dashboard: React.FC = () => {
   };
 
   const canShowApp = Boolean(session && user);
-  const connectLabel = connected ? "Re-connect bank" : "Connect bank";
 
-  const handleConnect = async () => {
-    setConnectError(null);
-    try {
-      await connect();
-    } catch (e) {
-      setConnectError(e instanceof Error ? e.message : "Unable to start bank connection.");
-    }
-  };
+  const profileLink =
+    user && profile?.is_onboarded ? (
+      <a
+        href="/app/profile"
+        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
+      >
+        My profile
+      </a>
+    ) : null;
+
+  const stage = syncStatus.stage;
+
+  const showConnectCTA = !connected || stage === "no_connection" || stage === "error";
+  const connectLabel = connected ? "Manage connection" : "Connect bank";
+
+  const overlayOpen =
+    dataLoading && (stage === "awaiting_accounts" || stage === "awaiting_transactions") && hasData;
 
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-sm text-white/70">Loading…</div>
-    );
+    return <div className="flex items-center justify-center py-16 text-sm text-white/70">Loading…</div>;
   }
 
   if (!canShowApp) {
@@ -240,6 +230,15 @@ const Dashboard: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {profileLink}
+            {showConnectCTA ? (
+              <button
+                type="button"
+                onClick={() => pushAppRoute("/onboarding")}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10"
+              >
+                {connectLabel}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void refresh()}
@@ -252,7 +251,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-[#0b0b10] p-6">
-          <p className="text-sm text-white/70">Syncing your bank data…</p>
+          <p className="text-sm text-white/70">{syncStatus.message || "Syncing your bank data…"}</p>
         </div>
       </div>
     );
@@ -260,7 +259,13 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative flex flex-col gap-6">
-      {isSyncing ? <SyncingOverlay /> : null}
+      <SyncingOverlay
+        open={overlayOpen}
+        title="Syncing your bank data"
+        message={syncStatus.message || "This may take a moment…"}
+        progress={syncStatus.progress}
+        details={debugBlock || undefined}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -271,11 +276,11 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           {profileLink}
 
-          {showConnect ? (
+          {showConnectCTA ? (
             <button
               type="button"
-              onClick={() => void handleConnect()}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10 disabled:opacity-60"
+              onClick={() => pushAppRoute("/onboarding")}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/30 hover:bg-white/10"
               disabled={dataLoading}
             >
               {connectLabel}
@@ -291,8 +296,6 @@ const Dashboard: React.FC = () => {
             Refresh
           </button>
         </div>
-
-        {connectError && <p className="w-full text-xs text-red-300">{connectError}</p>}
       </div>
 
       {error && (
@@ -454,13 +457,6 @@ const Dashboard: React.FC = () => {
       {lastUpdated && (
         <p className="text-center text-[11px] text-slate-400">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
       )}
-
-      {debugBlock ? (
-        <details className="rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/70">
-          <summary className="cursor-pointer select-none font-semibold text-white/80">Debug info</summary>
-          <pre className="mt-3 overflow-auto whitespace-pre-wrap break-words">{debugBlock}</pre>
-        </details>
-      ) : null}
 
       <TutorialButton
         onClick={() => {
