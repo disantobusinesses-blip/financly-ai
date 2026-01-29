@@ -160,7 +160,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
           setIsOpen(false);
         }}
         className={[
-          "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition",
+          "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition min-h-[44px] touch-feedback active:scale-98",
           isActive
             ? "bg-[#2a0f4d] text-white shadow-[0_0_0_1px_rgba(168,85,247,0.18)]"
             : "text-white/70 hover:bg-white/5 hover:text-white",
