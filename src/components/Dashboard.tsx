@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SpendingForecast from "./SpendingForecast";
 import BalanceSummary from "./BalanceSummary";
-import WeeklyOrdersPanel from "./WeeklyOrdersPanel";
 import SpendingCategoriesWidget from "./SpendingCategoriesWidget";
 import DashboardTour, { TourStep } from "./DashboardTour";
 import TutorialButton from "./TutorialButton";
@@ -323,18 +322,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Operator: Weekly orders (click to open /app/weekly-orders) */}
-      {user ? (
-        <CardShell onClick={() => pushAppRoute("/app/weekly-orders")} className="select-none">
-          <WeeklyOrdersPanel
-            userId={user.id}
-            region={region}
-            transactions={transactions}
-            accounts={accounts}
-            totalBalance={totals.totalCash}
-          />
-        </CardShell>
-      ) : null}
+
 
       {/* Clickable tiles (2-column on iPhone) */}
       <section className="flex flex-col gap-3" data-tour-id="tools">
@@ -385,13 +373,6 @@ const Dashboard: React.FC = () => {
             value="Open"
             sub="Rules + coaching"
             onClick={() => pushAppRoute("/app/budget-autopilot")}
-          />
-
-          <Tile
-            title="Weekly Orders"
-            value="Open"
-            sub="AI-suggested schedule"
-            onClick={() => pushAppRoute("/app/weekly-orders")}
           />
 
           <Tile

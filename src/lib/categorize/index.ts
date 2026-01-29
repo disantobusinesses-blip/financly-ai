@@ -1,7 +1,6 @@
 import { normalizeText } from "./normalizer";
 import { type Tx, type Categorized } from "./categories";
 import { categorizeByRules } from "./engine";
-import { categorizeByAI } from "./ai";
 
 const cache = new Map<string, { category: string; type: string; confidence: number }>();
 const learningQueue = new Set<string>();
@@ -9,6 +8,18 @@ const learningQueue = new Set<string>();
 function cacheKey(tx: Tx) {
   const normalized = normalizeText(`${tx.merchantName || ""} ${tx.description || ""}`);
   return `${tx.currency}|${normalized}`;
+}
+
+function fallbackCategorize(tx: Tx): Categorized {
+  // Fallback categorization when AI is not available
+  // Simple heuristic based on amount
+  return {
+    id: tx.id,
+    category: "Misc",
+    type: tx.amount > 0 ? "credit" : tx.amount < 0 ? "debit" : "unknown",
+    source: "fallback",
+    confidence: 0.3,
+  };
 }
 
 export async function categorizeTx(tx: Tx): Promise<Categorized> {
@@ -22,15 +33,16 @@ export async function categorizeTx(tx: Tx): Promise<Categorized> {
       id: tx.id,
       category: hit.category as Categorized["category"],
       type: hit.type as Categorized["type"],
-      source: "ai",
+      source: "cache",
       confidence: hit.confidence,
     };
   }
 
-  const ai = await categorizeByAI(tx);
-  cache.set(key, { category: ai.category, type: ai.type, confidence: ai.confidence });
+  // Use fallback categorization instead of AI
+  const result = fallbackCategorize(tx);
+  cache.set(key, { category: result.category, type: result.type, confidence: result.confidence });
   learningQueue.add(key);
-  return ai;
+  return result;
 }
 
 export async function categorizeMany(txs: Tx[]): Promise<Categorized[]> {
@@ -54,6 +66,5 @@ export async function exportLearningQueue(path = "learningQueue.json"): Promise<
 }
 
 export { categorizeByRules } from "./engine";
-export { categorizeByAI } from "./ai";
 export type { Category, TxType, Tx, Categorized } from "./categories";
 export { RULES, type Rule } from "./rules";
