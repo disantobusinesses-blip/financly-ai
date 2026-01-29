@@ -18,8 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@vercel/speed-insights/next": ["./packages/speed-insights/next"],
-      "openai": ["./packages/openai/index"]
+      "@vercel/speed-insights/next": ["./packages/speed-insights/next"]
     }
   },
   "include": ["src", "vite-env.d.ts"],

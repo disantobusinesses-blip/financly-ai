@@ -8,7 +8,6 @@ import Analytics from "./components/Analytics";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SandboxShowcase from "./components/SandboxShowcase";
 import BudgetAutopilot from "./components/BudgetAutopilot";
-import WeeklyOrdersPage from "./components/WeeklyOrdersPage";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -85,8 +84,6 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
   };
 
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") return <Dashboard />;
-
-  if (path === "/app/weekly-orders") return <WeeklyOrdersPage />;
 
   if (path === "/app/budget-autopilot") {
     return (
@@ -255,8 +252,7 @@ const AppContent: React.FC = () => {
   const [activeSidebarItem, setActiveSidebarItem] = useState<SidebarItem>("overview");
 
   useEffect(() => {
-    if (path === "/app/weekly-orders") setActiveSidebarItem("weeklyOrders");
-    else if (path === "/app/analytics") setActiveSidebarItem("analytics");
+    if (path === "/app/analytics") setActiveSidebarItem("analytics");
     else if (path === "/app/transactions") setActiveSidebarItem("transactions");
     else if (path === "/app/subscriptions") setActiveSidebarItem("subscriptions");
     else if (path === "/app/forecast") setActiveSidebarItem("forecast");
@@ -288,9 +284,6 @@ const AppContent: React.FC = () => {
     switch (item) {
       case "overview":
         navigate("/app/dashboard");
-        return;
-      case "weeklyOrders":
-        navigate("/app/weekly-orders");
         return;
       case "analytics":
         navigate("/app/analytics");

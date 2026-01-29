@@ -29,7 +29,6 @@ import { useAuth } from "../contexts/AuthContext";
 
 export type SidebarItem =
   | "overview"
-  | "weeklyOrders"
   | "analytics"
   | "forecast"
   | "transactions"

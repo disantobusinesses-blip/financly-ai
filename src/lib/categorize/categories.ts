@@ -43,7 +43,7 @@ export interface Categorized {
   id: string;
   category: Category;
   type: TxType;
-  source: "rule" | "ai";
+  source: "rule" | "cache" | "fallback";
   confidence: number;
   ruleId?: string;
   aiReason?: string;
