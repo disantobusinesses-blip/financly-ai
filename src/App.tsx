@@ -80,7 +80,6 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
 
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") return <Dashboard />;
 
-  if (path === "/app/weekly-orders") return <WeeklyOrdersPage />;
 
   if (path === "/app/budget-autopilot") {
     return (
@@ -384,8 +383,6 @@ const AppContent: React.FC = () => {
             <main className="flex-1">
               <AppShellPages path={path} />
             </main>
-          </div>
-          <MobileBottomNav activeItem={activeSidebarItem} onNavigate={handleSidebarNavigate} />
         </div>
       </AppDataProvider>
     );
