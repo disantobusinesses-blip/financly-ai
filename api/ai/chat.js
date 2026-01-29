@@ -1,6 +1,6 @@
 import { OpenAI } from "openai";
-import { getUserFromRequest } from "../../src/server/auth";
-import { getFinanceContextForUser } from "../../src/server/finance-context";
+import { getUserFromRequest } from "../../src/server/auth.js";
+import { getFinanceContextForUser } from "../../src/server/finance-context.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
