@@ -48,7 +48,7 @@ const usePath = () => {
     if (next !== window.location.pathname) {
       window.history.pushState({}, "", next);
       window.dispatchEvent(new PopStateEvent("popstate"));
-      setPath(next);
+      window.scrollTo(0, 0);
     }
   };
 

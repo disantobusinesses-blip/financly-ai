@@ -73,8 +73,8 @@ const WeeklyOrdersPanel: React.FC<Props> = ({ userId, region, transactions, acco
     <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/40">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">AI Operator</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">This week’s orders</h2>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">This Week</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">Action Items</h2>
           <p className="mt-1 text-sm text-white/60">
             Ranked actions based on your last 30 days. Do these and you’ll improve fast.
           </p>
