@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-const DATA_PATH = path.join(process.cwd(), "api", "_data", "ai-cache.json");
+const DATA_PATH = path.join("/tmp", "ai-cache.json");
 
 const defaultStore = () => ({ reports: [] });
 
