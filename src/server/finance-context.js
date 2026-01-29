@@ -21,11 +21,24 @@ export async function getFinanceContextForUser(userId) {
   if (!userId) return null;
 
   try {
-    const [{ data: accounts = [] }, { data: transactions = [] }, { data: profile }] = await Promise.all([
+    const [accountsResult, transactionsResult, profileResult] = await Promise.all([
       supabaseAdmin.from("accounts").select("*").eq("user_id", userId),
       supabaseAdmin.from("transactions").select("*").eq("user_id", userId),
       supabaseAdmin.from("profiles").select("last_transactions_sync_at, country").eq("id", userId).maybeSingle(),
     ]);
+
+    if (accountsResult.error || transactionsResult.error || profileResult.error) {
+      console.error("Error fetching data for finance context:", {
+        accountsError: accountsResult.error,
+        transactionsError: transactionsResult.error,
+        profileError: profileResult.error,
+      });
+      return null;
+    }
+
+    const accounts = accountsResult.data || [];
+    const transactions = transactionsResult.data || [];
+    const profile = profileResult.data;
 
     if (!accounts.length && !transactions.length) {
       return null;
