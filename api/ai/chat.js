@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     const answer = completion?.choices?.[0]?.message?.content?.trim() || "I can help with your MyAiBank finances.";
 
-    return safeJson(res, 200, { answer });
+    return safeJson(res, 200, { reply: answer });
   } catch (err) {
     const msg = String(err?.message || err);
     console.error("AI_CHAT error", err);
