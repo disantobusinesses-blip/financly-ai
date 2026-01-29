@@ -323,7 +323,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Operator: Weekly orders (click to open /app/weekly-orders) */}
+      {/* Weekly orders panel (click to open /app/weekly-orders) */}
       {user ? (
         <CardShell onClick={() => pushAppRoute("/app/weekly-orders")} className="select-none">
           <WeeklyOrdersPanel
