@@ -7,7 +7,7 @@ type TouchButtonProps = {
   className?: string;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
-  ariaLabel?: string;
+  "aria-label"?: string;
   haptic?: 'light' | 'medium' | 'heavy';
 };
 
@@ -20,7 +20,7 @@ const TouchButton: React.FC<TouchButtonProps> = ({
   className = "",
   type = "button",
   disabled = false,
-  ariaLabel,
+  "aria-label": ariaLabel,
   haptic = 'light',
 }) => {
   const handleClick = () => {

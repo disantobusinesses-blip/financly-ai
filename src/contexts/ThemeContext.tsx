@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { triggerHaptic } from '../utils/iosUtils';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -37,9 +38,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setSystemTheme(e.matches ? 'dark' : 'light');
             
             // Trigger haptic feedback on iOS for theme change
-            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-                navigator.vibrate(5);
-            }
+            triggerHaptic('light');
         };
 
         darkModeQuery.addEventListener('change', handleSystemThemeChange);

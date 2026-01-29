@@ -11,7 +11,7 @@ export const triggerHaptic = (type: 'light' | 'medium' | 'heavy' = 'light') => {
   
   // Standard Vibration API
   if ('vibrate' in navigator) {
-    const duration = type === 'light' ? 5 : type === 'medium' ? 10 : 15;
+    const duration = type === 'light' ? 10 : type === 'medium' ? 20 : 30;
     navigator.vibrate(duration);
   }
   
