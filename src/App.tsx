@@ -377,12 +377,13 @@ const AppContent: React.FC = () => {
 
     return (
       <AppDataProvider>
-        <div className="min-h-screen bg-[#050507] text-white pb-20 lg:pb-6">
+        <div className="min-h-screen bg-[#050507] text-white">
           <div className="mx-auto flex max-w-[1400px] gap-5 px-4 py-6">
             <Sidebar activeItem={activeSidebarItem} onNavigate={handleSidebarNavigate} />
             <main className="flex-1">
               <AppShellPages path={path} />
             </main>
+          </div>
         </div>
       </AppDataProvider>
     );
