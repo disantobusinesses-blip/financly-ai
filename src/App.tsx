@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-
 import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import Portfolio from "./components/Portfolio";
@@ -8,12 +7,9 @@ import Analytics from "./components/Analytics";
 import WelcomeScreen from "./components/WelcomeScreen";
 import SandboxShowcase from "./components/SandboxShowcase";
 import BudgetAutopilot from "./components/BudgetAutopilot";
-import WeeklyOrdersPage from "./components/WeeklyOrdersPage";
-
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AppDataProvider, useAppData } from "./contexts/AppDataContext";
-
 import WhatWeDo from "./components/WhatWeDo";
 import OnboardingPage from "./pages/Onboarding";
 import SubscribePage from "./pages/Subscribe";
@@ -23,9 +19,7 @@ import AuthCallbackPage from "./pages/AuthCallback";
 import SignupPage from "./pages/Signup";
 import FiskilCallbackPage from "./pages/FiskilCallback";
 import ProfilePage from "./pages/Profile";
-
 import Sidebar, { type SidebarItem } from "./components/Sidebar";
-
 // Existing components (no Fiskil changes)
 import SpendingForecast from "./components/SpendingForecast";
 import SubscriptionHunter from "./components/SubscriptionHunter";
@@ -86,7 +80,6 @@ const AppShellPages: React.FC<{ path: string }> = ({ path }) => {
 
   if (path === "/dashboard" || path === "/app" || path === "/app/dashboard") return <Dashboard />;
 
-  if (path === "/app/weekly-orders") return <WeeklyOrdersPage />;
 
   if (path === "/app/budget-autopilot") {
     return (

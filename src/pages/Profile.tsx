@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
+import ThemeToggle from "../components/ThemeToggle";
 
 const ProfilePage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -10,7 +11,7 @@ const ProfilePage: React.FC = () => {
         <p>Please log in to view your profile.</p>
         <a
           href="/login"
-          className="inline-flex w-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+          className="inline-flex w-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 min-h-[44px] items-center"
         >
           Go to login
         </a>
@@ -27,7 +28,7 @@ const ProfilePage: React.FC = () => {
         </div>
         <a
           href="/app/dashboard"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+          className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 min-h-[44px] flex items-center"
         >
           Back to dashboard
         </a>
@@ -55,6 +56,8 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
       </section>
+
+      <ThemeToggle />
     </div>
   );
 };

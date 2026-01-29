@@ -8,6 +8,7 @@ type CardProps = {
   className?: string;
   bodyClassName?: string;
   headerClassName?: string;
+  animated?: boolean;
 };
 
 export default function Card({
@@ -18,12 +19,14 @@ export default function Card({
   className = "",
   bodyClassName = "",
   headerClassName = "",
+  animated = true,
 }: CardProps) {
   return (
     <section
       className={[
         "futuristic-card rounded-3xl border border-white/10",
         "shadow-2xl shadow-black/40 backdrop-blur",
+        animated ? "card-appear" : "",
         className,
       ].join(" ")}
     >

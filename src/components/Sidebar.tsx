@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Bars3Icon,
   XMarkIcon,
@@ -26,6 +26,7 @@ import {
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../contexts/AuthContext";
+import { addSwipeGesture } from "../utils/iosUtils";
 
 export type SidebarItem =
   | "overview"
@@ -70,6 +71,22 @@ type NavItem = {
 export default function Sidebar({ activeItem = "overview", onNavigate }: SidebarProps) {
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Add swipe gesture support for mobile sidebar
+  useEffect(() => {
+    const sidebarElement = sidebarRef.current;
+    if (!sidebarElement) return;
+
+    const cleanup = addSwipeGesture(
+      sidebarElement,
+      () => setIsOpen(false), // Swipe left to close
+      undefined, // No right swipe action
+      100 // threshold
+    );
+
+    return cleanup;
+  }, []);
 
   // MAIN
   const mainItems = useMemo<NavItem[]>(
@@ -160,7 +177,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
           setIsOpen(false);
         }}
         className={[
-          "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition",
+          "group relative flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition min-h-[44px] touch-feedback active:scale-95",
           isActive
             ? "bg-[#2a0f4d] text-white shadow-[0_0_0_1px_rgba(168,85,247,0.18)]"
             : "text-white/70 hover:bg-white/5 hover:text-white",
@@ -199,6 +216,7 @@ export default function Sidebar({ activeItem = "overview", onNavigate }: Sidebar
 
   const Shell = ({ mobile }: { mobile?: boolean }) => (
     <aside
+      ref={mobile ? sidebarRef : null}
       className={[
         "relative overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] shadow-2xl shadow-black/70",
         mobile ? "h-full w-80 max-w-[86vw]" : "hidden lg:block lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-72",
