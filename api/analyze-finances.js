@@ -301,7 +301,7 @@ async function analyzeFinancialData(cleanData) {
       {
         role: "system",
         content:
-          "You are a financial analysis engine. Always return identical JSON for identical inputs. Use the provided values without estimating. Respond with JSON containing insights (array of {emoji,text}), alerts (array of {type,title,description,disclaimer}), forecast (object with forecastData array, insight, keyChanges array), subscriptions (array of {name,amount,cancellationUrl}), weeklyOrders (array of {title,why,impactMonthly,steps}), and disclaimer string exactly 'This is not financial advice.'",
+          "You are a financial analysis engine. Always return identical JSON for identical inputs. Use the provided values without estimating. Respond with JSON containing insights (array of {emoji,text}), alerts (array of {type,title,description,disclaimer}), forecast (object with forecastData array, insight, keyChanges array), subscriptions (array of {name,amount,cancellationUrl}), and disclaimer string exactly 'This is not financial advice.'",
       },
       {
         role: "user",
@@ -335,7 +335,6 @@ const defaultAnalysis = {
     keyChanges: [],
   },
   subscriptions: [],
-  weeklyOrders: [],
   disclaimer: "This is not financial advice.",
 };
 
@@ -350,8 +349,6 @@ function sanitiseAnalysis(analysis) {
 
   const forecast =
     parsed.forecast && typeof parsed.forecast === "object" ? parsed.forecast : {};
-
-  const weeklyOrders = Array.isArray(parsed.weeklyOrders) ? parsed.weeklyOrders : [];
 
   return {
     insights: insights.map((item) => ({
@@ -386,14 +383,6 @@ function sanitiseAnalysis(analysis) {
       name: sub?.name || "",
       amount: round(sub?.amount),
       cancellationUrl: sub?.cancellationUrl || "",
-    })),
-    weeklyOrders: weeklyOrders.slice(0, 5).map((o) => ({
-      title: o?.title || "",
-      why: o?.why || "",
-      impactMonthly: round(o?.impactMonthly),
-      steps: Array.isArray(o?.steps)
-        ? o.steps.map((s) => String(s || "")).slice(0, 4)
-        : [],
     })),
     disclaimer:
       typeof parsed.disclaimer === "string"

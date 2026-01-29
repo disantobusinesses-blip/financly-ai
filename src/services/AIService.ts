@@ -38,13 +38,6 @@ export interface SubscriptionItem {
   cancellationUrl: string;
 }
 
-export interface WeeklyOrder {
-  title: string;
-  why: string;
-  impactMonthly: number;
-  steps: string[];
-}
-
 /* =====================
    COMPATIBILITY EXPORTS
    (FIXES BUILD ERRORS)
@@ -59,7 +52,6 @@ export interface TransactionAnalysisResult {
     alerts: AlertItem[];
     forecast: ForecastBlock;
     subscriptions: SubscriptionItem[];
-    weeklyOrders: WeeklyOrder[];
     disclaimer: string;
   };
   cached: boolean;
@@ -113,7 +105,6 @@ export async function fetchFinancialAnalysis(
         keyChanges: [],
       },
       subscriptions: data.analysis?.subscriptions ?? [],
-      weeklyOrders: data.analysis?.weeklyOrders ?? [],
       disclaimer: data.analysis?.disclaimer ?? "This is not financial advice.",
     },
     cached: Boolean(data.cached),
