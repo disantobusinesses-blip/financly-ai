@@ -10,7 +10,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import type { Account, Transaction } from "../types";
 import SyncingOverlay from "./SyncingOverlay";
-import AiAssistant from "./AiAssistant";
 
 const TOUR_KEY = "myaibank_tour_seen";
 
@@ -456,8 +455,6 @@ const Dashboard: React.FC = () => {
       />
 
       <LegalFooter />
-
-      <AiAssistant region={region} accounts={accounts} transactions={transactions} lastUpdated={lastUpdated} />
     </div>
   );
 };
