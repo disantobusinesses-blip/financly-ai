@@ -2,12 +2,18 @@
 // Mock signup/login, persists user, exposes modal toggles.
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { User } from "../types";
+import { supabase } from "../services/supabaseClient";
+import { OnboardingState, User, UserMembershipType } from "../types";
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, pass: string) => boolean;
-  signup: (email: string, pass: string, region: "AU" | "US") => boolean;
+  login: (email: string, pass: string) => Promise<boolean>;
+  signup: (
+    email: string,
+    pass: string,
+    region: "AU" | "US",
+    onboardingState?: OnboardingState
+  ) => Promise<boolean>;
   logout: () => void;
   upgradeUser: (userId: string) => void;
 
@@ -43,25 +49,124 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
+  const supabaseReady = Boolean(supabase);
+
+  const userFromSupabase = (supabaseUser: any): User => {
+    const region = (supabaseUser?.user_metadata?.region as "AU" | "US") || "AU";
+    const membershipType =
+      (supabaseUser?.user_metadata?.membershipType as UserMembershipType | undefined) || "Free";
+
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || "",
+      membershipType,
+      region,
+    };
+  };
+
   useEffect(() => {
-    const saved = db.getCurrentUser();
-    if (saved) setUser(saved);
+    const seedLocalUsers = () => {
+      const saved = db.getCurrentUser();
+      if (saved) setUser(saved);
 
-    // seed a demo user (mock auth only)
-    const users = db.getUsers();
-    if (!users.find((u) => u.email === "demo@financly.com")) {
-      users.push({
-        id: "user_demo_123",
-        email: "demo@financly.com",
-        password: "demo123",
-        membershipType: "Pro",
-        region: "AU",
+      const users = db.getUsers();
+      if (!users.find((u) => u.email === "demo@financly.com")) {
+        users.push({
+          id: "user_demo_123",
+          email: "demo@financly.com",
+          password: "demo123",
+          membershipType: "Pro",
+          region: "AU",
+        });
+        db.saveUsers(users);
+      }
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    let isMounted = true;
+
+    const bootstrap = async () => {
+      if (supabaseReady) {
+        const { data } = await supabase!.auth.getSession();
+        if (!isMounted) return;
+
+        if (data.session?.user) {
+          setUser(userFromSupabase(data.session.user));
+        }
+
+        const { data: listener } = supabase!.auth.onAuthStateChange((event, session) => {
+          if (event === "SIGNED_OUT") {
+            setUser(null);
+            db.setCurrentUser(null);
+            return;
+          }
+
+          if (session?.user) {
+            const mapped = userFromSupabase(session.user);
+            setUser(mapped);
+            db.setCurrentUser(mapped);
+          }
+        });
+
+        unsubscribe = () => listener.subscription.unsubscribe();
+        return;
+      }
+
+      seedLocalUsers();
+    };
+
+    bootstrap();
+
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
+  }, [supabaseReady]);
+
+  const signup = async (
+    email: string,
+    pass: string,
+    region: "AU" | "US",
+    onboardingState?: OnboardingState
+  ): Promise<boolean> => {
+    if (supabaseReady && supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: {
+            region,
+            membershipType: "Free",
+            onboarding_state:
+              onboardingState ||
+              ({
+                step: 1,
+                status: "awaiting_verification",
+                region,
+                email,
+                lastUpdated: new Date().toISOString(),
+              } as OnboardingState),
+          },
+          emailRedirectTo: window.location.origin,
+        },
       });
-      db.saveUsers(users);
-    }
-  }, []);
 
-  const signup = (email: string, pass: string, region: "AU" | "US"): boolean => {
+      if (error) {
+        console.error("Supabase signup failed", error.message);
+        alert(error.message);
+        return false;
+      }
+
+      if (data.user) {
+        const mapped = userFromSupabase(data.user);
+        setUser(mapped);
+        db.setCurrentUser(mapped);
+      }
+
+      setIsSignupModalOpen(false);
+      return true;
+    }
+
     const users = db.getUsers();
     if (users.find((u) => u.email === email)) {
       alert("An account with this email already exists.");
@@ -81,7 +186,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
-  const login = (email: string, pass: string): boolean => {
+  const login = async (email: string, pass: string): Promise<boolean> => {
+    if (supabaseReady && supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        console.error("Supabase login failed", error.message);
+        alert(error.message);
+        return false;
+      }
+
+      if (data.session?.user) {
+        const mapped = userFromSupabase(data.session.user);
+        setUser(mapped);
+        db.setCurrentUser(mapped);
+      }
+      setIsLoginModalOpen(false);
+      return true;
+    }
+
     const users = db.getUsers();
     const found = users.find((u) => u.email === email && u.password === pass);
     if (!found) {
@@ -101,6 +223,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
+    if (supabaseReady && supabase) {
+      supabase.auth.signOut();
+    }
     setUser(null);
     db.setCurrentUser(null);
     // optional: clear basiqUserId if you want logout to fully reset bank link

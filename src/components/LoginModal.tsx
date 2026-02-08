@@ -6,17 +6,20 @@ const LoginModal: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isLoginModalOpen) return null;
 
-  const handleLogin = () => {
-    const success = login(email, password);
+  const handleLogin = async () => {
+    setSubmitting(true);
+    const success = await login(email, password);
     if (!success) {
       setError("Invalid email or password.");
     } else {
       setError(null);
       setIsLoginModalOpen(false);
     }
+    setSubmitting(false);
   };
 
   return (
@@ -51,9 +54,10 @@ const LoginModal: React.FC = () => {
           </button>
           <button
             onClick={handleLogin}
-            className="px-4 py-2 rounded bg-primary text-white"
+            disabled={submitting}
+            className="px-4 py-2 rounded bg-primary text-white disabled:opacity-50"
           >
-            Login
+            {submitting ? "Signing in..." : "Login"}
           </button>
         </div>
       </div>
