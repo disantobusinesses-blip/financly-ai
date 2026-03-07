@@ -1,38 +1,20 @@
 // src/App.tsx
-import React, { useState } from "react";
-import Header from "./components/Header";
-import Dashboard from "./components/Dashboard";
-import WelcomeScreen from "./components/WelcomeScreen";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import LoginModal from "./components/LoginModal";
-import SignupModal from "./components/SignupModal";
-
-const AppContent: React.FC = () => {
-  const { user } = useAuth();
-  const [/*showSyncing*/, /*setShowSyncing*/] = useState(false);
-
-  if (!user) return <WelcomeScreen />;
-
-  return (
-    <div className="min-h-screen bg-background text-text-primary">
-      <Header />
-      <main className="p-6">
-        <Dashboard />
-      </main>
-    </div>
-  );
-};
+import React from "react";
 
 const App: React.FC = () => (
-  <AuthProvider>
-    <ThemeProvider>
-      <AppContent />
-      {/* ✅ keep modals mounted */}
-      <LoginModal />
-      <SignupModal />
-    </ThemeProvider>
-  </AuthProvider>
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-800 text-white font-sans">
+    <div className="flex flex-col items-center gap-6 text-center px-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-xl">F</div>
+        <span className="text-2xl font-bold tracking-tight">Financly</span>
+      </div>
+      <h1 className="text-5xl font-extrabold tracking-tight">Coming Soon</h1>
+      <p className="text-lg text-neutral-400 max-w-md">
+        We're working hard to bring you a smarter way to manage your finances. Stay tuned!
+      </p>
+      <div className="mt-4 h-1 w-24 rounded-full bg-primary" />
+    </div>
+  </div>
 );
 
 export default App;
